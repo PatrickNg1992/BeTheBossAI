@@ -1,0 +1,93 @@
+[gd_scene format=3 uid="uid://c1dsavv5cg7me"]
+
+[ext_resource type="Script" uid="uid://28rnl5o5nnr7" path="res://player_movement.gd" id="1_cu847"]
+[ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/cards_ui.gd" id="2_kk5mn"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(10, 1, 10)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0, 0.8, 0, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+size = Vector3(10, 1, 10)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(1, 2, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_player"]
+albedo_color = Color(0, 0, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+size = Vector3(1, 2, 1)
+
+[node name="Node3D" type="Node3D" unique_id=1963402411]
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=2068182844]
+transform = Transform3D(1, 0, 0, 0, 0.9017421, 0.43227467, 0, -0.43227467, 0.9017421, 0, 5, 10)
+current = true
+
+[node name="Floor" type="StaticBody3D" parent="." unique_id=1491791681]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 2.28, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor" unique_id=154054877]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("BoxShape3D_floor")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor" unique_id=765812608]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+material_override = SubResource("StandardMaterial3D_floor")
+mesh = SubResource("BoxMesh_floor")
+
+[node name="Player" type="CharacterBody3D" parent="." unique_id=451619400]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("1_cu847")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=956078543]
+shape = SubResource("BoxShape3D_body")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player" unique_id=485213906]
+material_override = SubResource("StandardMaterial3D_player")
+mesh = SubResource("BoxMesh_body")
+
+[node name="Enemy1" type="CharacterBody3D" parent="." unique_id=1579175265]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy1" unique_id=126214698]
+shape = SubResource("BoxShape3D_body")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy1" unique_id=1700342195]
+mesh = SubResource("BoxMesh_body")
+
+[node name="Enemy2" type="CharacterBody3D" parent="." unique_id=548462501]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy2" unique_id=1257920141]
+shape = SubResource("BoxShape3D_body")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy2" unique_id=1697315068]
+mesh = SubResource("BoxMesh_body")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1590098774]
+transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 8, 0)
+light_energy = 1.5
+shadow_enabled = true
+
+[node name="CardsUI" type="CanvasLayer" parent="." unique_id=1478454374]
+layer = 10
+script = ExtResource("2_kk5mn")
+
+[node name="HandContainer" type="HBoxContainer" parent="CardsUI" unique_id=1799418586]
+unique_name_in_owner = true
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -130.0
+offset_right = 320.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 10
