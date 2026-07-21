@@ -25,4 +25,4 @@ src/
 Enemy health bars are 2D UI widgets (ColorRect + Label) rendered on the
 **CanvasLayer** via `canvas.gd`. Each frame, `Camera3D.unproject_position()`
 converts the enemy's 3D world position to screen coordinates so bars always
-face the camera and never clip into geometry.
+face the camera and never clip into geometry. Xxxtest
