@@ -18,7 +18,7 @@ src/
 │   └── card_manager.gd         # Deck, hand, discard pile logic (52 cards)
 │
 └── canvas/
-    └── canvas.gd               # CanvasLayer: hand display, player HP, enemy HP bars, deck/discard UI
+	└── canvas.gd               # CanvasLayer: hand display, player HP, enemy HP bars, deck/discard UI
 ```
 
 ## Health Bar System

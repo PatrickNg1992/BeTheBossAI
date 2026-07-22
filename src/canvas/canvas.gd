@@ -3,26 +3,32 @@ extends CanvasLayer
 const CARD_SCENE := preload("res://src/cards/card.tscn")
 const BAR_WIDTH := 80.0
 const BAR_HEIGHT := 10.0
-const BAR_Y_OFFSET := 2.8 # world units above enemy
-
-var card_data := [
-	{"title": "Fireball", "description": "Deals 10 fire damage to target enemy.", "color": Color(0.9, 0.2, 0.1)},
-	{"title": "Heal", "description": "Restores 5 HP to the player.", "color": Color(0.1, 0.8, 0.2)},
-	{"title": "Shield", "description": "Blocks the next incoming attack.", "color": Color(0.2, 0.4, 0.9)},
-	{"title": "Lightning", "description": "Hits all enemies with chain lightning.", "color": Color(0.9, 0.8, 0.1)},
-	{"title": "Ice Wall", "description": "Freezes target for 2 turns.", "color": Color(0.1, 0.8, 0.9)},
-]
+const BAR_Y_OFFSET := 2.8
 
 @onready var hand_container: HBoxContainer = %HandContainer
 @onready var player_health_bar: ProgressBar = %PlayerHealthBar
 @onready var player_health_label: Label = %PlayerHealthLabel
 @onready var enemy_bars_container: Control = %EnemyHealthBars
+@onready var card_manager: CardManager = %CardManager
+@onready var deck_count_label: Label = %DeckCountLabel
+@onready var discard_count_label: Label = %DiscardCountLabel
 
-var _enemy_bars: Dictionary = {}  # EnemyHero -> {background: ColorRect, fill: ColorRect, label: Label}
+var _enemy_bars: Dictionary = {}
+var _card_nodes: Array = []
+var _selected_index: int = -1
+var _is_locked: bool = false
+var _selected_card_cast_pos: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
-	_spawn_cards()
+	card_manager.hand_updated.connect(_on_hand_updated)
+	card_manager.deck_count_changed.connect(_on_deck_count_changed)
+	card_manager.discard_count_changed.connect(_on_discard_count_changed)
+	card_manager.card_played.connect(_on_card_played)
 	_setup_player_health_bar()
+	# Init UI from current state
+	_on_hand_updated(card_manager.get_hand())
+	_on_deck_count_changed(card_manager.get_deck_count())
+	_on_discard_count_changed(card_manager.get_discard_count())
 
 func _process(_delta: float) -> void:
 	var camera := get_viewport().get_camera_3d()
@@ -37,17 +43,12 @@ func _process(_delta: float) -> void:
 		else:
 			var bar_data: Dictionary = _enemy_bars[enemy]
 			var world_pos: Vector3 = enemy.global_position + Vector3(0, BAR_Y_OFFSET, 0)
-			# Only show bars that are in front of the camera
 			if camera.is_position_behind(world_pos):
 				for node in bar_data.values():
 					(node as Control).visible = false
 				continue
 			var screen_pos := camera.unproject_position(world_pos)
 			position_bar_widget(bar_data, screen_pos)
-
-	# Clean up dead enemy bars
-	# for e in to_remove:
-	# 	_remove_enemy_bar(e)
 
 	_scan_for_new_enemies()
 
@@ -76,12 +77,11 @@ func _scan_for_new_enemies() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if enemy is EnemyHero and not enemy in _enemy_bars and not (enemy as EnemyHero).is_dead:
 			_create_enemy_bar(enemy)
-		
 
 func _create_enemy_bar(enemy: EnemyHero) -> void:
 	var bar_data := {}
 	_enemy_bars[enemy] = bar_data
-	
+
 	var bg := ColorRect.new()
 	bg.color = Color(0.15, 0.15, 0.15, 0.85)
 	bg.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
@@ -136,14 +136,99 @@ func _bar_set_color(fill: ColorRect, ratio: float) -> void:
 	else:
 		fill.color = Color(0.9, 0.2, 0.15, 0.9)
 
-func _spawn_cards() -> void:
-	for data in card_data:
+# --- Card System ---
+
+func _on_hand_updated(cards: Array) -> void:
+	# Clear hand display
+	for node in _card_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	_card_nodes.clear()
+	_deselect_all()
+
+	# Rebuild from hand array
+	for card_data in cards:
 		var card := CARD_SCENE.instantiate()
-		card.card_title = data["title"]
-		card.card_description = data["description"]
-		card.card_color = data["color"]
+		card.setup(card_data)
 		card.card_clicked.connect(_on_card_clicked)
 		hand_container.add_child(card)
+		_card_nodes.append(card)
+
+func _on_card_clicked(card_node: PanelContainer) -> void:
+	if _is_locked:
+		return
+	var idx: int = _card_nodes.find(card_node)
+	if idx == -1:
+		return
+
+	if _selected_index == idx:
+		# Click same card — deselect
+		_deselect_all()
+	else:
+		# Select this card, deselect previous
+		_deselect_all()
+		_selected_index = idx
+		card_node.set_selected(true)
+
+func _input(event: InputEvent) -> void:
+	if _is_locked or _selected_index < 0:
+		return
+	if not event is InputEventMouseButton:
+		return
+	if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
+		return
+	# Don't process if click is on the hand area (UI handles it)
+	if hand_container.get_global_rect().has_point(event.position):
+		return
+	# Raycast to find battlefield position
+	var camera := get_viewport().get_camera_3d()
+	if not camera:
+		return
+	var from: Vector3 = camera.project_ray_origin(event.position)
+	var to: Vector3 = from + camera.project_ray_normal(event.position) * 1000.0
+	var space_state := get_viewport().get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = false
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return
+	# Play card at the hit position
+	_selected_card_cast_pos = result["position"]
+	var card_node: PanelContainer = _card_nodes[_selected_index] as PanelContainer
+	_play_card(card_node, _selected_index, _selected_card_cast_pos)
+
+func _play_card(card_node: PanelContainer, idx: int, _cast_pos: Vector3) -> void:
+	_is_locked = true
+	card_node.set_selected(true)
+	card_node.set_locked(true)
+	print("Card cast at: ", _cast_pos)
+	await get_tree().create_timer(2.0).timeout
+	if not is_instance_valid(card_node):
+		_is_locked = false
+		return
+	card_node.set_locked(false)
+	_deselect_all()
+	card_manager.play_card(idx)
+	_is_locked = false
+
+func _on_card_played(_card_data: Dictionary) -> void:
+	# Card effects ignored for now
+	_deselect_all()
+
+func _deselect_all() -> void:
+	if _selected_index >= 0 and _selected_index < _card_nodes.size():
+		var node := _card_nodes[_selected_index] as PanelContainer
+		if is_instance_valid(node):
+			node.set_selected(false)
+	_selected_index = -1
+
+func _on_deck_count_changed(count: int) -> void:
+	deck_count_label.text = "Deck: %d" % count
+
+func _on_discard_count_changed(count: int) -> void:
+	discard_count_label.text = "Discard: %d" % count
+
+# --- Player Health ---
 
 func _on_player_health_changed(current: int, maximum: int) -> void:
 	if player_health_bar:
@@ -155,6 +240,3 @@ func _on_player_health_changed(current: int, maximum: int) -> void:
 func _on_player_died() -> void:
 	if player_health_label:
 		player_health_label.text = "DEFEATED"
-
-func _on_card_clicked(card_name: String) -> void:
-	print("Card played: ", card_name)

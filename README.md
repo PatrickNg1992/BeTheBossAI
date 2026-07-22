@@ -2,7 +2,7 @@ Project Name: Be The Boss
 
 ## Core Stack
 
-* **Engine:** Godot 4.x (using GDScript)
+* **Engine:** Godot 4.x (using GDScript with **TYPE**)
 * **Genre:** 3D [e.g., Action RPG, Strategy, Horror]
 * **Target:** Mobile (Both android and IPhone)/ Steam
 
