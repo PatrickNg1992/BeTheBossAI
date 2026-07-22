@@ -23,11 +23,11 @@ There are 4 methods to draw cards:
 
 ## How to play a card
 
-The player can click a card in his hand to make the card shift up. Then he can choose a target position on the battlefield to play the card.
+The player can click a card in their hand to shift it up. Then he can choose a target position on the battlefield to play the card. (project the click to the battlefield to determine where is clicked)
 
 When a card is shifted up, the player can unchoose the card by clicking it again or by clicking another card.
 
-When a card’s effect is playing, the card will be kept shifted up, and the player cannot click any cards until it ends. Afterwards, the card will move to the discard pile.
+When a card’s effect is playing, the card will be kept shifted up and locked with visual effects, and the player cannot click any cards until it ends. Afterwards, the card will move to the discard pile.
 
 ## More details
 
