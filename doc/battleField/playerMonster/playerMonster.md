@@ -23,3 +23,7 @@ When the game starts, the aim will target a random enemy. The player can click o
 ## Play a card
 
 Player can play a card from his hand. Choose a card and click on the battle field to play its effect. After the card is played, it will goto discard pile. Player can click the card again to cancel the play.
+
+
+
+

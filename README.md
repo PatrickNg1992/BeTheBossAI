@@ -18,4 +18,22 @@ The game is a 3D game with a fixed camera having a medieval theme. The player co
 
 Check ./doc/MainGameScene.md
 
-test push line
+
+
+## AI important instruction
+
+You can read the markdown documents below to locate the requirements and related files accurately. Documents are arranged and placed into corresponding folders. No need to read unrelated documents and files to save effort.
+
+Please help to update the FileStructure.md if files are added, removed or moved. When editing /src files, try to follow the /doc folder structure.
+
+Do *NOT* edit other documents inside /doc.
+
+ 
+
+## Important Documents
+
+/doc/FileStructure.md: File and Folder structure. Read this to accurately locate related files.
+
+/doc/Dictorary.md: Brief explanation of special terms in the project. Read it to reduce misunderstanding.
+
+/doc/MainGameScene.md: Explains what is the design of the game's main battle scene. Read it to get the gist of the game's high-level design.
