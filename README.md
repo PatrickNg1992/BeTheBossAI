@@ -3,12 +3,12 @@ Project Name: Be The Boss
 ## Core Stack
 
 * **Engine:** Godot 4.x (using GDScript with **TYPE**)
-* **Genre:** 3D [e.g., Action RPG, Strategy, Horror]
-* **Target:** Mobile (Both android and IPhone)/ Steam
+* **Genre:** 3D [Strategy, Sword and Magic, Cards, Medieval]
+* **Target:** Steam
 
 ## Game Concept & Scope
 
-Now we are preparing the game demo only, which only works on one main game scene.
+Now we are preparing the game demo only, which works only on one main game scene.
 
 The game is a 3D game with a fixed camera having a medieval theme. The player controls a boss-level Monster to defeat the incoming hero teams. 
 
@@ -18,8 +18,6 @@ The game is a 3D game with a fixed camera having a medieval theme. The player co
 
 Check ./doc/MainGameScene.md
 
-
-
 ## AI important instruction
 
 You can read the markdown documents below to locate the requirements and related files accurately. Documents are arranged and placed into corresponding folders. No need to read unrelated documents and files to save effort.
@@ -27,8 +25,6 @@ You can read the markdown documents below to locate the requirements and related
 Please help to update the FileStructure.md if files are added, removed or moved. When editing /src files, try to follow the /doc folder structure.
 
 Do *NOT* edit other documents inside /doc.
-
- 
 
 ## Important Documents
 

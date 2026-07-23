@@ -17,6 +17,9 @@ src/
 │   ├── card.tscn               # Card scene template
 │   └── card_manager.gd         # Deck, hand, discard pile logic (52 cards)
 │
+├── battlefield/
+│   └── battlefield.gd           # Procedural cue table: tiles, cushions, pockets
+│
 └── canvas/
     └── canvas.gd               # CanvasLayer: hand display, player HP, enemy HP bars, deck/discard UI
 ```

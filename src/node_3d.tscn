@@ -4,15 +4,16 @@
 [ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_enemy"]
 [ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="4_player"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_manager"]
+[ext_resource type="Script" uid="uid://7ieops1aff2c" path="res://src/battlefield/battlefield.gd" id="7_battlefield"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
-size = Vector3(20, 1, 20)
+[sub_resource type="BoxShape3D" id="BoxShape3D_table"]
+size = Vector3(20, 3, 20)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.3, 0.5, 0.2, 1)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]
+albedo_color = Color(0.15, 0.3, 0.12, 1)
 
-[sub_resource type="BoxMesh" id="BoxMesh_floor"]
-size = Vector3(20, 1, 20)
+[sub_resource type="BoxMesh" id="BoxMesh_table"]
+size = Vector3(20, 3, 20)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_body"]
 size = Vector3(1, 2, 1)
@@ -53,19 +54,20 @@ albedo_color = Color(0.2, 0.7, 0.3, 1)
 [node name="Node3D" type="Node3D" unique_id=741025768]
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
-transform = Transform3D(1, 0, 0, 0, 0.7986355, 0.601815, 0, -0.601815, 0.7986355, 0, 12, 14)
+transform = Transform3D(1, 0, 0, 0, 0.63985485, 0.7684958, 0, -0.7684958, 0.63985485, 0, 13.464941, 14)
 current = true
 
-[node name="Floor" type="StaticBody3D" parent="." unique_id=1242619380]
+[node name="Battlefield" type="StaticBody3D" parent="." unique_id=1712109379]
+script = ExtResource("7_battlefield")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor" unique_id=2000261818]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-shape = SubResource("BoxShape3D_floor")
+[node name="TableCollision" type="CollisionShape3D" parent="Battlefield" unique_id=-1153374642]
+visible = false
+shape = SubResource("BoxShape3D_table")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor" unique_id=313695635]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
-material_override = SubResource("StandardMaterial3D_floor")
-mesh = SubResource("BoxMesh_floor")
+[node name="TableMesh" type="MeshInstance3D" parent="Battlefield" unique_id=-1576685468]
+visible = false
+material_override = SubResource("StandardMaterial3D_table")
+mesh = SubResource("BoxMesh_table")
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=475017923]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
@@ -146,7 +148,7 @@ material_override = SubResource("StandardMaterial3D_ranger")
 mesh = SubResource("BoxMesh_body")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=477215388]
-transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 0, 8, 0)
+transform = Transform3D(1, 0, 0, 0, 0.43373775, 0.90103924, 0, -0.90103924, 0.43373775, 0, 8, 0)
 light_energy = 1.5
 shadow_enabled = true
 
