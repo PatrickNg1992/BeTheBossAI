@@ -16,7 +16,7 @@ The game is a 3D game with a fixed camera having a medieval theme. The player co
 
 ## Main Game Scene
 
-Check ./doc/MainGameScene.md
+Check ./doc/MainGameScene.md and ./src/test_scene.md
 
 ## AI important instruction
 

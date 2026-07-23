@@ -105,7 +105,7 @@ material_override = SubResource("StandardMaterial3D_dragon")
 mesh = SubResource("CylinderMesh_boss")
 
 [node name="Enemy1" type="CharacterBody3D" parent="." unique_id=293309152]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.85, 3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.85, 6)
 script = ExtResource("3_enemy")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy1" unique_id=1380801575]
@@ -116,7 +116,7 @@ material_override = SubResource("StandardMaterial3D_warrior")
 mesh = SubResource("CylinderMesh_warrior")
 
 [node name="Enemy2" type="CharacterBody3D" parent="." unique_id=984500535]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1.9, 3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1.9, 8)
 script = ExtResource("3_enemy")
 hero_class = 1
 
@@ -128,7 +128,7 @@ material_override = SubResource("StandardMaterial3D_knight")
 mesh = SubResource("CylinderMesh_knight")
 
 [node name="Enemy3" type="CharacterBody3D" parent="." unique_id=261509063]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.85, -3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.85, -9)
 script = ExtResource("3_enemy")
 hero_class = 2
 
@@ -140,7 +140,7 @@ material_override = SubResource("StandardMaterial3D_mage")
 mesh = SubResource("CylinderMesh_mage")
 
 [node name="Enemy4" type="CharacterBody3D" parent="." unique_id=1402716791]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 1.85, -3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.85, -8)
 script = ExtResource("3_enemy")
 hero_class = 3
 
