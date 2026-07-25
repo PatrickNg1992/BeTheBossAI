@@ -7,10 +7,10 @@ extends Node3D
 
 var _background: MeshInstance3D
 var _fill: MeshInstance3D
-var _character: CharacterBase
+var _character: BasePuck
 
 func _ready() -> void:
-	_character = get_parent() as CharacterBase
+	_character = get_parent() as BasePuck
 	if not _character:
 		return
 	_character.health_changed.connect(_on_health_changed)

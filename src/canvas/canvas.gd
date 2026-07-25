@@ -8,6 +8,10 @@ const BAR_Y_OFFSET := 2.8
 @onready var hand_container: HBoxContainer = %HandContainer
 @onready var player_health_bar: ProgressBar = %PlayerHealthBar
 @onready var player_health_label: Label = %PlayerHealthLabel
+@onready var player_bar_count_label: Label = $"PlayerHealthPanel/VBoxContainer/PlayerBarCountLabel" as Label
+@onready var player_hp_bg: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthBg" as ColorRect
+@onready var player_hp_damage: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthDamage" as ColorRect
+@onready var player_hp_fill: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthFill" as ColorRect
 @onready var enemy_bars_container: Control = %EnemyHealthBars
 @onready var card_manager: CardManager = %CardManager
 @onready var deck_count_label: Label = %DeckCountLabel
@@ -18,6 +22,7 @@ var _card_nodes: Array = []
 var _selected_index: int = -1
 var _is_locked: bool = false
 var _selected_card_cast_pos: Vector3 = Vector3.ZERO
+var _prev_player_hp: int = 100
 
 func _ready() -> void:
 	card_manager.hand_updated.connect(_on_hand_updated)
@@ -64,14 +69,6 @@ func position_bar_widget(bar_data: Dictionary, screen_pos: Vector2) -> void:
 	bg.position = Vector2(x, y)
 	fill.position = Vector2(x, y)
 	label.position = Vector2(x, y + BAR_HEIGHT + 2)
-
-func _setup_player_health_bar() -> void:
-	var player := get_tree().get_first_node_in_group("player") as CharacterBase
-	if not player:
-		return
-	player.health_changed.connect(_on_player_health_changed)
-	player.died.connect(_on_player_died)
-	_on_player_health_changed(player.current_hp, player.max_hp)
 
 func _scan_for_new_enemies() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
@@ -230,12 +227,76 @@ func _on_discard_count_changed(count: int) -> void:
 
 # --- Player Health ---
 
+const HP_BAR_WIDTH := 200.0
+
+func _setup_player_health_bar() -> void:
+	var player := get_tree().get_first_node_in_group("player") as BaseBossMonster
+	if not player:
+		return
+	player.health_changed.connect(_on_player_health_changed)
+	player.bars_changed.connect(_on_player_bars_changed)
+	player.bar_broken.connect(_on_player_bar_broken)
+	player.card_draw_requested.connect(_on_player_card_draw_requested)
+	player.died.connect(_on_player_died)
+	_set_hp_fill(player.current_hp, player.max_hp)
+	_on_player_bars_changed(player.bars_remaining, player.current_hp, player.bar_max_hp)
+
+func _set_hp_fill(current: int, maximum: int) -> void:
+	var w: float = HP_BAR_WIDTH * float(current) / float(maximum)
+	if player_hp_fill:
+		player_hp_fill.offset_right = w
+
 func _on_player_health_changed(current: int, maximum: int) -> void:
-	if player_health_bar:
-		player_health_bar.max_value = maximum
-		player_health_bar.value = current
+	if current < _prev_player_hp:
+		var old_right: float = HP_BAR_WIDTH * float(_prev_player_hp) / float(maximum)
+		_set_hp_fill(current, maximum)
+		_flash_damage(old_right)
+	else:
+		_set_hp_fill(current, maximum)
+	_prev_player_hp = current
+
+func _on_player_bars_changed(bars: int, current: int, maximum: int) -> void:
 	if player_health_label:
 		player_health_label.text = "HP: %d/%d" % [current, maximum]
+	if player_bar_count_label:
+		player_bar_count_label.text = "x%d" % bars
+
+func _on_player_bar_broken(_bars_remaining: int) -> void:
+	_flash_bar_break()
+
+func _on_player_card_draw_requested() -> void:
+	pass
+
+func _flash_damage(old_right: float) -> void:
+	if not player_hp_damage or not player_hp_fill:
+		return
+	player_hp_damage.visible = true
+	player_hp_damage.offset_left = player_hp_fill.offset_right
+	player_hp_damage.offset_right = old_right
+	var tween := create_tween()
+	tween.tween_property(player_hp_damage, "offset_right", player_hp_fill.offset_right, 0.5)
+	tween.tween_callback(func(): player_hp_damage.visible = false)
+
+func _flash_bar_break() -> void:
+	if not player_hp_damage:
+		return
+	player_hp_damage.visible = true
+	player_hp_damage.offset_left = 0
+	player_hp_damage.offset_right = HP_BAR_WIDTH
+	player_hp_damage.color = Color(0.9, 0.15, 0.15, 0.8)
+
+	var bar_container := get_node_or_null("PlayerHealthPanel/VBoxContainer/HealthBarContainer") as Control
+	if bar_container:
+		var orig_pos: Vector2 = bar_container.position
+		# Shake animation: 5 quick jitters then back to origin
+		var shake := create_tween()
+		for i in 5:
+			var off := Vector2(randf_range(-4.0, 4.0), randf_range(-4.0, 4.0))
+			shake.tween_property(bar_container, "position", orig_pos + off, 0.05)
+		shake.tween_property(bar_container, "position", orig_pos, 0.05)
+	# Color fade on the damage bar
+	var fade := create_tween()
+	fade.tween_property(player_hp_damage, "color:a", 0.0, 0.3)
 
 func _on_player_died() -> void:
 	if player_health_label:

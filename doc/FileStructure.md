@@ -2,15 +2,19 @@
 
 ```
 src/
-├── test_scene.tscn                # Main Test scene
+├── node_3d.tscn                # Main game scene
 │
 ├── player/
-│   ├── character_base.gd       # Base class: HP, damage, death
 │   └── dragon_player.gd        # Player controller (WASD + auto-attack)
 │
 ├── enemies/
-│   ├── enemy_hero.gd           # Enemy AI (wander/chase/attack, fights all)
+│   ├── enemy_hero.gd           # Enemy hero (class config + hit flash)
 │   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
+│
+├── pucks/
+│   ├── base_puck.gd            # Shared puck: HP, damage, death, attack cooldown
+│   ├── base_boss_monster.gd    # Boss base: "player" group membership
+│   └── base_enemy.gd           # Enemy base: AI state machine (wander/chase/attack)
 │
 ├── cards/
 │   ├── card.gd                 # Card UI component (hover/select/animations)

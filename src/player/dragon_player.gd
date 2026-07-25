@@ -1,11 +1,14 @@
 class_name DragonPlayer
-extends CharacterBase
+extends BaseBossMonster
 
 @export var speed: float = 5.0
 
+
 func _ready() -> void:
+	max_bars = 15
+	bar_max_hp = 100
 	super()
-	add_to_group("player")
+
 
 func _physics_process(_delta: float) -> void:
 	if is_dead:
@@ -29,17 +32,17 @@ func _physics_process(_delta: float) -> void:
 	velocity.z = input_vector.z * speed
 	move_and_slide()
 
-	# Auto-attack nearest enemy in range
-	_auto_attack()
+	# _auto_attack()
+
 
 func _auto_attack() -> void:
 	if not can_attack():
 		return
 	var enemies := get_tree().get_nodes_in_group("enemies")
-	var nearest: CharacterBase = null
+	var nearest: BasePuck = null
 	var nearest_dist := INF
 	for e in enemies:
-		if e is CharacterBase and not e.is_dead:
+		if e is BasePuck and not e.is_dead:
 			var d := global_position.distance_to(e.global_position)
 			if d < nearest_dist and d <= attack_range:
 				nearest = e
