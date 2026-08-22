@@ -8,28 +8,20 @@ Project Name: Be The Boss
 
 ## Game Concept & Scope
 
+The game is a 3D game with a fixed camera and a medieval theme. The player controls a boss-level Monster to defeat the incoming hero teams. 
+
+There are many stages in the game world. The battles combine RPG, snooker, and Card game elements.
+
+Side functions include Codex, training, deck composition, etc.
+
 Now we are preparing the game demo only, which works only on one main game scene.
 
-The game is a 3D game with a fixed camera having a medieval theme. The player controls a boss-level Monster to defeat the incoming hero teams. 
+## Game Scenes
+
+Check /.docmanual/gameScenes.md
+
+## Important for AI agents
+
+Read /AGENTS.md
 
 ## 
-
-## Main Game Scene
-
-Check ./doc/MainGameScene.md and ./src/test_scene.md
-
-## AI important instruction
-
-You can read the markdown documents below to locate the requirements and related files accurately. Documents are arranged and placed into corresponding folders. No need to read unrelated documents and files to save effort.
-
-Please help to update the FileStructure.md if files are added, removed or moved. When editing /src files, try to follow the /doc folder structure.
-
-Do *NOT* edit other documents inside /doc.
-
-## Important Documents
-
-/doc/FileStructure.md: File and Folder structure. Read this to accurately locate related files.
-
-/doc/Dictorary.md: Brief explanation of special terms in the project. Read it to reduce misunderstanding.
-
-/doc/MainGameScene.md: Explains what is the design of the game's main battle scene. Read it to get the gist of the game's high-level design.

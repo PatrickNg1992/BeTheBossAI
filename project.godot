@@ -18,6 +18,12 @@ config/icon="res://icon.svg"
 [autoload]
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
+Loc="*res://src/multiLang/localization.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=800
 
 [editor_plugins]
 

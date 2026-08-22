@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_enemy"]
 [ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="4_player"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_manager"]
+[ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="6_pdsn1"]
 [ext_resource type="Script" uid="uid://7ieops1aff2c" path="res://src/battlefield/battlefield.gd" id="7_battlefield"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_table"]
@@ -154,40 +155,28 @@ light_energy = 1.5
 shadow_enabled = true
 
 [node name="Canvas" type="CanvasLayer" parent="." unique_id=48048196]
+unique_name_in_owner = true
 layer = 10
 script = ExtResource("2_kk5mn")
 
-[node name="HandContainer" type="HBoxContainer" parent="Canvas" unique_id=1164296470]
-unique_name_in_owner = true
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -320.0
-offset_top = -130.0
-offset_right = 320.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_constants/separation = 10
+[node name="MarginContainer" type="MarginContainer" parent="Canvas" unique_id=1257233920]
+offset_left = 6.0
+offset_right = 206.0
+offset_bottom = 65.0
 
-[node name="PlayerHealthPanel" type="PanelContainer" parent="Canvas" unique_id=2049874185]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 260.0
-offset_bottom = 60.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Canvas/PlayerHealthPanel" unique_id=1796462769]
+[node name="PlayerHealthPanel" type="PanelContainer" parent="Canvas/MarginContainer" unique_id=2049874185]
 layout_mode = 2
 
-[node name="PlayerHealthLabel" type="Label" parent="Canvas/PlayerHealthPanel/VBoxContainer" unique_id=1643095060]
+[node name="VBoxContainer" type="VBoxContainer" parent="Canvas/MarginContainer/PlayerHealthPanel" unique_id=1796462769]
+layout_mode = 2
+
+[node name="PlayerHealthLabel" type="Label" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1643095060]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
 text = "HP: 100/100"
 
-[node name="PlayerHealthBar" type="ProgressBar" parent="Canvas/PlayerHealthPanel/VBoxContainer" unique_id=1832891613]
+[node name="PlayerHealthBar" type="ProgressBar" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1832891613]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(0, 20)
@@ -195,25 +184,27 @@ layout_mode = 2
 value = 100.0
 show_percentage = false
 
-[node name="PlayerBarCountLabel" type="Label" parent="Canvas/PlayerHealthPanel/VBoxContainer" unique_id=1057592772]
+[node name="PlayerBarCountLabel" type="Label" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1057592772]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 12
 text = "x15"
 horizontal_alignment = 1
 
-[node name="PlayerDamageFlash" type="ColorRect" parent="Canvas/PlayerHealthPanel/VBoxContainer" unique_id=1794328127]
+[node name="PlayerDamageFlash" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1794328127]
 visible = false
 custom_minimum_size = Vector2(0, 18)
 layout_mode = 2
 color = Color(0.9, 0.15, 0.15, 0.7)
 
-[node name="HealthBarContainer" type="Control" parent="Canvas/PlayerHealthPanel/VBoxContainer" unique_id=397128184]
+[node name="HealthBarContainer" type="Control" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=397128184]
+unique_name_in_owner = true
 clip_contents = true
 custom_minimum_size = Vector2(200, 20)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="PlayerHealthBg" type="ColorRect" parent="Canvas/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=2104055662]
+[node name="PlayerHealthBg" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=2104055662]
 clip_contents = true
 layout_mode = 0
 offset_right = 200.0
@@ -221,15 +212,14 @@ offset_bottom = 20.0
 mouse_filter = 2
 color = Color(0.05, 0.05, 0.05, 1)
 
-[node name="PlayerHealthDamage" type="ColorRect" parent="Canvas/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=176813564]
-visible = false
+[node name="PlayerHealthDamage" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=176813564]
 layout_mode = 0
 offset_right = 200.0
 offset_bottom = 20.0
 mouse_filter = 2
 color = Color(0.95, 0.2, 0.15, 1)
 
-[node name="PlayerHealthFill" type="ColorRect" parent="Canvas/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=748484387]
+[node name="PlayerHealthFill" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=748484387]
 layout_mode = 0
 offset_right = 200.0
 offset_bottom = 20.0
@@ -242,38 +232,176 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = 2.0
+offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="CardManager" type="Node" parent="Canvas" unique_id=626773743]
+[node name="CardSystem" type="CanvasLayer" parent="Canvas" unique_id=1289326118]
+script = ExtResource("6_pdsn1")
+
+[node name="CardManager" type="Node" parent="Canvas/CardSystem" unique_id=626773743]
 unique_name_in_owner = true
 script = ExtResource("6_manager")
 
-[node name="DeckCountLabel" type="Label" parent="Canvas" unique_id=562002381]
+[node name="HandContainer" type="HBoxContainer" parent="Canvas/CardSystem" unique_id=1164296470]
 unique_name_in_owner = true
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -10.0
-offset_bottom = -50.0
-grow_horizontal = 0
+offset_left = 109.0
+offset_top = -165.0
+offset_right = 109.0
+offset_bottom = 35.0
+grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 13
-text = "Deck: 52"
-horizontal_alignment = 2
+scale = Vector2(0.8, 0.8)
+theme_override_constants/separation = 10
 
-[node name="DiscardCountLabel" type="Label" parent="Canvas" unique_id=1167490916]
-unique_name_in_owner = true
-anchors_preset = 12
+[node name="RightBottomContainer" type="MarginContainer" parent="Canvas/CardSystem" unique_id=1853549399]
+anchors_preset = 3
+anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -10.0
-offset_bottom = -30.0
+offset_left = -110.0
+offset_top = -184.0
 grow_horizontal = 0
 grow_vertical = 0
-theme_override_font_sizes/font_size = 13
-text = "Discard: 0"
-horizontal_alignment = 2
+
+[node name="CardPileContainer" type="VBoxContainer" parent="Canvas/CardSystem/RightBottomContainer" unique_id=1282885757]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+alignment = 2
+
+[node name="CastingArea" type="Panel" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1363067123]
+custom_minimum_size = Vector2(88, 120)
+layout_mode = 2
+
+[node name="DisplayContainer" type="PanelContainer" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer/CastingArea" unique_id=813809860]
+z_index = -1
+layout_mode = 0
+offset_left = 11.0
+offset_right = 121.0
+offset_bottom = 150.0
+scale = Vector2(0.8, 0.8)
+
+[node name="CastingCD" type="Label" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer/CastingArea" unique_id=1695712038]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 48.0
+offset_right = 108.0
+offset_bottom = 71.0
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 14
+text = "0.0s"
+horizontal_alignment = 1
+
+[node name="DeckButton" type="Button" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1758757134]
+custom_minimum_size = Vector2(110, 30)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 11
+text = "■ Deck:   52"
+flat = true
+
+[node name="DiscardButton" type="Button" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1984785554]
+custom_minimum_size = Vector2(110, 30)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 11
+text = "□ Discard:   0"
+flat = true
+
+[node name="DeckWindow" type="Panel" parent="Canvas/CardSystem" unique_id=2006767178]
+visible = false
+custom_minimum_size = Vector2(300, 400)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -200.0
+offset_right = 150.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DeckTitle" type="Label" parent="Canvas/CardSystem/DeckWindow" unique_id=1957615408]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 11.0
+offset_bottom = 31.0
+theme_override_font_sizes/font_size = 14
+text = "Deck (Debug)"
+
+[node name="DeckCloseButton" type="Button" parent="Canvas/CardSystem/DeckWindow" unique_id=2094333350]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 0
+offset_left = 270.0
+offset_top = 5.0
+offset_right = 278.0
+offset_bottom = 13.0
+text = "X"
+flat = true
+
+[node name="DeckScroll" type="ScrollContainer" parent="Canvas/CardSystem/DeckWindow" unique_id=1518629913]
+custom_minimum_size = Vector2(280, 355)
+layout_mode = 0
+offset_left = 10.0
+offset_top = 35.0
+offset_right = 10.0
+offset_bottom = 35.0
+
+[node name="DeckList" type="VBoxContainer" parent="Canvas/CardSystem/DeckWindow/DeckScroll" unique_id=1062505820]
+layout_mode = 2
+
+[node name="DiscardWindow" type="Panel" parent="Canvas/CardSystem" unique_id=758105860]
+visible = false
+custom_minimum_size = Vector2(300, 400)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -200.0
+offset_right = 150.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DiscardTitle" type="Label" parent="Canvas/CardSystem/DiscardWindow" unique_id=819844454]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = 11.0
+offset_bottom = 31.0
+theme_override_font_sizes/font_size = 14
+text = "Discard Pile"
+
+[node name="DiscardCloseButton" type="Button" parent="Canvas/CardSystem/DiscardWindow" unique_id=1266212760]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 0
+offset_left = 270.0
+offset_top = 5.0
+offset_right = 278.0
+offset_bottom = 13.0
+text = "X"
+flat = true
+
+[node name="DiscardScroll" type="ScrollContainer" parent="Canvas/CardSystem/DiscardWindow" unique_id=777407452]
+custom_minimum_size = Vector2(280, 355)
+layout_mode = 0
+offset_left = 10.0
+offset_top = 35.0
+offset_right = 10.0
+offset_bottom = 35.0
+
+[node name="DiscardList" type="VBoxContainer" parent="Canvas/CardSystem/DiscardWindow/DiscardScroll" unique_id=1365987503]
+layout_mode = 2

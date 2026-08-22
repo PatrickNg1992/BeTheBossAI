@@ -4,38 +4,25 @@ const CARD_SCENE := preload("res://src/cards/card.tscn")
 const BAR_WIDTH := 80.0
 const BAR_HEIGHT := 10.0
 const BAR_Y_OFFSET := 2.8
+const DEBUG_SHOW_DECK := true
 
-@onready var hand_container: HBoxContainer = %HandContainer
 @onready var player_health_bar: ProgressBar = %PlayerHealthBar
 @onready var player_health_label: Label = %PlayerHealthLabel
-@onready var player_bar_count_label: Label = $"PlayerHealthPanel/VBoxContainer/PlayerBarCountLabel" as Label
-@onready var player_hp_bg: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthBg" as ColorRect
-@onready var player_hp_damage: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthDamage" as ColorRect
-@onready var player_hp_fill: ColorRect = $"PlayerHealthPanel/VBoxContainer/HealthBarContainer/PlayerHealthFill" as ColorRect
+@onready var player_bar_count_label: Label = %PlayerBarCountLabel as Label
+@onready var health_bar_container: Control = %HealthBarContainer as Control
+@onready var player_hp_bg: ColorRect = %HealthBarContainer/PlayerHealthBg as ColorRect
+@onready var player_hp_damage: ColorRect = %HealthBarContainer/PlayerHealthDamage as ColorRect
+@onready var player_hp_fill: ColorRect = %HealthBarContainer/PlayerHealthFill as ColorRect
 @onready var enemy_bars_container: Control = %EnemyHealthBars
-@onready var card_manager: CardManager = %CardManager
-@onready var deck_count_label: Label = %DeckCountLabel
-@onready var discard_count_label: Label = %DiscardCountLabel
 
 var _enemy_bars: Dictionary = {}
-var _card_nodes: Array = []
-var _selected_index: int = -1
-var _is_locked: bool = false
-var _selected_card_cast_pos: Vector3 = Vector3.ZERO
 var _prev_player_hp: int = 100
 
 func _ready() -> void:
-	card_manager.hand_updated.connect(_on_hand_updated)
-	card_manager.deck_count_changed.connect(_on_deck_count_changed)
-	card_manager.discard_count_changed.connect(_on_discard_count_changed)
-	card_manager.card_played.connect(_on_card_played)
 	_setup_player_health_bar()
 	# Init UI from current state
-	_on_hand_updated(card_manager.get_hand())
-	_on_deck_count_changed(card_manager.get_deck_count())
-	_on_discard_count_changed(card_manager.get_discard_count())
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var camera := get_viewport().get_camera_3d()
 	if not camera:
 		return
@@ -133,97 +120,6 @@ func _bar_set_color(fill: ColorRect, ratio: float) -> void:
 	else:
 		fill.color = Color(0.9, 0.2, 0.15, 0.9)
 
-# --- Card System ---
-
-func _on_hand_updated(cards: Array) -> void:
-	# Clear hand display
-	for node in _card_nodes:
-		if is_instance_valid(node):
-			node.queue_free()
-	_card_nodes.clear()
-	_deselect_all()
-
-	# Rebuild from hand array
-	for card_data in cards:
-		var card := CARD_SCENE.instantiate()
-		card.setup(card_data)
-		card.card_clicked.connect(_on_card_clicked)
-		hand_container.add_child(card)
-		_card_nodes.append(card)
-
-func _on_card_clicked(card_node: PanelContainer) -> void:
-	if _is_locked:
-		return
-	var idx: int = _card_nodes.find(card_node)
-	if idx == -1:
-		return
-
-	if _selected_index == idx:
-		# Click same card — deselect
-		_deselect_all()
-	else:
-		# Select this card, deselect previous
-		_deselect_all()
-		_selected_index = idx
-		card_node.set_selected(true)
-
-func _input(event: InputEvent) -> void:
-	if _is_locked or _selected_index < 0:
-		return
-	if not event is InputEventMouseButton:
-		return
-	if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
-		return
-	# Don't process if click is on the hand area (UI handles it)
-	if hand_container.get_global_rect().has_point(event.position):
-		return
-	# Raycast to find battlefield position
-	var camera := get_viewport().get_camera_3d()
-	if not camera:
-		return
-	var from: Vector3 = camera.project_ray_origin(event.position)
-	var to: Vector3 = from + camera.project_ray_normal(event.position) * 1000.0
-	var space_state := get_viewport().get_world_3d().direct_space_state
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.collide_with_areas = false
-	var result: Dictionary = space_state.intersect_ray(query)
-	if result.is_empty():
-		return
-	# Play card at the hit position
-	_selected_card_cast_pos = result["position"]
-	var card_node: PanelContainer = _card_nodes[_selected_index] as PanelContainer
-	_play_card(card_node, _selected_index, _selected_card_cast_pos)
-
-func _play_card(card_node: PanelContainer, idx: int, _cast_pos: Vector3) -> void:
-	_is_locked = true
-	card_node.set_selected(true)
-	card_node.set_locked(true)
-	print("Card cast at: ", _cast_pos)
-	await get_tree().create_timer(2.0).timeout
-	if not is_instance_valid(card_node):
-		_is_locked = false
-		return
-	card_node.set_locked(false)
-	_deselect_all()
-	card_manager.play_card(idx)
-	_is_locked = false
-
-func _on_card_played(_card_data: Dictionary) -> void:
-	# Card effects ignored for now
-	_deselect_all()
-
-func _deselect_all() -> void:
-	if _selected_index >= 0 and _selected_index < _card_nodes.size():
-		var node := _card_nodes[_selected_index] as PanelContainer
-		if is_instance_valid(node):
-			node.set_selected(false)
-	_selected_index = -1
-
-func _on_deck_count_changed(count: int) -> void:
-	deck_count_label.text = "Deck: %d" % count
-
-func _on_discard_count_changed(count: int) -> void:
-	discard_count_label.text = "Discard: %d" % count
 
 # --- Player Health ---
 
@@ -236,7 +132,6 @@ func _setup_player_health_bar() -> void:
 	player.health_changed.connect(_on_player_health_changed)
 	player.bars_changed.connect(_on_player_bars_changed)
 	player.bar_broken.connect(_on_player_bar_broken)
-	player.card_draw_requested.connect(_on_player_card_draw_requested)
 	player.died.connect(_on_player_died)
 	_set_hp_fill(player.current_hp, player.max_hp)
 	_on_player_bars_changed(player.bars_remaining, player.current_hp, player.bar_max_hp)
@@ -257,15 +152,12 @@ func _on_player_health_changed(current: int, maximum: int) -> void:
 
 func _on_player_bars_changed(bars: int, current: int, maximum: int) -> void:
 	if player_health_label:
-		player_health_label.text = "HP: %d/%d" % [current, maximum]
+		player_health_label.text = Loc.t("hp_format", {"hp": current, "max": maximum})
 	if player_bar_count_label:
-		player_bar_count_label.text = "x%d" % bars
+		player_bar_count_label.text = Loc.t("bar_count", {"count": bars})
 
 func _on_player_bar_broken(_bars_remaining: int) -> void:
 	_flash_bar_break()
-
-func _on_player_card_draw_requested() -> void:
-	pass
 
 func _flash_damage(old_right: float) -> void:
 	if not player_hp_damage or not player_hp_fill:
@@ -285,19 +177,46 @@ func _flash_bar_break() -> void:
 	player_hp_damage.offset_right = HP_BAR_WIDTH
 	player_hp_damage.color = Color(0.9, 0.15, 0.15, 0.8)
 
-	var bar_container := get_node_or_null("PlayerHealthPanel/VBoxContainer/HealthBarContainer") as Control
-	if bar_container:
-		var orig_pos: Vector2 = bar_container.position
+	
+	if health_bar_container:
+		var orig_pos: Vector2 = health_bar_container.position
 		# Shake animation: 5 quick jitters then back to origin
 		var shake := create_tween()
 		for i in 5:
 			var off := Vector2(randf_range(-4.0, 4.0), randf_range(-4.0, 4.0))
-			shake.tween_property(bar_container, "position", orig_pos + off, 0.05)
-		shake.tween_property(bar_container, "position", orig_pos, 0.05)
+			shake.tween_property(health_bar_container, "position", orig_pos + off, 0.05)
+		shake.tween_property(health_bar_container, "position", orig_pos, 0.05)
 	# Color fade on the damage bar
-	var fade := create_tween()
-	fade.tween_property(player_hp_damage, "color:a", 0.0, 0.3)
+	# var fade := create_tween()
+	# fade.tween_property(player_hp_damage, "color:a", 0.0, 0.5)
 
 func _on_player_died() -> void:
 	if player_health_label:
-		player_health_label.text = "DEFEATED"
+		player_health_label.text = Loc.t("defeated")
+		
+		
+func show_warning(message: String) -> void:
+	# 1. Instantiate a Label in memory
+	var label := Label.new()
+	label.text = message
+	
+	# 2. Position it at the top-center of the screen
+	label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_MINSIZE, 50)
+	
+	# 3. Optional styling (Yellow text + bold shadow)
+	label.add_theme_color_override("font_color", Color.YELLOW)
+	label.add_theme_color_override("font_shadow_color", Color.BLACK)
+	label.add_theme_constant_override("shadow_offset_x", 2)
+	label.add_theme_constant_override("shadow_offset_y", 2)
+	label.add_theme_font_size_override("font_size", 22)
+	
+	add_child(label)
+	
+	# 4. Animate fade-in -> hold -> fade-out -> auto-delete
+	label.modulate.a = 0.0 # Start invisible
+	
+	var tween := create_tween()
+	tween.tween_property(label, "modulate:a", 1.0, 0.2)  # Fade in (0.2s)
+	tween.tween_interval(1.5)                            # Stay on screen (1.5s)
+	tween.tween_property(label, "modulate:a", 0.0, 0.5)  # Fade out (0.5s)
+	tween.tween_callback(label.queue_free)               # Clean up RAM

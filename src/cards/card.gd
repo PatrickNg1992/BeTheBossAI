@@ -11,7 +11,7 @@ signal card_double_clicked(card_node: PanelContainer)
 @onready var desc_label: Label = %DescLabel
 @onready var icon_panel: Panel = %IconPanel
 
-var card_data: Dictionary = {}
+var card_data: BaseCardInfo
 var is_selected := false
 var is_locked := false
 var original_scale := Vector2.ONE
@@ -28,11 +28,11 @@ func _ready() -> void:
 	gui_input.connect(_on_gui_input)
 	original_scale = scale
 
-func setup(card: Dictionary) -> void:
+func setup(card: BaseCardInfo) -> void:
 	card_data = card
-	card_title = card["name"]
-	card_description = card["description"]
-	card_color = card["color"]
+	card_title = card.card_name
+	card_description = card.description
+	card_color = card.color
 
 func set_locked(locked: bool) -> void:
 	is_locked = locked
@@ -41,16 +41,27 @@ func set_locked(locked: bool) -> void:
 		if _hover_tween and _hover_tween.is_valid():
 			_hover_tween.kill()
 		scale = original_scale
-		# "CASTING" badge
-		var vbox: Control = icon_panel.get_parent()
+		# "CASTING" overlay — sits on top without affecting layout
+		var overlay := Control.new()
+		overlay.name = "_CastingOverlay"
+		overlay.anchor_left = 0.0
+		overlay.anchor_top = 0.0
+		overlay.anchor_right = 1.0
+		overlay.anchor_bottom = 1.0
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(overlay)
 		var cast_label := Label.new()
 		cast_label.name = "_CastingLabel"
 		cast_label.text = "CASTING"
 		cast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cast_label.add_theme_font_size_override("font_size", 9)
+		cast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cast_label.anchor_right = 1.0
+		cast_label.anchor_bottom = 1.0
+		cast_label.add_theme_font_size_override("font_size", 14)
 		cast_label.add_theme_color_override("font_color", Color(1, 0.85, 0.2, 1))
-		vbox.add_child(cast_label)
-		vbox.move_child(cast_label, 0)
+		cast_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+		cast_label.add_theme_constant_override("outline_size", 2)
+		overlay.add_child(cast_label)
 		# Gold glowing border
 		var panel_style := get_theme_stylebox("panel") as StyleBoxFlat
 		if panel_style:
@@ -67,9 +78,9 @@ func set_locked(locked: bool) -> void:
 	else:
 		mouse_filter = MOUSE_FILTER_STOP
 		modulate = Color.WHITE
-		var cast_label := get_node_or_null("VBoxContainer/_CastingLabel")
-		if cast_label:
-			cast_label.queue_free()
+		var overlay := get_node_or_null("_CastingOverlay")
+		if overlay:
+			overlay.queue_free()
 		var panel_style := get_theme_stylebox("panel") as StyleBoxFlat
 		if panel_style:
 			var new_style := panel_style.duplicate() as StyleBoxFlat
