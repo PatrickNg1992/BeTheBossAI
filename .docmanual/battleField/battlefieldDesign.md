@@ -48,6 +48,6 @@ Make the puck with (radius, height):
 
 ## Timing
 
-To let the player enjoy both the snooker and auto-fighting, game time should be separated into different sections. Read ./timingSystem.md
+To let the player enjoy both the snooker and auto-fighting, game time should be separated into different sections. Read files ./timingSystem folder
 
 ## Pucks Moving

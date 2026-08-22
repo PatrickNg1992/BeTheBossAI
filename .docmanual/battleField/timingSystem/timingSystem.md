@@ -48,13 +48,11 @@ Wait until all pucks stop and settle the damage calculation and effects.
 
 It goes to the Settle Time when it ends.
 
-To keep the collision time complete, don't remove any pucks on the table even the corresponding units is defeated. Only calculate the damages *to be dealt* to the units first and apply the damages to the units in Settle Time.
+To keep the collision time complete, don't remove any pucks on the table even if corresponding units are defeated. Only calculate the damages *to be dealt* to the units first and apply the damages to the units in Settle Time.
 
 There should be exciting Visual effects since it is a main theme of the game. 
 
-- When entering this timing, the words "Puck-puck Time!" should flash shortly,
-
-- Collision effects, between pucks, should be displayed,
+- Collision effects between pucks should be displayed,
 
 - Running number display for damage to be dealt, etc
 
@@ -72,10 +70,10 @@ Before transitioning from one timing to another, if any of the situations below 
 
 - Other situations TBC
 
-It will take a short time to display the event happened.
+It will take a short time to display the event that happened.
 
 ## Prepare Time
 
 Time spent in the preparation phase. 
 
-Player can click to start the next phase and do some preparations.
+The player can click to start the next phase and do some preparations.
