@@ -12,13 +12,13 @@ The cushion width should be 2, and the height above the table should also be 2. 
 
 On the cushions, similar to the table, every 2 lengths are split. In the test scene, use brown and light brown to distinguish. Some split lengths may have special effects; these areas are called *Special Cushions*. When *pucks* hit the Special Cushion, the effects will be triggered.
 
-The corner squares at upper left and lower right are the same colour, and the remaining two are another color.
+The corner squares at upper left and lower right are the same colour, and the remaining two are another colour.
 
 ### Pockets Area
 
 In some of the tiles at the 4 corners on the cue table, there are special areas called Pocket Areas (which are like the pockets in a snooker game). The pocket areas are hollow.
 
-When a puck falls into a Pocket Area, it will take damage and be removed from the battlefield first. If the unit's health is too low, it will be killed. Otherwise, it will come back to the field a few seconds later.
+When a puck falls into a Pocket Area, it will take damage and be removed from the battlefield first. If the unit's health is too low, it will be killed. Otherwise, it will come back to the field a few *Turns* later.
 
 Each Pocket Area is 2 × 2 in size.
 

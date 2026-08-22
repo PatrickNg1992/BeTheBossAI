@@ -52,7 +52,7 @@ The raised border on each side of the table. Impacts deal no damage; Special Cus
 _Avoid_: wall
 
 **Pocket Area**:
-A hollow 2×2 zone at a table corner. A puck that falls in takes damage equal to half a Health Bar (Boss Monster) or half its max HP (others), leaves the field, and returns 5 seconds later at the nearest free Tile — unless the damage kills it.
+A hollow 2×2 zone at a table corner. A puck that falls in takes damage equal to half a Health Bar (Boss Monster) or half its max HP (others). Unless the damage kills it, it leaves the field for 5 Turns: its planned Action Tag is cancelled, a "return" tag is placed 5 slots ahead of the goal, and when that tag fires the puck returns at the nearest free Tile and places its next Action Tag as usual.
 _Avoid_: hole
 
 **Puck**:
@@ -63,26 +63,34 @@ _Avoid_: ball, token
 
 Battle time always falls into exactly one of six Timings — Prepare, Charging, Play, Action, Puck-puck Time! or Settle.
 
+**Turn**:
+One tick of the battle clock: the time to charge one Energy slot (configurable, default 1s). The minimum gap between two consecutive Action Times.
+_Avoid_: tick, second
+
+**Time Board**:
+The HUD board at the top of the battlefield canvas that visualizes battle time. Its parts are the Energy Bar — the fill showing Energy owned and the charging progress — and the Action Tags riding the slots. Laid out as two bars of 10 slots — upper and lower; contents slide one slot per Turn along a serpentine path: left→right on the lower bar, wrapping from lower-right to upper-right, then right→left on the upper bar toward the goal at the upper-left slot. Frozen except during Charging Time, unless an effect moves it (e.g. gaining or spending Energy — the fill rewinds with a quick animation). Contents glide smoothly; a slot completing means a new Energy is ready or an Action Tag has arrived. At full Energy the fill stops but Turns keep ticking and tags keep moving.
+_Avoid_: energy bar (that's only the fill, not the whole board), timer
+
 **Prepare Time**:
-The Timing of the Preparation Phase: the timing state machine does not run, no unit acts and Energy does not regenerate. When it ends, the player's Energy is set to exactly 10 and units place their initial Action Tags.
+The Timing of the Preparation Phase: the timing state machine does not run, no unit acts and Energy does not regenerate. On entering, the Time Board animates to the coming Wave's opening state — Energy set to exactly 10, old Action Tags removed, the new Hero Team's initial tags placed — then freezes, so the player can read the board and plan before pressing Start Wave.
 
 **Charging Time**:
-The fundamental timing: Energy charges one slot at a time (configurable, default 1s per slot) and nothing else acts — the player's thinking time. Entering Play Time is allowed at most once per slot charged. Charging into a slot carrying an Action Tag triggers Action Time.
+The fundamental timing: Energy charges one slot per Turn and nothing else acts — the player's thinking time. Entering Play Time is allowed at most once per slot charged. A Turn that lands one or more Action Tags on the goal slot triggers Action Time.
 
 **Play Time**:
 Everything waits for the player. Exactly one action is allowed: one Cue-Shot, one card, or cancel back to Charging Time. A Cue-Shot leads to Puck-puck Time!; a card leads wherever its effect directs.
 
 **Action Time**:
-The units whose Action Tags were charged past act — one action each, in spawn order; buff/debuff actions first (priority TBC), cue-shot actions (e.g. the Knight's) last. All other units and the player only spectate.
+The units whose Action Tags reached the goal act — one action each, in spawn order; buff/debuff actions first (priority TBC), cue-shot actions (e.g. the Knight's) last. All other units and the player only spectate.
 
 **Puck-puck Time!**:
 The window from a Cue-Shot until all pucks stop moving. Every Auto-Attack and AI behaviour freezes; only physics runs. Damage is staged, not applied, until Settle Time.
 
 **Settle Time**:
-A short timing after another timing, applying staged damage and displaying events (puck defeated, pocketed, Health Bar cleared). Skipped entirely when nothing settle-worthy happened.
+A short timing after another timing, applying staged damage and displaying events (puck defeated, pocketed, Health Bar cleared). Skipped entirely when nothing settle-worthy happened. Action Tag membership changes are also applied here: a tag whose unit count reaches zero is removed, and a unit entering the table joins an existing tag for the slot it will act on — or places a new tag there.
 
 **Action Tag**:
-A marker an Enemy Hero or Minion places on an Energy slot, meaning "this unit acts when that slot finishes charging." After acting, the unit places its next tag a unit-specific number of slots ahead — faster units use smaller offsets, so they act more often.
+A marker an Enemy Hero or Minion places on a slot of the Time Board, meaning "this unit acts when the tag reaches the goal." Tags are independent of Energy — they only share the board. On the board a tag is a simple arrow pointing into the bar, standing above the upper bar or below the lower bar, showing two integers: how many units share it, and the Turns until it reaches the goal; it does not identify the units (too many) — instead the same Turns integer is shown on each unit's icon on the canvas. Tags glide smoothly toward the goal, one slot per Turn, firing Action Time on arrival; crossing from the lower bar to the upper bar teleports with a fade-out/fade-in. During Action Time a firing tag stays pinned at the goal and its unit count decreases as each of its units acts; each unit's replacement tag fades in as its action completes, and the firing tag vanishes when Action Time ends. After acting, the unit places its next tag a unit-specific number of slots ahead of the goal — faster units use smaller offsets, so they act more often.
 
 ### Cards in Battle
 
@@ -107,7 +115,7 @@ The player's basic action: drag to aim, release to launch the Boss Monster, spen
 _Avoid_: dash, basic attack
 
 **Energy**:
-The resource spent on Cue-Shots, shown as a bar at the top of the screen. Capacity 20; a shot costs 1-7; it regenerates one slot at a time during Charging Time — the player's thinking time. The per-slot charge time is configurable (default 1s).
+The resource spent on Cue-Shots, shown as the energy fill on the Time Board. Capacity 20 — at full, further charging is discarded but Turns keep ticking; a shot costs 1-7; it regenerates one slot per Turn during Charging Time — the player's thinking time. The per-slot charge time is configurable (default 1s). Spending Energy rewinds the fill backward along the board with a quick animation.
 
 **Collision Damage**:
 Damage dealt by puck impacts above a small speed threshold. Enemy Heroes suffer it from any impact — except impacts with a Knight, which protects its allies. Only a Knight's impacts damage the Boss Monster, whoever initiated the collision.
