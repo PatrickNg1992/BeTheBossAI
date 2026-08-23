@@ -11,7 +11,7 @@ One Hero Team assault within a Stage. The player advances by defeating every Ene
 _Avoid_: round
 
 **Hero Team**:
-The group of Enemy Heroes fielded by one Wave.
+The group of Enemy Heroes fielded by one Wave. Commonly 4–10 heroes, hard cap 12, and always at least one hero of each Class.
 _Avoid_: mob, enemy wave
 
 **Preparation Phase**:
@@ -24,11 +24,11 @@ The player's only Preparation Phase action — ends the phase and activates the 
 ### Units
 
 **Enemy Hero**:
-An enemy puck with a Class. (Equipment and Hero Skills are future concepts, not yet specified.)
+An enemy puck with a Class. Hero Skills are drawn from a shared pre-defined pool — 0–1 active plus any number of passives; equipment is a future concept. Its move action is a scripted constant-speed glide with physics disabled — it may pass through other pucks and Pocket Areas mid-glide, but never comes to rest on a pocket or overlapping another puck (ADR-0002).
 _Avoid_: chess piece, mob
 
 **Class**:
-An Enemy Hero's occupation — Warrior, Knight, Mage or Ranger — fixing its Auto-Attack range/cooldown profile and stats.
+An Enemy Hero's occupation — Warrior, Knight, Mage or Ranger — fixing its Auto-Attack range/cooldown profile and stats. The per-class stat table (HP / Power / ATK FRQ / SPD / RNG) encodes *relative strength ratios* between classes, not absolute values; absolute stats run into the thousands, with LV scaling them linearly on top of the ratios (exact formula TBD). RNG is likewise relative — a Mage reaches nearly the whole table.
 _Avoid_: type, job
 
 **Minion**:
@@ -87,10 +87,10 @@ The units whose Action Tags reached the goal act — one action each, in spawn o
 The window from a Cue-Shot until all pucks stop moving. Every Auto-Attack and AI behaviour freezes; only physics runs. Damage is staged, not applied, until Settle Time.
 
 **Settle Time**:
-A short timing after another timing, applying staged damage and displaying events (puck defeated, pocketed, Health Bar cleared). Skipped entirely when nothing settle-worthy happened. Action Tag membership changes are also applied here: a tag whose unit count reaches zero is removed, and a unit entering the table joins an existing tag for the slot it will act on — or places a new tag there.
+A short timing after another timing, applying staged damage and displaying events (puck defeated, pocketed, Health Bar cleared). Skipped entirely when nothing settle-worthy happened, and occurs at most once per Turn — everything settle-worthy in a Turn settles together. Action Tag membership changes are also applied here: a tag whose unit count reaches zero is removed, and a unit entering the table joins an existing tag for the slot it will act on — or places a new tag there. Heroes make their next-action decisions here: after any table change, a hero may decide to attack — placing a full-countdown attack tag — or revise its pending tag based on the new situation.
 
 **Action Tag**:
-A marker an Enemy Hero or Minion places on a slot of the Time Board, meaning "this unit acts when the tag reaches the goal." Tags are independent of Energy — they only share the board. On the board a tag is a simple arrow pointing into the bar, standing above the upper bar or below the lower bar, showing two integers: how many units share it, and the Turns until it reaches the goal; it does not identify the units (too many) — instead the same Turns integer is shown on each unit's icon on the canvas. Tags glide smoothly toward the goal, one slot per Turn, firing Action Time on arrival; crossing from the lower bar to the upper bar teleports with a fade-out/fade-in. During Action Time a firing tag stays pinned at the goal and its unit count decreases as each of its units acts; each unit's replacement tag fades in as its action completes, and the firing tag vanishes when Action Time ends. After acting, the unit places its next tag a unit-specific number of slots ahead of the goal — faster units use smaller offsets, so they act more often.
+A marker an Enemy Hero or Minion places on a slot of the Time Board, meaning "this unit acts when the tag reaches the goal." Tags are independent of Energy — they only share the board. On the board a tag is a simple arrow pointing into the bar, standing above the upper bar or below the lower bar, showing two integers: how many units share it, and the Turns until it reaches the goal; it does not identify the units (too many) — instead the same Turns integer is shown on each unit's icon on the canvas. Tags glide smoothly toward the goal, one slot per Turn, firing Action Time on arrival; crossing from the lower bar to the upper bar teleports with a fade-out/fade-in. During Action Time a firing tag stays pinned at the goal and its unit count decreases as each of its units acts; each unit's replacement tag fades in as its action completes, and the firing tag vanishes when Action Time ends. After acting, the unit places its next tag a unit-specific number of slots ahead of the goal — faster units use smaller offsets, so they act more often. A hero commonly owns 1–2 tags at once: one for its base action (move or attack) and one per active skill; passives never place tags.
 
 ### Cards in Battle
 
@@ -107,8 +107,11 @@ _Avoid_: graveyard
 
 ### Combat & the Cue-Shot
 
+**Focusing**:
+A hero's attack-preparation state, entered at Settle Time when its class condition (usually range) holds: it places a full-countdown attack tag, shows lighting VFX, and stands stationary until the tag fires or an Interrupt cancels it. Not to be confused with energy charging in Charging Time.
+
 **Auto-Attack**:
-Every puck's built-in attack against enemies in range, on its own cooldown. Deals damage only — it never applies force.
+Every puck's built-in attack against enemies in range, on its own cooldown. A scripted damage event with a simple animation in Action Time — deals damage only, never applies force. The Knight's attack is the exception: a self Cue-Shot resolved physically in Puck-puck Time (ADR-0002).
 
 **Cue-Shot**:
 The player's basic action: drag to aim, release to launch the Boss Monster, spending Energy. Allowed only when every puck on the table is at rest.
@@ -119,3 +122,6 @@ The resource spent on Cue-Shots, shown as the energy fill on the Time Board. Cap
 
 **Collision Damage**:
 Damage dealt by puck impacts above a small speed threshold. Enemy Heroes suffer it from any impact — except impacts with a Knight, which protects its allies. Only a Knight's impacts damage the Boss Monster, whoever initiated the collision.
+
+**Interrupt**:
+Cancelling or revising a hero's pending attack. Hard interrupts (a collision with the Focusing puck) force a cancel; soft interrupts (the target moving out of range, card effects) let the hero re-decide at the next Settle Time. Class texture: a Warrior takes bonus collision damage; a Ranger places a Recovery action tag — an action whose firing ends the stun; a Mage suffers a plain cancel; a Knight still deals damage and takes reduced damage on collision, but its Focusing is cancelled like any other.

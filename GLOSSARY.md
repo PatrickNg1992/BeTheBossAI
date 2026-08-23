@@ -12,7 +12,7 @@ Simply a game stage that the player can choose to play.
 
 ## Wave
 
-A game stage consists of multiple waves. Each wave will generate a Hero Team. The player needs to defeat the team to pass the wave.
+A game stage consists of multiple waves. Each wave will generate a Hero Team. The player needs to defeat the team to pass the wave. A hero team typically consists of 4 - 10 Enemy Heroes, with a hard cap of 12 per wave.
 
 ## Preparation Phase (Prep Phase)
 

@@ -8,6 +8,8 @@ A legend hero is a fixed, pre-designed hero which appears in specific stages. Th
 
 Additionally, there is a page in the codex to record the Legend Heroes that the player has taken down. (For codex scene only, not related to battlefield)
 
+\*\* Legendary Heroes can break the class rule. They are tailor made.
+
 ## Random Hero
 
 A random hero is a normal hero whose properties are generated randomly by some algorithm. 

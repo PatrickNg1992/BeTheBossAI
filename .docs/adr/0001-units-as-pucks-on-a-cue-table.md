@@ -11,6 +11,6 @@ We chose this over conventional steer-and-swing units because chain-collision pl
 
 ## Consequences
 
-- AI steering applies forces to pucks; it never teleports units or animates position directly.
+- AI steering applies forces to pucks; it never teleports units or animates position directly. *(Amended by ADR-0002: hero move actions are scripted glides; physics runs only in Puck-puck Time.)*
 - The collision matrix (who damages whom) is a design artifact, not an emergent accident — the Knight exceptions are deliberate; see `CONTEXT.md`.
 - The Cue-Shot rest rule and Shot Resolution freeze exist to keep physics readable: nothing acts while the table is moving.

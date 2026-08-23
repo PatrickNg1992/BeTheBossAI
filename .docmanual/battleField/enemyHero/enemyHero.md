@@ -56,11 +56,7 @@ If a hero is defeated, the icon turns grey, and a red cross mark appears on it. 
 
 If a hero is temporarily taken out of the game (like pocketed), the icon turns grey. Shows the turn number needed for it to come back instead. 
 
-
-
 Each hero is represented by a puck on the table. The pucks are distinguished by the colour and number of the hero.
-
-
 
 In Action timing, or "Puck-puck Time!", when the heroes take damage, the damage will display and accumulate under the profile. A Ghost Health bar (trail HP) will be displayed and kept until the settle time and fade out with animation. The defeat calculation will only take effect at the settle time but not at other times. The puck of a defeated hero will be removed.
 
@@ -74,10 +70,20 @@ Once a hero decides when the next actions will be (either entering the game, com
 
 Remove an action tag with a count of 0.
 
-## Charging State and Attack
+Typically, a hero has 1 to 2 action tags. One active skill can coexist with a basic move.
 
-A unit (puck) can change to charging state before attack. This gives the player time to take appropriate actions. 
+A hero may change its targeted next action in settle timing, after some moves in action timing or "Puck-ppuck timing!".
 
-A unit enters charging state under specific conditions based on its class. In most cases, it depends on the distance between it and other pucks. If a puck is charging, it has lighting visual effects. Player are often recommended to hit a charging pucks in "Puck-puck time!".
+## Focusing State and Attack
 
+A unit (puck) can change to focusing state before attack. This gives the player time to take appropriate actions. 
 
+A unit enters focusing state under specific conditions based on its class. In most cases, it depends on the distance between it and other pucks. If a puck is focusing, it has lighting visual effects. Player are often recommended to hit a focusing pucks in "Puck-puck time!". (Except classes like Knight)
+
+## Hero move
+
+Most heroes move at constant speed without a physical engine in Action timing. No collision detection is needed. 
+
+## Number size
+
+The max and attack damage are expected to be at about hundreds or thousands level.

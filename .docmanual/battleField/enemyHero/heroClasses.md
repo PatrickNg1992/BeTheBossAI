@@ -8,15 +8,6 @@ The class determines the basic attacks and some passive effects of a Hero. Each 
 
 
 
-| Class   | HP  | ATK | ATK FRQ | SPD | RNG |
-| ------- | --- | --- | ------- | --- | --- |
-| Warrior | 4   | 4   | 3       | 2   | 1   |
-| Mage    | 1   | 5   | 1       | 3   | 5   |
-| Ranger  | 3   | 2   | 5       | 5   | 3-4 |
-| Knight  | 5   | 1   | 2       | 1   | 2   |
-
-
-
 The following will describe the fundamental characteristics of each basic class.
 
 
@@ -27,7 +18,7 @@ The following will describe the fundamental characteristics of each basic class.
 
 Warrior is the class that deals high attack damage. It has high attack power and medium health. The attack frequency is normal.
 
-Warriors move towards the player's pucks. After getting close, it attacks the target pucks after a short charging time. Colliding with a charging warrior puck stops it from charging and deals extra damage.  
+Warriors move towards the player's pucks. After getting close, it attacks the target pucks after a short focusing time. Colliding with a focusing warrior puck stops it from charging and deals extra damage.  
 
 Players should avoid being surrounded by multiple warriors or interrupt its attack on time.
 
@@ -35,7 +26,7 @@ Players should avoid being surrounded by multiple warriors or interrupt its atta
 
 Mage is the class that deals long-range serious damage. They move to keep distance from the boss monster puck. They *Chant* to cast strong spells and hit from a distance.
 
-Mages have low HP and a slow charge time. Once they attack, they deal great damage. If a charging mage is collided with, it will interrupt the chanting charge.
+Mages have low HP and a slow focusing time. Once they attack, they deal great damage. If a focusing mage is collided with, it will interrupt the chanting charge.
 
 Players should defeat them asap or interrupt their chanting.
 
@@ -43,7 +34,7 @@ Players should defeat them asap or interrupt their chanting.
 
 Ranger is the class that moves and attacks frequently. They have special skills to interfere with the battle. Examples are reducing or attracting monsters' attacks.
 
-Colliding with a charging Ranger puck stops it from charging and stuns it for a few turns.
+Colliding with a charging Ranger puck stops it from focusing and stuns it for a few turns.
 
 Players should be aware of skill effects and respond accordingly.
 
@@ -53,7 +44,7 @@ Knight is the class that is good at protecting allies and collision. Knight has 
 
 When a knight collides with its ally, it does not deal damage to them. 
 
-When a knight puck is charging and collides with the player's pucks, it deals damage to them and reduces the damage taken. 
+When a knight puck is focusing and collides with the player's pucks, it deals damage to them and reduces the damage taken. 
 
 When a puck collides with a knight puck, it loses force, so its speed decreases.
 
@@ -63,4 +54,11 @@ Players should be careful not to collide with a charging knight.
 
 
 
+Relative strength like the following
 
+| Class   | HP  | ATK | ATK FRQ | SPD | RNG |
+| ------- | --- | --- | ------- | --- | --- |
+| Warrior | 4   | 4   | 3       | 2   | 1   |
+| Mage    | 1   | 5   | 1       | 3   | 5   |
+| Ranger  | 3   | 2   | 5       | 5   | 3-4 |
+| Knight  | 5   | 1   | 2       | 1   | 2   |
