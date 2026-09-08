@@ -20,10 +20,14 @@ Records what the player has met before and lets them recall it. Like an illustra
 
 ## Deck-editing Scene
 
-Allows the player to prepare the decks for the battle.
+Allows the player to prepare the decks for battle.
 
-## Traing Scene
+## Training Scene
 
 Allows the player to bring up his monsters and skills.
+
+## Testing Scenes
+
+Check ./testing folder
 
 

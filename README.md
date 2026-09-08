@@ -16,7 +16,9 @@ Side functions include Codex, training, deck composition, etc.
 
 Now we are preparing the game demo only, which works only on one main game scene.
 
-## Game Scenes
+## Manual documents
+
+Check /.docmanual/main.md 
 
 Check /.docmanual/gameScenes.md
 
