@@ -2,7 +2,8 @@
 
 ```
 src/
-├── test_scene.tscn              # Main test scene
+├── test_scene.tscn             # Demo battlefield
+├── multiplayer_scene.tscn      # Main test scene
 │
 ├── player/
 │   └── dragon_player.gd        # Player controller (WASD + auto-attack)
@@ -29,6 +30,12 @@ src/
 ├── multiLang/
 │   └── localization.gd          # Multi-language support (EN/ZH autoload)
 │
+├── multiplayer/
+│   └── multiplayer_manager.gd  # the manager script for multiplayer scene
+│   └── network_autoload.gd      # the singleton script to handle multiplayer as autoload
+│   └── role_selector.gd        # the manager script for role_selector scene
+│   └── role_selector.tscn      # multiplayer sub-scene: role selector
+|
 └── canvas/
     └── canvas.gd               # CanvasLayer: hand display, player HP, enemy HP bars, deck/discard UI
 ```
