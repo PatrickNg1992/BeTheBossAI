@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Loc="*res://src/multiLang/localization.gd"
+NetworkManager="*uid://bfqharqliux6y"
 
 [display]
 
@@ -36,4 +37,3 @@ enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg")
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-renderer/rendering_method="mobile"
