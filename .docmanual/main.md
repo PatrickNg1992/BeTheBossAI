@@ -13,3 +13,5 @@ This game is designed as a small-scale indie game.
 ./common/commonDesign.md write the spec.
 
 
+
+

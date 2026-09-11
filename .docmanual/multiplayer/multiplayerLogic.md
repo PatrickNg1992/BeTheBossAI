@@ -10,9 +10,11 @@ The following lists the logic of multiplayer scenes:
 
 -  If a player chooses to be the host, he will enter the Waiting Room. The host can select the game config. He can click the Confirm button to start waiting for the peers as a server. The screen shows any connected peers.
 
+- If a host player click "Close room", the room is closed. Any connected peer is kicked. All of them return to the menu and get a messages.
+
 - The host can configure the room to accept or reject spectators.
 
-- If a player chooses to connect to a host as an opponent or a spectator opponent, the game tries to connect to the server he specified.
+- If a player chooses to connect to a host as an opponent or a spectator, the game tries to connect to the server he specified.
 
 - In **Development mode**, use IP and port to connect in multiplayer games. The default port should be 8910. The host can edit the port number in the waiting room. Other peers can edit the port number before connecting.
 
@@ -32,7 +34,9 @@ The following lists the logic of multiplayer scenes:
 
 - In the waiting room, given both players are present, when the host clicks the “Start Game” button, the players and spectators enter the battlefield scene.
 
-- While in the game, if the connected players detects that the host or the opponent is offline or disconnected, they return to the menu and get a notification.
+- While in the game, if the connected players detect that the host or the opponent is offline or disconnected, try to reconnect the game. The game freeze and enter grace period. It show a "Connecting..." message 
+
+- In the grace period, a players can click leave to end the reconnection attempt early.
 
 - When players enter the battlefield scene, the game initialises and synchronises the data. (whether single-player or two-player game)
 
@@ -42,10 +46,18 @@ The following lists the logic of multiplayer scenes:
 
 - During the game, all the player's actions stay synchronised using reliable mode.
 
-- When the game ends, both players return to the room.
+- When the game ends, both players return to the waiting room.
 
 
 
 ## Single-player Game
 
 For a single-player game, use another scene with OfflineMultiplayerPeer to load the Battlefield.
+
+
+
+## Emoji System
+
+The players can send emoji in the game. No text no voice.
+
+

@@ -161,3 +161,65 @@ An Enemy Hero may randomly equip some Hero Skills that have special effects. At 
 A smaller monster that is summoned by the player side, either by cards or the Boss Monster’s effect.
 
 (TBC)
+
+# Multiplayer
+
+## Host
+
+The player who opened the multiplayer room and runs the game server. The Host is also a player — in PvP they control one of the two Boss Monsters.
+
+## Opponent
+
+The second player connecting to the Host's room. In PvP they control the other Boss Monster.
+
+## Spectator
+
+A non-playing peer watching the game. The Host can toggle whether Spectators are accepted.
+
+## Peer
+
+Any participant in a multiplayer session — Host, Opponent, or Spectator. Used when a rule applies to all three roles.
+
+## Multiplayer Scene
+
+The scene that controls multiplayer connection logic. Itself invisible — it swaps sub-scenes inside a container and drives them via a manager script. Three sub-scenes: **Role Selector**, **Waiting Room**, and **Battlefield** (loaded into the container when the game starts). Responsibility split: the manager controls the **connection** (connect/disconnect, rejoin grace period, notifications); the Battlefield controls the **synchronization of objects in the field** (positions, actions, hands).
+
+## Connection Mode
+
+How peers connect. **Dev mode**: direct IP + port (default 8910). **Steam mode**: via Steam — undecided, to investigate later. For now, only Dev (IP) mode is implemented.
+
+## Game Config
+
+The room configuration the Host sets in the Waiting Room. v1 scope: Spectator acceptance toggle and Dev-mode port; the battle always uses the **demo battlefield** for now. Stage/config details are a separate future design (not the single-player World Map list).
+
+## Waiting Room
+
+The sub-scene where Peers wait before and after a game. It has **two seats** — one for the Host, one for the Opponent — plus a simple list showing Spectator names. The Host sees **Start Game** (enabled only when the Opponent seat is filled — PvP must start with 2 players present; no "ready" flag in v1) and **Close Room** (closes the room, kicks all Peers, and returns the Host to the Menu). The Opponent and Spectators see a **Leave** button (disconnects and returns them to the Menu). After a game ends, all Peers return to the Waiting Room with the connection still open. The manual also calls this "the room" informally.
+
+## Notification
+
+A generic localized popup for connection events: version mismatch, host offline/disconnected, connection lost, host closed the room. One UI, message text from the multiLang holder.
+
+## Connecting State
+
+A state shown in the Role Selector while a Peer is trying to connect (not a separate sub-scene). On success, the Peer is swapped to the Waiting Room; on failure, the Peer stays in the Role Selector with a localized message. Timeout: ENet default for development.
+
+## Version Check
+
+On connection, the Host validates the Peer's game version (a constant string in code). Mismatch → reject the Peer; both sides see a localized "version mismatch" message.
+
+## Rejoin Grace Period
+
+When the **Host↔Opponent link drops mid-battle** — in either direction; each side only knows "the other is gone" — the battle freezes for all Peers and a grace period starts (v1 default: **30 seconds**). If the link is restored within the grace period — the Peer re-enters via the Role Selector, with Version Check, skipping the Waiting Room straight into the frozen battle — the Host restores a snapshot and the battle resumes. If the grace period expires, the game ends: still-connected Peers return to the Waiting Room, and the dropped Peer always lands on the Menu; a late joiner is rejected with a Notification. The frozen screens carry a **Leave** button that ends the grace period immediately (still-connected Peers → Waiting Room; dropped Peer → Menu). A Spectator disconnect does nothing (the slot just frees up). The only *clean* session end is the Host's explicit **Close Room** command: Peers receive the signal, get kicked to the Menu with a Notification. (The frozen state screen shows "Opponent disconnected, waiting…".)
+
+## Spectator Exclusion List
+
+What is hidden from Spectators. v1: both players' hands and deck contents — a card's identity is visible to its owner only. Note this secrecy is **visibility-only**: the Host syncs both decks and the game logic knows their full order (see ADR-0003); hiding happens at the UI layer. Hand counts and the discard pile are visible to all Peers (including Spectators). Spectators get a dedicated **Spectator HUD** (a special canvas item) showing both players' info side by side. Everything else is an open item, to be detailed when the game is more prepared.
+
+## Spectator Cap
+
+Fixed maximum of 4 Spectators per room in v1. Not host-configurable yet.
+
+## Player Name
+
+A **mandatory** display name the player enters in the Role Selector, used to identify Peers in the Waiting Room. Capped at 32 characters.

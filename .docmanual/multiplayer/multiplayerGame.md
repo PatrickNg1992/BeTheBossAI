@@ -4,8 +4,6 @@ The game supports a 2-player game. The players should connect peer-to-peer via t
 
 In a production game, the player should connect via Steam Multiplayer Peer. While in testing, the developer may use Godot's built-in connection.
 
-
-
 ## Basic design
 
 - **Godot's High-Level Multiplayer:** Use Godot 4’s built-in nodes like `MultiplayerSpawner` and `MultiplayerSynchronizer` to sync player positions, game states, and RPCs (Remote Procedure Calls).
@@ -14,11 +12,7 @@ In a production game, the player should connect via Steam Multiplayer Peer. Whil
 
 - **Steam Multiplayer Peer:** Swap Godot's default `ENetMultiplayerPeer` for **SteamMultiplayerPeer** (or `GodotSteamMultiplayerPeer`). This wraps Steam's P2P network layer so Godot's built-in multiplayer systems work seamlessly over Steam.
 
-
-
 ## Multiplayer logic
-
-Only the Battlefield scene and the menu need multiplayer features. 
 
 The host should select the stage and related setup before he starts to host a room. Once the other player joins the game, both players enter the Battlefield scene.
 
@@ -51,9 +45,3 @@ RPC:
 - Any Moving and attack in Action timing
 
 - Any special effects
-
-
-
-
-
-
