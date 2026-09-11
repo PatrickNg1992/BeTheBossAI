@@ -162,6 +162,16 @@ A smaller monster that is summoned by the player side, either by cards or the Bo
 
 (TBC)
 
+# Scenes
+
+## Menu
+
+The game's first page — the scene the player sees on launch (the project's main scene) and where they pick where to go. Demo version: **Play** and **Multiplayer** buttons only, labels via the multiLang holder (title "Be The Boss" hardcoded as a placeholder — a picture will replace it later). **Play** enters the Single-Player Scene; **Multiplayer** enters the Multiplayer Scene. Also called "Main Menu" — same thing. Disconnected multiplayer Peers land here with a Notification.
+
+## Single-Player Scene
+
+An invisible scene (like the Multiplayer Scene) that sets up an `OfflineMultiplayerPeer` and loads the Battlefield as its child. Entered via the Menu's **Play** button. Keeps one Battlefield load path across single- and multiplayer.
+
 # Multiplayer
 
 ## Host

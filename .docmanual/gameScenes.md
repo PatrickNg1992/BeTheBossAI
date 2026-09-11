@@ -8,6 +8,8 @@ The scene may get renamed later.
 
 The page the players see when they open the game. It allows them to select which scene they would like to go.
 
+Check: ./menu.md
+
 ## Battlefield Scene
 
 The main scene of the game. The player battles and plays a stage here.
@@ -16,7 +18,7 @@ Check: ./battlefield folder
 
 ## Multiplayer Scene
 
-The scene that players will see if they choose to have a multiplayer game. It controls the connection logic of multiplayer games. It includes a few sub-scenes including the waiting room. It will load the Battlefield scene once ready.
+The scene that players will see if they choose to have a multiplayer game. It controls the connection logic of multiplayer games. It includes a few sub-scenes, including the waiting room. It will load the Battlefield scene once ready.
 
 Check: ./multiplayer folder
 
@@ -39,3 +41,7 @@ Allows the player to bring up his monsters and skills.
 ## Testing Scenes
 
 Check ./testing folder
+
+## Config Scenes
+
+configure language, sound volume, etc
