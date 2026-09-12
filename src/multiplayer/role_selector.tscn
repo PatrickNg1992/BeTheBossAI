@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c02xpocfh2o2u" path="res://src/multiplayer/role_selector.gd" id="1_p6w01"]
 
-[node name="Menu" type="Node3D" unique_id=1599240773]
+[node name="RoleSelector" type="Node3D" unique_id=1599240773]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1298516447]
 script = ExtResource("1_p6w01")

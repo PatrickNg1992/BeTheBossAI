@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/menu/menu.gd" id="1"]
+
+[node name="Menu" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="Center/VBox"]
+layout_mode = 2
+text = "Be The Boss"
+horizontal_alignment = 1
+
+[node name="PlayButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
+
+[node name="MultiplayerButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
+
+[connection signal="pressed" from="Center/VBox/PlayButton" to="." method="_on_play_button_pressed"]
+[connection signal="pressed" from="Center/VBox/MultiplayerButton" to="." method="_on_multiplayer_button_pressed"]

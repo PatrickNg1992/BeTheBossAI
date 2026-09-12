@@ -32,6 +32,8 @@ const EN := {
 	card_desc_monster_skill = "Monster Skill card effect.",
 	card_desc_summoner = "Summoner card effect.",
 	card_desc_minion = "Minion card effect.",
+	menu_play = "Play",
+	menu_multiplayer = "Multiplayer",
 }
 
 const ZH := {
@@ -53,6 +55,8 @@ const ZH := {
 	card_desc_monster_skill = "魔王技能卡牌效果。",
 	card_desc_summoner = "召唤者卡牌效果。",
 	card_desc_minion = "仆从卡牌效果。",
+	menu_play = "开始",
+	menu_multiplayer = "多人对战",
 }
 
 

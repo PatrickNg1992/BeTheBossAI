@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="test1"
-run/main_scene="uid://c1dsavv5cg7me"
+run/main_scene="res://src/menu/menu.tscn"
 config/features=PackedStringArray("4.6", "Mobile")
 config/icon="res://icon.svg"
 
@@ -19,6 +19,7 @@ config/icon="res://icon.svg"
 
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Loc="*res://src/multiLang/localization.gd"
+PendingNotification="*res://src/menu/pending_notification.gd"
 NetworkManager="*uid://bfqharqliux6y"
 
 [display]

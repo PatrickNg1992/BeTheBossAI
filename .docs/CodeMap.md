@@ -10,6 +10,7 @@ The code map. Read this first to locate files. **Keep it updated whenever code f
 - `.docs/agents/` — agent workflow conventions (issue tracker, triage labels, domain docs).
 - `.scratch/<feature>/spec.md` — feature specs: `card-effects`, `cue-shot-energy`, `cue-table`, `enemy-heroes`, `menu`, `multiplayer-scene`, `stage-wave-loop`, `timing-system`, `time-board-display`.
 - `doc/` — human-written design docs (the source the specs were distilled from). Do not edit.
+- `tests/` — test suites (`test_*.gd` McpTestSuite files) + `_run_all.tscn`/`.gd` headless bootstrap.
 - `src/` — game code, below.
 - `player_movement.gd` (repo root) — legacy script, referenced nowhere; not part of the game.
 
@@ -17,7 +18,12 @@ The code map. Read this first to locate files. **Keep it updated whenever code f
 
 ```
 src/
-├── test_scene.tscn              # Main scene (run/main_scene)
+├── test_scene.tscn              # Battlefield test scene (loaded by the Single-Player Scene)
+│
+├── menu/
+│   ├── menu.tscn, menu.gd       # Menu, the game's first page (run/main_scene)
+│   ├── single_player_scene.tscn + single_player_loader.gd  # Invisible loader: OfflineMultiplayerPeer + Battlefield
+│   └── pending_notification.gd  # Pending-Notification autoload (one-slot localization key holder)
 │
 ├── pucks/
 │   ├── base_puck.gd            # Shared puck base: HP, damage, death, attack cooldown
