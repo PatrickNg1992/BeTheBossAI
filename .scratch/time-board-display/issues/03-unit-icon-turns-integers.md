@@ -1,0 +1,11 @@
+# 03 — Unit-icon "Turns to goal" integers on the canvas
+
+**What to build:** each unit icon on the battlefield canvas shows the same Turns-to-goal integer as its tag on the Time Board, sourced from the model's per-unit lookup, following the existing unproject-to-screen pattern used by enemy health bars — so the board and the battlefield can never disagree.
+
+**Blocked by:** 02 — Time Board model (the per-unit lookup lives there).
+
+**Status:** ready-for-agent
+
+- [ ] Every unit icon shows a Turns-to-goal integer matching its tag on the board
+- [ ] The integer is sourced from the Time Board model, not computed in the icon
+- [ ] The icon follows the existing unproject-to-screen pattern (same as enemy health bars)
