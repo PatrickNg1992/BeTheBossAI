@@ -36,6 +36,10 @@ Game-wide: `CONTEXT.md` at repo root + `.docs/adr/`. Per-scene glossaries live u
 
 Do *NOT* read all code and doc files in the project. It will be too much.
 
+## Unit tests
+
+inside ./tests
+
 ## Game testing after coding
 
 After writing code, **DON'T** test the game in a loop by the AI agent; limit the AI-triggered test to at most 2 times. Ask the human to test because only the developers know what it should feel as a whole.

@@ -25,5 +25,3 @@ Check /.docmanual/gameScenes.md
 ## Important for AI agents
 
 Read /AGENTS.md
-
-## 
