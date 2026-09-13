@@ -4,7 +4,7 @@ extends McpTestSuite
 ## OfflineMultiplayerPeer and instantiates the Battlefield as its child.
 
 const SINGLE_PLAYER_SCENE_PATH := "res://src/menu/single_player_scene.tscn"
-const BATTLEFIELD_SCENE_PATH := "res://src/test_scene.tscn"
+const BATTLEFIELD_SCENE_PATH := "res://src/demo_bettlefield.tscn"
 
 
 func suite_name() -> String:

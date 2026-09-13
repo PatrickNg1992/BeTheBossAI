@@ -1,11 +1,11 @@
 [gd_scene format=3 uid="uid://c1dsavv5cg7me"]
 
-[ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/canvas/canvas.gd" id="2_kk5mn"]
-[ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_enemy"]
-[ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="4_player"]
-[ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_manager"]
-[ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="6_pdsn1"]
-[ext_resource type="Script" uid="uid://7ieops1aff2c" path="res://src/battlefield/battlefield.gd" id="7_battlefield"]
+[ext_resource type="Script" uid="uid://7ieops1aff2c" path="res://src/battlefield/battlefield.gd" id="1_q4n8h"]
+[ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="2_q4f6s"]
+[ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_opwfs"]
+[ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/canvas/canvas.gd" id="4_h05ap"]
+[ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="5_h0345"]
+[ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_table"]
 size = Vector3(20, 3, 20)
@@ -80,7 +80,7 @@ transform = Transform3D(1, 0, 0, 0, 0.545078, 0.83838534, 0, -0.83838534, 0.5450
 current = true
 
 [node name="Battlefield" type="StaticBody3D" parent="." unique_id=1712109379]
-script = ExtResource("7_battlefield")
+script = ExtResource("1_q4n8h")
 
 [node name="TableCollision" type="CollisionShape3D" parent="Battlefield" unique_id=-1153374642]
 visible = false
@@ -93,7 +93,7 @@ mesh = SubResource("BoxMesh_table")
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=475017923]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
-script = ExtResource("4_player")
+script = ExtResource("2_q4f6s")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=2018927931]
 shape = SubResource("CylinderShape3D_wtt4b")
@@ -104,7 +104,7 @@ mesh = SubResource("CylinderMesh_pdsn1")
 
 [node name="Enemy1" type="CharacterBody3D" parent="." unique_id=293309152]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.675, 3)
-script = ExtResource("3_enemy")
+script = ExtResource("3_opwfs")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy1" unique_id=1380801575]
 shape = SubResource("CylinderShape3D_57l5a")
@@ -115,7 +115,7 @@ mesh = SubResource("CylinderMesh_lwd14")
 
 [node name="Enemy2" type="CharacterBody3D" parent="." unique_id=984500535]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.7, 3)
-script = ExtResource("3_enemy")
+script = ExtResource("3_opwfs")
 hero_class = 1
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy2" unique_id=611858626]
@@ -127,7 +127,7 @@ mesh = SubResource("CylinderMesh_ipyvp")
 
 [node name="Enemy3" type="CharacterBody3D" parent="." unique_id=261509063]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.675, -3)
-script = ExtResource("3_enemy")
+script = ExtResource("3_opwfs")
 hero_class = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy3" unique_id=2137212163]
@@ -139,7 +139,7 @@ mesh = SubResource("CylinderMesh_s4e5k")
 
 [node name="Enemy4" type="CharacterBody3D" parent="." unique_id=1402716791]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.675, -3)
-script = ExtResource("3_enemy")
+script = ExtResource("3_opwfs")
 hero_class = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy4" unique_id=872114300]
@@ -157,7 +157,7 @@ shadow_enabled = true
 [node name="Canvas" type="CanvasLayer" parent="." unique_id=48048196]
 unique_name_in_owner = true
 layer = 10
-script = ExtResource("2_kk5mn")
+script = ExtResource("4_h05ap")
 
 [node name="MarginContainer" type="MarginContainer" parent="Canvas" unique_id=1257233920]
 offset_left = 6.0
@@ -239,11 +239,11 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="CardSystem" type="CanvasLayer" parent="Canvas" unique_id=1289326118]
-script = ExtResource("6_pdsn1")
+script = ExtResource("5_h0345")
 
 [node name="CardManager" type="Node" parent="Canvas/CardSystem" unique_id=626773743]
 unique_name_in_owner = true
-script = ExtResource("6_manager")
+script = ExtResource("6_4cvd0")
 
 [node name="HandContainer" type="HBoxContainer" parent="Canvas/CardSystem" unique_id=1164296470]
 unique_name_in_owner = true

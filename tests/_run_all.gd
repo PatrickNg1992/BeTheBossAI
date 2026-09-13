@@ -6,9 +6,12 @@ extends Node
 ## Exit code 1 when any test fails or a suite fails to load.
 
 func _ready() -> void:
+	## Capture the tree now: a test that navigates scenes frees this node,
+	## so get_tree() would fail after the suites run.
+	var tree := Engine.get_main_loop() as SceneTree
 	## Tree root is still busy during _ready; defer suite execution by one
 	## frame so tests can add/remove their own children safely.
-	await get_tree().process_frame
+	await tree.process_frame
 	var suites: Array = []
 	var errors: Array[String] = []
 	var dir := DirAccess.open("res://tests")
@@ -43,4 +46,4 @@ func _ready() -> void:
 	if not errors.is_empty():
 		failed_count += 1
 	var exit_code := 1 if failed_count > 0 else 0
-	get_tree().quit(exit_code)
+	tree.quit(exit_code)

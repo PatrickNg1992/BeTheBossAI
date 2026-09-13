@@ -2,7 +2,7 @@
 
 ```
 src/
-├── test_scene.tscn             # Demo battlefield
+├── demo_battlefield.tscn       # Demo battlefield
 ├── multiplayer_scene.tscn      # Main test scene
 │
 ├── player/

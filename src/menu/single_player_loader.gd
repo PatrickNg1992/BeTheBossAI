@@ -4,7 +4,7 @@ extends Node
 ## OfflineMultiplayerPeer and mounts the Battlefield as its child, so
 ## single-player and multiplayer share one Battlefield load path.
 
-@export var battlefield_scene: PackedScene = preload("res://src/test_scene.tscn")
+@export var battlefield_scene: PackedScene = preload("res://src/demo_bettlefield.tscn")
 
 
 func _ready() -> void:

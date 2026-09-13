@@ -18,7 +18,7 @@ The code map. Read this first to locate files. **Keep it updated whenever code f
 
 ```
 src/
-├── test_scene.tscn              # Battlefield test scene (loaded by the Single-Player Scene)
+├── demo_bettlefield.tscn        # Battlefield test scene (loaded by the Single-Player Scene)
 │
 ├── menu/
 │   ├── menu.tscn, menu.gd       # Menu, the game's first page (run/main_scene)
@@ -59,4 +59,4 @@ src/
 
 - **Health bars** — enemy bars are 2D widgets on the CanvasLayer; each frame `Camera3D.unproject_position()` converts the enemy's world position to screen coordinates (`canvas.gd`). The boss's multi-bar HP with break flash also lives there.
 - **Cards** — `card_manager.gd` holds logic and signals (`hand_updated`, `deck_count_changed`, `discard_count_changed`, `card_played`, casting updates); `card_canvas.gd` is all card UI. Card effects are not yet implemented; demo effects (Rush / Teleport / Recover) are specced in `.scratch/card-effects/spec.md`.
-- **Battlefield** — the table is generated at runtime from constants in `battlefield.gd`; the table base mesh/shape is in `test_scene.tscn`.
+- **Battlefield** — the table is generated at runtime from constants in `battlefield.gd`; the table base mesh/shape is in `demo_bettlefield.tscn`.
