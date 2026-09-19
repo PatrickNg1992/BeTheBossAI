@@ -1,8 +1,8 @@
 # Multiplayer game mechanism
 
-The game supports a 2-player game. The players should connect peer-to-peer via the Godot interface, and one of them runs as the host.
+The game supports a 2-player game. Players should connect peer-to-peer via the Godot interface. In a game, there are player A, player B and spectators. One of the players hosts the game room.
 
-In a production game, the player should connect via Steam Multiplayer Peer. While in testing, the developer may use Godot's built-in connection.
+In a production game, the player should connect via Steam Multiplayer Peer. While in testing, the developer may use Godot's built-in IP connection.
 
 ## Basic design
 
@@ -14,9 +14,11 @@ In a production game, the player should connect via Steam Multiplayer Peer. Whil
 
 ## Multiplayer logic
 
-The host should select the stage and related setup before he starts to host a room. Once the other player joins the game, both players enter the Battlefield scene.
+The host player select the stage and related setup before starting a room. After other players join the game, they enter the Battlefield scene.
 
 When a multiplayer game is preparing to start, the game synchronises the monster, skills and deck, etc. 
+
+Details check ./multiplayerLogin.md
 
 ### What to synchronise
 
