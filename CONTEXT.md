@@ -8,7 +8,7 @@ The game has many scenes — see `.docmanual/gameScenes.md` for the full list. S
 
 - **Menu** — the game's first page on launch (main scene); vocabulary in `GLOSSARY.md` (# Scenes)
 - **Battlefield Scene** — the main scene, where Stage battles happen: [`.docs/contexts/battlefield.md`](.docs/contexts/battlefield.md)
-- **Multiplayer Scene** — connection logic; roles (Host / Opponent / Spectator / Peer) live in `GLOSSARY.md` (# Multiplayer)
+- **Multiplayer Scene** — connection logic; roles (Host / Player A / Player B / Spectator / Peer) live in `GLOSSARY.md` (# Multiplayer)
 - **World Map, Codex, Deck-editing, Training** — no context docs yet; create one under `.docs/contexts/` when its terms get resolved.
 
 ## Language

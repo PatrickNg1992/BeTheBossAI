@@ -6,7 +6,7 @@ The following lists the logic of multiplayer scenes:
 
 - From the menu, a player can choose to join a multiplayer game. Then he will enter the multiplayer scene. He will see the Role Selector scene.
 
-- In the *Role Selector* scene, a player can select to (1) Host a game room, (2) Join a game, or (3) go back to the menu.
+- In the *Role Selector* scene, a player can select to (1) host a game room, (2) Join a game, or (3) go back to the menu.
 
 - If a player chooses to be the host (Host a game room), he will enter the Waiting Room. The host can select the game config. He can click the Confirm button to start waiting for the peers as a server. The screen shows any connected peers.
 
@@ -30,7 +30,7 @@ The following lists the logic of multiplayer scenes:
 
 - The server player is responsible for managing the connection and information state of the peers.
 
-- If an peers successfully connects to the host, he will sync the host’s waiting room information. However, he will see a “Leave” button instead of "Close Room".
+- If a peer successfully connects to the host, he will sync the host’s waiting room information. However, he will see a “Leave” button instead of "Close Room".
 
 - While in the waiting room, if a connected peer detects that the host is offline or disconnected, they return to the menu and receive a notification.
 
@@ -42,7 +42,7 @@ The following lists the logic of multiplayer scenes:
 
 - While in the game, if a spectator is offline or disconnected, try to reconnect the game. The game will not freeze. It shows a "Connecting..." message only to the disconnected spectator.
 
-- In the grace period, a players can click leave to end the reconnection attempt early.
+- In the grace period, a player can click Leave to end the reconnection attempt early.
 
 - When players enter the battlefield scene, the game initialises and synchronises the data. (whether single-player or two-player game)
 
