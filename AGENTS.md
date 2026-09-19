@@ -40,6 +40,10 @@ Do *NOT* read all code and doc files in the project. It will be too much.
 
 inside ./tests
 
+After editing the code, run the test cases to detect failures.
+
+Add tests cases based on the tasks list.
+
 ## Game testing after coding
 
 After writing code, **DON'T** test the game in a loop by the AI agent; limit the AI-triggered test to at most 2 times. Ask the human to test because only the developers know what it should feel as a whole.
