@@ -1,0 +1,195 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/multiplayer/waiting_room.gd" id="1_wr"]
+
+[node name="WaitingRoom" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_wr")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Root" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="RoomConfig" type="PanelContainer" parent="Margin/Root"]
+layout_mode = 2
+
+[node name="ConfigMargin" type="MarginContainer" parent="Margin/Root/RoomConfig"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="ConfigBox" type="VBoxContainer" parent="Margin/Root/RoomConfig/ConfigMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ConfigTitle" type="Label" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox"]
+layout_mode = 2
+text = "Room Configuration"
+
+[node name="ConfigRow" type="HBoxContainer" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HostNameLabel" type="Label" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+layout_mode = 2
+text = "Host Name"
+vertical_alignment = 1
+
+[node name="HostNameEdit" type="LineEdit" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+max_length = 32
+
+[node name="CapacityLabel" type="Label" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+layout_mode = 2
+text = "Capacity"
+vertical_alignment = 1
+
+[node name="CapacitySpin" type="SpinBox" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+layout_mode = 2
+min_value = 2.0
+max_value = 6.0
+
+[node name="PortLabel" type="Label" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+layout_mode = 2
+text = "Port"
+vertical_alignment = 1
+
+[node name="PortEdit" type="LineEdit" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+text = "8910"
+
+[node name="ConfirmButton" type="Button" parent="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Confirm"
+
+[node name="Middle" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Seats" type="HBoxContainer" parent="Margin/Root/Middle"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+theme_override_constants/separation = 80
+
+[node name="SeatA" type="Button" parent="Margin/Root/Middle/Seats"]
+custom_minimum_size = Vector2(300, 340)
+layout_mode = 2
+
+[node name="SeatABox" type="VBoxContainer" parent="Margin/Root/Middle/Seats/SeatA"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="SeatATitle" type="Label" parent="Margin/Root/Middle/Seats/SeatA/SeatABox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Player A"
+horizontal_alignment = 1
+
+[node name="SeatAName" type="Label" parent="Margin/Root/Middle/Seats/SeatA/SeatABox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Empty — click to take"
+horizontal_alignment = 1
+
+[node name="SeatB" type="Button" parent="Margin/Root/Middle/Seats"]
+custom_minimum_size = Vector2(300, 340)
+layout_mode = 2
+
+[node name="SeatBBox" type="VBoxContainer" parent="Margin/Root/Middle/Seats/SeatB"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="SeatBTitle" type="Label" parent="Margin/Root/Middle/Seats/SeatB/SeatBBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Player B"
+horizontal_alignment = 1
+
+[node name="SeatBName" type="Label" parent="Margin/Root/Middle/Seats/SeatB/SeatBBox"]
+layout_mode = 2
+mouse_filter = 2
+text = "Empty — click to take"
+horizontal_alignment = 1
+
+[node name="SpectatorPanel" type="PanelContainer" parent="Margin/Root/Middle"]
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+
+[node name="SpecMargin" type="MarginContainer" parent="Margin/Root/Middle/SpectatorPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="SpecBox" type="VBoxContainer" parent="Margin/Root/Middle/SpectatorPanel/SpecMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SpecTitle" type="Label" parent="Margin/Root/Middle/SpectatorPanel/SpecMargin/SpecBox"]
+layout_mode = 2
+text = "Spectators"
+horizontal_alignment = 1
+
+[node name="SpectatorList" type="ItemList" parent="Margin/Root/Middle/SpectatorPanel/SpecMargin/SpecBox"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BottomBar" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="StartGameButton" type="Button" parent="Margin/Root/BottomBar"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+disabled = true
+text = "Start Game"
+
+[node name="CloseRoomButton" type="Button" parent="Margin/Root/BottomBar"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Close Room"
+
+[node name="LeaveButton" type="Button" parent="Margin/Root/BottomBar"]
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+text = "Leave"

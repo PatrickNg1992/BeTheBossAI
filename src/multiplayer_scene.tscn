@@ -1,21 +1,13 @@
 [gd_scene format=3 uid="uid://fantfx1h3yka"]
 
-[ext_resource type="Script" uid="uid://bfl5fm2635wi6" path="res://src/multiplayer/multiplayer_manager.gd" id="1_1pka6"]
-[ext_resource type="PackedScene" uid="uid://bxkfo673bjij2" path="res://src/multiplayer/role_selector.tscn" id="1_qo7th"]
+[ext_resource type="PackedScene" uid="uid://bxkfo673bjij2" path="res://src/multiplayer/role_selector.tscn" id="1_role"]
+[ext_resource type="PackedScene" path="res://src/multiplayer/waiting_room.tscn" id="2_wait"]
 
-[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_oi4bx"]
+[node name="MultiplayerScene" type="Node"]
 
-[node name="MultiplayerScene" type="Node3D" unique_id=382698933]
-script = ExtResource("1_1pka6")
+[node name="Container" type="Node" parent="."]
 
-[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=333729240]
+[node name="RoleSelector" parent="Container" instance=ExtResource("1_role")]
 
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=878362848]
-root_path = NodePath("../MultiplayerSpawner")
-replication_config = SubResource("SceneReplicationConfig_oi4bx")
-
-[node name="Container" type="Container" parent="." unique_id=33442443]
-offset_right = 40.0
-offset_bottom = 40.0
-
-[node name="RoleSelector" parent="Container" unique_id=1599240773 instance=ExtResource("1_qo7th")]
+[node name="WaitingRoom" parent="Container" instance=ExtResource("2_wait")]
+visible = false
