@@ -6,6 +6,10 @@ extends Control
 ## "Connecting…" state and an in-place failure message. The in-game role
 ## (Player A / Player B / Spectator) is NOT chosen here. All display text
 ## comes from the multiLang holder.
+##
+## A dumb view: forwards input to the manager and renders what it is told.
+
+var manager: MultiplayerManager = null
 
 @onready var choice_box: VBoxContainer = $Center/ChoiceBox
 @onready var host_button: Button = $Center/ChoiceBox/HostButton
@@ -40,3 +44,42 @@ func _update_text() -> void:
 	port_label.text = Loc.t("join_port")
 	join_form_button.text = Loc.t("join_connect")
 	join_back_button.text = Loc.t("join_back")
+
+
+## Shows the three choices, hiding the Join form.
+func show_choices() -> void:
+	choice_box.visible = true
+	join_form.visible = false
+	set_status("")
+
+
+## Shows the Join form, hiding the three choices.
+func show_join_form() -> void:
+	choice_box.visible = false
+	join_form.visible = true
+	set_status("")
+
+
+## Shows a localized status line (key), or clears it when empty.
+func set_status(key: String) -> void:
+	status_label.text = Loc.t(key) if not key.is_empty() else ""
+
+
+func _on_host_button_pressed() -> void:
+	manager.choose_host()
+
+
+func _on_join_button_pressed() -> void:
+	manager.choose_join()
+
+
+func _on_back_button_pressed() -> void:
+	manager.back_to_menu()
+
+
+func _on_join_form_button_pressed() -> void:
+	manager.submit_join(name_edit.text, ip_edit.text, port_edit.text)
+
+
+func _on_join_back_button_pressed() -> void:
+	show_choices()

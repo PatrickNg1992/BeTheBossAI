@@ -7,6 +7,10 @@ extends Control
 ## Spectator list on the right (up to 6 names), and Start Game / Close Room
 ## (Host) or Leave (non-Host) at the bottom. All display text comes from the
 ## multiLang holder.
+##
+## A dumb view: forwards input to the manager and renders what it is told.
+
+var manager: MultiplayerManager = null
 
 @onready var config_title: Label = $Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigTitle
 @onready var host_name_label: Label = $Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow/HostNameLabel
