@@ -60,6 +60,10 @@ If a task includes UI change, try to do it first if possible. This way, it can b
 
 Always update the task item checklist when you finish a few items (at least once for every 5 items). This way, if you stop accidentally because of token burnout, the progress is still recorded for pickup later.
 
+### Code Review
+
+Skip code review unless the developers explicitly ask for it. 
+
 ## Multi-language setting
 
 The game should be multi-language. The language setting should be put in ./scr/multiLang
