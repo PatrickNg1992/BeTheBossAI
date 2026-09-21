@@ -54,15 +54,17 @@ After coding, **DON'T** test the game in a loop by the AI agent; limit the AI-tr
 
 Whenever the UI changes, pause and ask for human verification. This way, the game designer can know whether your output fits the style, even though the style requirements are hard to describe in text.
 
-If a task includes UI change, try to do it first if possible. This way, it can be stopped early if going wrong. 
+If a task includes UI change, try to do it first if possible. This way, it can be stopped early if it's going wrong. 
 
 ### Update the progress
 
 Always update the task item checklist when you finish a few items (at least once for every 5 items). This way, if you stop accidentally because of token burnout, the progress is still recorded for pickup later.
 
-### Code Review
+### Post code change
 
 Skip code review unless the developers explicitly ask for it. 
+
+Don't commit any code. Leave it to developers.
 
 ## Multi-language setting
 
