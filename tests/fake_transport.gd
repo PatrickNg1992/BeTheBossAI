@@ -90,8 +90,14 @@ func send_to_peer(peer_id: int, message: Dictionary) -> void:
 		peer.message_received.emit(1, message.duplicate(true))
 
 
-func get_local_id() -> int:
-	return _local_id
+## Host-side: forcibly disconnect a Peer; its link dies (host_lost).
+func kick(peer_id: int) -> void:
+	var peer: FakeTransport = _peers.get(peer_id)
+	if peer == null:
+		return
+	peer._host = null
+	_peers.erase(peer_id)
+	peer.host_lost.emit()
 
 
 ## Host-side: accept an incoming Peer, assigning the next id.
@@ -122,6 +128,15 @@ func simulate_host_lost() -> void:
 ## Peer-side: simulate a connection attempt timing out mid-"Connecting…".
 func simulate_join_timeout() -> void:
 	join_failed.emit()
+
+
+## Host-side: simulate a Peer vanishing mid-room (Peer machine died — the
+## Peer side is not notified, matching a pure drop).
+func simulate_peer_drop(peer_id: int) -> void:
+	var peer: FakeTransport = _peers.get(peer_id)
+	if peer != null:
+		peer._host = null
+		_remove_peer(peer_id)
 
 
 ## Host-side: count of currently linked Peers.

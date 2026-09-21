@@ -51,6 +51,7 @@ func show_choices() -> void:
 	choice_box.visible = true
 	join_form.visible = false
 	set_status("")
+	set_connecting(false)
 
 
 ## Shows the Join form, hiding the three choices.
@@ -58,11 +59,23 @@ func show_join_form() -> void:
 	choice_box.visible = false
 	join_form.visible = true
 	set_status("")
+	set_connecting(false)
 
 
 ## Shows a localized status line (key), or clears it when empty.
 func set_status(key: String) -> void:
 	status_label.text = Loc.t(key) if not key.is_empty() else ""
+
+
+## The Connecting state is modal: while a connect attempt is in flight the
+## form's fields and both buttons are locked, so the player can't back out
+## mid-connect.
+func set_connecting(connecting: bool) -> void:
+	join_form_button.disabled = connecting
+	join_back_button.disabled = connecting
+	name_edit.editable = not connecting
+	ip_edit.editable = not connecting
+	port_edit.editable = not connecting
 
 
 func _on_host_button_pressed() -> void:

@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** implemented (uncommitted on `ai_backup`, tests green — pending code-review + commit)
+**Status:** implemented (39/39 tests green — code-review fixes applied; seam also gained `kick(peer_id)`, lost unused `get_local_id()`)
 
 **Progress notes:**
 - Transport interface: `src/multiplayer/mp_transport.gd` (`MpTransport`) — ops `serve/join/leave/close_room` + message channel `broadcast` (Host→all) / `send_to_host` / `send_to_peer`; signals `peer_joined(id,name)`, `peer_dropped(id)`, `join_succeeded`, `join_failed`, `host_lost`, `room_closed`, `message_received`. Host local id is always 1.

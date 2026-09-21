@@ -193,3 +193,13 @@ text = "Close Room"
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 text = "Leave"
+
+[connection signal="text_changed" from="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow/HostNameEdit" to="." method="_on_host_name_changed"]
+[connection signal="pressed" from="Margin/Root/RoomConfig/ConfigMargin/ConfigBox/ConfigRow/ConfirmButton" to="." method="_on_confirm_pressed"]
+[connection signal="pressed" from="Margin/Root/Middle/Seats/SeatA" to="." method="_on_seat_a_pressed"]
+[connection signal="pressed" from="Margin/Root/Middle/Seats/SeatB" to="." method="_on_seat_b_pressed"]
+[connection signal="item_selected" from="Margin/Root/Middle/SpectatorPanel/SpecMargin/SpecBox/SpectatorList" to="." method="_on_spectator_item_selected"]
+[connection signal="empty_clicked" from="Margin/Root/Middle/SpectatorPanel/SpecMargin/SpecBox/SpectatorList" to="." method="_on_spectator_empty_clicked"]
+[connection signal="pressed" from="Margin/Root/BottomBar/StartGameButton" to="." method="_on_start_game_pressed"]
+[connection signal="pressed" from="Margin/Root/BottomBar/CloseRoomButton" to="." method="_on_close_room_pressed"]
+[connection signal="pressed" from="Margin/Root/BottomBar/LeaveButton" to="." method="_on_leave_pressed"]

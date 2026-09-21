@@ -46,6 +46,12 @@ func close_room() -> void:
 	push_error("MpTransport.close_room not implemented")
 
 
+## Host: forcibly disconnect one Peer (e.g. after a room-full rejection, so
+## enforcement does not rely on the Peer leaving voluntarily).
+func kick(_peer_id: int) -> void:
+	push_error("MpTransport.kick not implemented")
+
+
 ## Host: send a message to every connected Peer.
 func broadcast(_message: Dictionary) -> void:
 	push_error("MpTransport.broadcast not implemented")
@@ -59,9 +65,3 @@ func send_to_host(_message: Dictionary) -> void:
 ## Host: send a message to one specific Peer.
 func send_to_peer(_peer_id: int, _message: Dictionary) -> void:
 	push_error("MpTransport.send_to_peer not implemented")
-
-
-## The local peer id — 1 for the Host, assigned for Peers (0 before join).
-func get_local_id() -> int:
-	push_error("MpTransport.get_local_id not implemented")
-	return 0

@@ -50,3 +50,39 @@ func _update_text() -> void:
 	start_game_button.text = Loc.t("wr_start")
 	close_room_button.text = Loc.t("wr_close")
 	leave_button.text = Loc.t("wr_leave")
+
+
+func _on_host_name_changed(new_text: String) -> void:
+	manager.host_name_changed(new_text)
+
+
+func _on_confirm_pressed() -> void:
+	manager.confirm_room_config()
+
+
+func _on_seat_a_pressed() -> void:
+	manager.request_take_seat(MultiplayerManager.ROLE_A)
+
+
+func _on_seat_b_pressed() -> void:
+	manager.request_take_seat(MultiplayerManager.ROLE_B)
+
+
+func _on_spectator_item_selected(_index: int) -> void:
+	manager.request_step_down()
+
+
+func _on_spectator_empty_clicked(_at_position: Vector2, _mouse_button_index: int) -> void:
+	manager.request_step_down()
+
+
+func _on_start_game_pressed() -> void:
+	manager.request_start_game()
+
+
+func _on_close_room_pressed() -> void:
+	manager.close_room()
+
+
+func _on_leave_pressed() -> void:
+	manager.leave_room()

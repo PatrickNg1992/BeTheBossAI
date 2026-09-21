@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Transport seam + Multiplayer Scene manager skeleton.
 
-**Status:** implemented (uncommitted on `ai_backup`, tests green — pending code-review + commit)
+**Status:** implemented (39/39 tests green — code-review fixes applied)
 
 **Progress notes:**
 - `src/multiplayer/role_selector.tscn` rebuilt as a full-rect Control (was Node3D draft): ChoiceBox (Host / Join / Back) + JoinForm (Player Name max_length=32, IP default 127.0.0.1, Port default 8910, StatusLabel, Join/Back buttons). `role_selector.gd` is a dumb view forwarding to the manager; all text via `Loc.t`.
