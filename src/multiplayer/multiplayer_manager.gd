@@ -17,6 +17,9 @@ enum ConnectionMode { DEV }
 ## Scene) and resolve to a pathless PackedScene.
 const MENU_SCENE_PATH := "res://src/menu/menu.tscn"
 const DEFAULT_PORT := 8910
+## The game version string, compared on every connect (Version Check).
+## Mismatching Peers are rejected before any seat assignment.
+const GAME_VERSION := "0.1.0"
 
 ## In-room roles (Player A / Player B / Spectator). The Host is peer id 1.
 const ROLE_A := "a"
@@ -39,6 +42,11 @@ var is_host := false
 ## Last navigation target picked by a button press — observable seam for
 ## tests (mirrors menu.gd's chosen_target pattern).
 var chosen_target: PackedScene = null
+## The version this build reports on connect. Instance-level so tests can
+## simulate a mismatch; defaults to the GAME_VERSION constant.
+var game_version := GAME_VERSION
+## The in-place Notification popup (version mismatch, etc.), when shown.
+var notification_dialog: AcceptDialog = null
 
 ## Room state (Host-authoritative; Peers hold the mirrored copy).
 var peers: Dictionary = {}  # int peer_id -> {"name": String, "role": String}
@@ -56,6 +64,12 @@ var _join_pending := false
 func _ready() -> void:
 	role_selector.manager = self
 	waiting_room.manager = self
+
+
+## Pumps the transport every frame (no-op for in-memory transports).
+func _process(_delta: float) -> void:
+	if transport != null:
+		transport.poll()
 
 
 # ----- Role Selector flow -----
@@ -88,7 +102,7 @@ func submit_join(player_name: String, ip: String, port_text: String) -> void:
 	_join_pending = true
 	role_selector.set_status("join_connecting")
 	role_selector.set_connecting(true)
-	transport.join(ip, port, trimmed)
+	transport.join(ip, port, trimmed, game_version)
 
 
 # ----- Waiting Room: Room Configuration (Host) -----
@@ -115,6 +129,10 @@ func confirm_room_config() -> void:
 	peers[HOST_ID]["name"] = host_name
 	_ensure_transport()
 	transport.serve(room_port)
+	if not transport.is_serving:
+		# serve_failed already popped the Notification; the Game Config
+		# stays editable so the Host can fix the port and retry.
+		return
 	room_open = true
 	_render_room()
 
@@ -197,6 +215,7 @@ func _set_transport(value: MpTransport) -> void:
 	transport.host_lost.connect(_on_host_lost)
 	transport.room_closed.connect(_on_room_closed)
 	transport.message_received.connect(_on_message_received)
+	transport.serve_failed.connect(_on_serve_failed)
 
 
 func _ensure_transport() -> void:
@@ -213,8 +232,15 @@ func _create_transport() -> MpTransport:
 
 # ----- transport event handlers -----
 
-func _on_peer_joined(peer_id: int, peer_name: String) -> void:
+func _on_peer_joined(peer_id: int, peer_name: String, peer_version: String) -> void:
 	if not is_host or not room_open:
+		return
+	# Version Check: a mismatching Peer is rejected and kicked before any
+	# seat assignment; both sides get the localized message.
+	if peer_version != game_version:
+		transport.send_to_peer(peer_id, {"type": "rejected", "reason": "version_mismatch"})
+		transport.kick(peer_id)
+		_show_notification("notif_version_mismatch")
 		return
 	# Room Capacity reached: reject, then kick — enforcement does not rely
 	# on the Peer leaving voluntarily.
@@ -267,6 +293,12 @@ func _on_room_closed() -> void:
 	# The Host explicitly closed the room: kicked to the Menu, notified.
 	PendingNotification.set_pending("notif_host_closed")
 	_go_to_menu()
+
+
+func _on_serve_failed() -> void:
+	# The room could not open (e.g. port busy). Room state is untouched —
+	# confirm_room_config keeps the Game Config editable.
+	_show_notification("notif_serve_failed")
 
 
 func _on_message_received(sender_id: int, message: Dictionary) -> void:
@@ -366,6 +398,16 @@ func _render_room() -> void:
 
 
 # ----- internals -----
+
+## In-place Notification popup for events that don't navigate away
+## (e.g. the Host side of a version mismatch). Same AcceptDialog pattern
+## as the Menu's pending Notification.
+func _show_notification(key: String) -> void:
+	notification_dialog = AcceptDialog.new()
+	notification_dialog.dialog_text = Loc.t(key)
+	add_child(notification_dialog)
+	notification_dialog.popup_centered()
+
 
 ## Swaps sub-scenes inside the container, exactly one visible at a time.
 func _show_sub_scene(sub: Node) -> void:

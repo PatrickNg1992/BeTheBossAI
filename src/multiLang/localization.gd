@@ -64,6 +64,7 @@ const EN := {
 	notif_connection_lost = "Connection lost.",
 	notif_version_mismatch = "Version mismatch.",
 	notif_room_full = "The room is full.",
+	notif_serve_failed = "Could not open the room on that port.",
 }
 
 const ZH := {
@@ -117,6 +118,7 @@ const ZH := {
 	notif_connection_lost = "连接已断开。",
 	notif_version_mismatch = "版本不匹配。",
 	notif_room_full = "房间已满。",
+	notif_serve_failed = "无法在该端口开启房间。",
 }
 
 

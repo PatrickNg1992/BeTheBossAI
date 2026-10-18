@@ -20,7 +20,6 @@ config/icon="res://icon.svg"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 Loc="*res://src/multiLang/localization.gd"
 PendingNotification="*res://src/menu/pending_notification.gd"
-NetworkManager="*uid://bfqharqliux6y"
 
 [display]
 

@@ -10,8 +10,9 @@ extends RefCounted
 ## (Host→one Peer). Lifecycle and messages arrive via the signals below.
 ## The Host always has local id 1.
 
-## Host-side: a Peer connected (carries the Player Name given at join).
-signal peer_joined(peer_id: int, peer_name: String)
+## Host-side: a Peer connected (carries the Player Name and game version
+## given at join — the manager Version-Checks before assigning a seat).
+signal peer_joined(peer_id: int, peer_name: String, peer_version: String)
 ## Host-side: a Peer disconnected (left, dropped, or rejected-then-left).
 signal peer_dropped(peer_id: int)
 ## Peer-side: the connection to the Host succeeded.
@@ -24,6 +25,18 @@ signal host_lost()
 signal room_closed()
 ## Both sides: a message arrived. On a Peer, sender_id is the Host (1).
 signal message_received(sender_id: int, message: Dictionary)
+## Host-side: the room could not start serving (e.g. the port is busy).
+signal serve_failed()
+
+## Host-side: whether the room is currently open for connections.
+var is_serving := false
+
+
+## Pumps the transport (no-op for in-memory transports; the Dev transport
+## services ENet here). The manager calls this every frame when a transport
+## exists; tests pump the Dev transport manually.
+func poll() -> void:
+	pass
 
 
 ## Host: start listening for Peers on the given port.
@@ -31,8 +44,8 @@ func serve(_port: int) -> void:
 	push_error("MpTransport.serve not implemented")
 
 
-## Peer: attempt to connect, identified by player_name.
-func join(_ip: String, _port: int, _player_name: String) -> void:
+## Peer: attempt to connect, identified by player_name and game version.
+func join(_ip: String, _port: int, _player_name: String, _version: String) -> void:
 	push_error("MpTransport.join not implemented")
 
 

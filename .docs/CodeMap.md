@@ -29,11 +29,10 @@ src/
 │
 ├── multiplayer/
 │   ├── multiplayer_manager.gd   # Manager: sub-scene swapping, connection logic, room state, role validation
-│   ├── mp_transport.gd          # MpTransport seam: serve/join/leave/close_room + message channel + events
-│   ├── dev_transport.gd         # Dev ENet transport — stub, real impl is ticket 07
+│   ├── mp_transport.gd          # MpTransport seam: serve/join/leave/close_room/kick + message channel + events + poll()
+│   ├── dev_transport.gd         # Dev transport: raw ENetConnection, handshake carries name+version
 │   ├── role_selector.tscn/.gd   # Role Selector view: Host / Join (form + Connecting…) / Back
-│   ├── waiting_room.tscn/.gd    # Waiting Room view: config bar, seats, spectator list, start/close/leave
-│   └── network_autoload.gd      # Legacy NetworkManager autoload — to be replaced by ticket 07
+│   └── waiting_room.tscn/.gd    # Waiting Room view: config bar, seats, spectator list, start/close/leave
 │
 ├── pucks/
 │   ├── base_puck.gd            # Shared puck base: HP, damage, death, attack cooldown

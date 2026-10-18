@@ -245,6 +245,24 @@ func test_confirm_locks_config_and_starts_serving() -> void:
 	assert_eq(manager.waiting_room.seat_a_name.text, "Alice", "Player A seat keeps the confirmed name")
 
 
+func test_serve_failure_keeps_config_editable_and_notifies() -> void:
+	var manager := _boot_host()
+	if manager == null:
+		return
+	var fake: FakeTransport = manager.transport
+	fake.fail_next_serve = true
+	manager.waiting_room.host_name_edit.text = "Alice"
+	manager.waiting_room.host_name_edit.emit_signal("text_changed", "Alice")
+	manager.waiting_room.confirm_button.emit_signal("pressed")
+	assert_false(manager.room_open, "The room does not open when serving fails")
+	assert_true(manager.waiting_room.host_name_edit.editable,
+		"Config stays editable so the Host can fix the port and retry")
+	assert_true(manager.notification_dialog != null, "The Host gets a Notification")
+	if manager.notification_dialog != null:
+		assert_eq(manager.notification_dialog.dialog_text, Loc.t("notif_serve_failed"),
+			"The Notification is the localized serve-failed message")
+
+
 # ----- Waiting Room: Peers joining, defaults, mirrored state -----
 
 
@@ -481,6 +499,49 @@ func test_host_offline_sends_peer_to_menu_with_notification() -> void:
 		"The Peer gets the localized host-offline Notification")
 
 
+# ----- Version Check (ticket 04) -----
+
+
+func test_matching_version_connects_into_the_waiting_room() -> void:
+	var host := _boot_confirmed_host()
+	if host == null:
+		return
+	var peer := _connect_peer("Bob")
+	if peer == null:
+		return
+	assert_true(peer.waiting_room.visible,
+		"A matching Peer connects and lands in the Waiting Room as before")
+	assert_true(host.notification_dialog == null,
+		"No version-mismatch popup on the Host")
+
+
+func test_version_mismatch_rejects_the_peer() -> void:
+	var host := _boot_confirmed_host("Alice", 4)
+	if host == null:
+		return
+	var peer := _boot()
+	if peer == null:
+		return
+	peer.transport = FakeTransport.create_peer()
+	peer.game_version = "0.0.0-bad"
+	peer.role_selector.join_button.emit_signal("pressed")
+	_submit_join_form(peer, "Bob")
+	assert_eq(peer.chosen_target.resource_path, MENU_SCENE_PATH,
+		"A mismatching Peer returns to the Menu")
+	assert_eq(PendingNotification.take_pending(), "notif_version_mismatch",
+		"The mismatching Peer gets the localized version-mismatch Notification")
+	assert_false(peer.waiting_room.visible,
+		"A mismatching Peer never lands in the Waiting Room")
+	var host_fake: FakeTransport = host.transport
+	assert_eq(host_fake.peer_count(), 0,
+		"The mismatching Peer is kicked at the transport level")
+	assert_true(host.notification_dialog != null,
+		"The Host gets a Notification popup")
+	if host.notification_dialog != null:
+		assert_eq(host.notification_dialog.dialog_text, Loc.t("notif_version_mismatch"),
+			"The Host's Notification is the localized version-mismatch message")
+
+
 # ----- Review fixes -----
 
 
@@ -549,7 +610,7 @@ func test_room_full_rejection_kicks_the_peer() -> void:
 	# A raw fake Peer with no manager behind it never complies with the
 	# rejection — the Host must force-drop it at the transport level.
 	var raw := FakeTransport.create_peer()
-	raw.join("127.0.0.1", 8910, "Carol")
+	raw.join("127.0.0.1", 8910, "Carol", "0.1.0")
 	assert_eq(host_fake.peer_count(), 1,
 		"The Host force-drops a rejected Peer at the transport level")
 

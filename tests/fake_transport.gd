@@ -10,9 +10,10 @@ extends MpTransport
 ## events with simulate_* methods; delivered messages are deep-duplicated so
 ## Host and Peer state never alias.
 
-var is_serving := false
 var served_port := 0
 var join_attempts := 0
+## When true, the next serve() emits serve_failed instead of registering.
+var fail_next_serve := false
 var _is_host := false
 var _local_id := 0
 var _host: FakeTransport = null
@@ -42,19 +43,23 @@ static func create_peer() -> FakeTransport:
 
 
 func serve(port: int) -> void:
+	if fail_next_serve:
+		fail_next_serve = false
+		serve_failed.emit()
+		return
 	is_serving = true
 	served_port = port
 	registry[port] = self
 
 
-func join(_ip: String, port: int, player_name: String) -> void:
+func join(_ip: String, port: int, player_name: String, version: String) -> void:
 	join_attempts += 1
 	var host: FakeTransport = registry.get(port)
 	if host == null or not host.is_serving:
 		join_failed.emit()
 		return
 	_host = host
-	_host._accept_peer(self, player_name)
+	_host._accept_peer(self, player_name, version)
 	join_succeeded.emit()
 
 
@@ -101,11 +106,11 @@ func kick(peer_id: int) -> void:
 
 
 ## Host-side: accept an incoming Peer, assigning the next id.
-func _accept_peer(peer: FakeTransport, peer_name: String) -> void:
+func _accept_peer(peer: FakeTransport, peer_name: String, peer_version: String) -> void:
 	peer._local_id = _next_peer_id
 	_next_peer_id += 1
 	_peers[peer._local_id] = peer
-	peer_joined.emit(peer._local_id, peer_name)
+	peer_joined.emit(peer._local_id, peer_name, peer_version)
 
 
 ## Host-side: drop the Peer record and notify.
