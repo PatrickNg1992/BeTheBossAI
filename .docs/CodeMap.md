@@ -47,8 +47,9 @@ src/
 │   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
 │
 ├── battlefield/
-│   └── battlefield.gd          # Procedural Cue Table: tiles, cushions, pockets.
-│                               # Still 20×20 square — 30×20 pending, see .scratch/cue-table/spec.md
+│   ├── battlefield.gd           # Procedural Cue Table: tiles, cushions, pockets.
+│   │                            # Still 20×20 square — 30×20 pending, see .scratch/cue-table/spec.md
+│   └── demo_battlefield.gd      # Demo battlefield root: surfaces `battle_finished` (boss died)
 │
 ├── cards/
 │   ├── base_card_info.gd       # Card data Resource: type, name, description, color

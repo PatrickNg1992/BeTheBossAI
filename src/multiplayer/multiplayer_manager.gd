@@ -17,6 +17,8 @@ enum ConnectionMode { DEV }
 ## Scene) and resolve to a pathless PackedScene.
 const MENU_SCENE_PATH := "res://src/menu/menu.tscn"
 const DEFAULT_PORT := 8910
+## Loaded lazily at Start Game (no preload weight, no preload cycle).
+const BATTLEFIELD_SCENE_PATH := "res://src/demo_bettlefield.tscn"
 ## The game version string, compared on every connect (Version Check).
 ## Mismatching Peers are rejected before any seat assignment.
 const GAME_VERSION := "0.1.0"
@@ -47,6 +49,10 @@ var chosen_target: PackedScene = null
 var game_version := GAME_VERSION
 ## The in-place Notification popup (version mismatch, etc.), when shown.
 var notification_dialog: AcceptDialog = null
+## The live Battlefield instance while a battle is running (null otherwise).
+## Loaded into the same container as the other sub-scenes on Start Game;
+## the Host's instance is authoritative (ADR-0003).
+var battlefield: Node3D = null
 
 ## Room state (Host-authoritative; Peers hold the mirrored copy).
 var peers: Dictionary = {}  # int peer_id -> {"name": String, "role": String}
@@ -181,8 +187,16 @@ func _apply_step_down(peer_id: int) -> void:
 	_render_room()
 
 
+## Host-only: Start Game loads the Battlefield into the container on every
+## Peer. Enabled exactly while both Players' Seats are taken (the button's
+## gating enforces this; the guard double-checks).
 func request_start_game() -> void:
-	pass  # Ticket 05 loads the Battlefield; ticket 03 only gates the button.
+	if not is_host or battlefield != null or transport == null:
+		return
+	if _peer_in_role(ROLE_A) == 0 or _peer_in_role(ROLE_B) == 0:
+		return
+	transport.broadcast({"type": "game_start"})
+	_start_battle()
 
 
 ## Host: Close Room kicks all Peers (they get the host-closed Notification)
@@ -200,6 +214,39 @@ func leave_room() -> void:
 		return
 	transport.leave()
 	_go_to_menu()
+
+
+# ----- battle (Start Game / return) -----
+
+## Every Peer loads the same demo Battlefield into the container; the
+## Host's instance is authoritative (ADR-0003). The battlefield root
+## carries the battle_finished seam (demo_battlefield.gd).
+func _start_battle() -> void:
+	var packed: PackedScene = load(BATTLEFIELD_SCENE_PATH)
+	battlefield = packed.instantiate()
+	_container.add_child(battlefield)
+	if battlefield.has_signal("battle_finished"):
+		battlefield.battle_finished.connect(_on_battle_finished)
+	_show_sub_scene(battlefield)
+
+
+## Host-authoritative game end: the Host decides when the battle is over
+## and tells every Peer to return to the Waiting Room (connection stays
+## open — rematches need no reconnect).
+func _on_battle_finished() -> void:
+	if not is_host or transport == null:
+		return
+	transport.broadcast({"type": "game_end"})
+	_end_battle()
+
+
+func _end_battle() -> void:
+	if battlefield != null:
+		_container.remove_child(battlefield)
+		battlefield.queue_free()
+		battlefield = null
+	_show_sub_scene(waiting_room)
+	_render_room()
 
 
 # ----- transport wiring -----
@@ -313,6 +360,10 @@ func _on_message_received(sender_id: int, message: Dictionary) -> void:
 		match message.get("type", ""):
 			"room_state":
 				_apply_room_state(message)
+			"game_start":
+				_start_battle()
+			"game_end":
+				_end_battle()
 			"rejected":
 				# E.g. room full: disconnect and land on the Menu with the
 				# localized Notification for the rejection reason.

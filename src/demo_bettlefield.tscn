@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/canvas/canvas.gd" id="4_h05ap"]
 [ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="5_h0345"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
+[ext_resource type="Script" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_table"]
 size = Vector3(20, 3, 20)
@@ -74,6 +75,7 @@ albedo_color = Color(0.2, 0.7, 0.3, 1)
 height = 0.35
 
 [node name="Node3D" type="Node3D" unique_id=741025768]
+script = ExtResource("7_demo")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
 transform = Transform3D(1, 0, 0, 0, 0.545078, 0.83838534, 0, -0.83838534, 0.545078, 0, 17.09607, 14.409155)

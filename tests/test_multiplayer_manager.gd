@@ -244,7 +244,6 @@ func test_confirm_locks_config_and_starts_serving() -> void:
 	assert_true(manager.waiting_room.confirm_button.disabled, "Confirm locks once the room opens")
 	assert_eq(manager.waiting_room.seat_a_name.text, "Alice", "Player A seat keeps the confirmed name")
 
-
 func test_serve_failure_keeps_config_editable_and_notifies() -> void:
 	var manager := _boot_host()
 	if manager == null:
@@ -637,3 +636,60 @@ func test_role_selector_labels_come_from_the_multilang_holder() -> void:
 	assert_eq(rs.host_button.text, Loc.t("role_host"), "Host button label is localized")
 	assert_eq(rs.join_button.text, Loc.t("role_join"), "Join button label is localized")
 	assert_eq(rs.back_button.text, Loc.t("role_back"), "Back button label is localized")
+
+
+# ----- Start Game and return (ticket 05) -----
+
+const BATTLEFIELD_SCENE_PATH := "res://src/demo_bettlefield.tscn"
+
+
+## Host Alice (Player A) + Bob (Player B), then Start Game pressed.
+func _boot_room_in_battle() -> Dictionary:
+	var host := _boot_confirmed_host("Alice", 2)
+	if host == null:
+		return {}
+	var bob := _connect_peer("Bob")
+	if bob == null:
+		return {}
+	host.waiting_room.start_game_button.emit_signal("pressed")
+	return {"host": host, "bob": bob}
+
+
+func test_start_game_loads_the_battlefield_on_every_peer() -> void:
+	var room := _boot_room_in_battle()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	assert_true(host.battlefield != null, "The Host loads the Battlefield")
+	assert_true(bob.battlefield != null, "The Peer loads the Battlefield")
+	if host.battlefield != null:
+		assert_true(host.battlefield.visible, "Battlefield visible on the Host")
+		assert_eq(host.battlefield.scene_file_path, BATTLEFIELD_SCENE_PATH,
+			"The Host loads the demo battlefield")
+		assert_false(host.waiting_room.visible, "Waiting Room hidden during battle")
+	if bob.battlefield != null:
+		assert_true(bob.battlefield.visible, "Battlefield visible on the Peer")
+		assert_eq(bob.battlefield.scene_file_path, BATTLEFIELD_SCENE_PATH,
+			"The Peer loads the same battlefield scene")
+		assert_false(bob.waiting_room.visible, "Peer's Waiting Room hidden during battle")
+
+
+func test_battle_end_returns_to_waiting_room_and_allows_rematch() -> void:
+	var room := _boot_room_in_battle()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	host.battlefield.emit_signal("battle_finished")
+	assert_true(host.battlefield == null, "Battlefield freed on the Host")
+	assert_true(host.waiting_room.visible, "Host returns to the Waiting Room")
+	assert_true(bob.battlefield == null, "Peer returns without reconnecting")
+	assert_true(bob.waiting_room.visible, "Peer sees the Waiting Room again")
+	assert_eq(host.waiting_room.seat_a_name.text, "Alice", "Seats survive the round-trip")
+	assert_eq(host.waiting_room.seat_b_name.text, "Bob", "Player B keeps their seat")
+	assert_false(host.waiting_room.start_game_button.disabled,
+		"Start Game re-enables after returning")
+	host.waiting_room.start_game_button.emit_signal("pressed")
+	assert_true(host.battlefield != null, "The Host can start another game")
+	assert_true(bob.battlefield != null, "The Peer enters the rematch too")
