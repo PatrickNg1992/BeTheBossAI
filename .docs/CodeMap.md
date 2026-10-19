@@ -25,7 +25,8 @@ src/
 │   ├── single_player_scene.tscn + single_player_loader.gd  # Invisible loader: OfflineMultiplayerPeer + Battlefield
 │   └── pending_notification.gd  # Pending-Notification autoload (one-slot localization key holder)
 │
-├── multiplayer_scene.tscn       # Multiplayer Scene (invisible): Container swaps Role Selector / Waiting Room
+├── multiplayer_scene.tscn       # Multiplayer Scene (invisible): Container swaps Role Selector / Waiting Room /
+│                                # Battlefield; BattleOverlay holds the battle-time Leave button (testing hatch)
 │
 ├── multiplayer/
 │   ├── multiplayer_manager.gd   # Manager: sub-scene swapping, connection logic, room state, role validation

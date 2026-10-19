@@ -13,3 +13,68 @@ script = ExtResource("1_mgr")
 
 [node name="WaitingRoom" parent="Container" instance=ExtResource("2_wait")]
 visible = false
+
+[node name="BattleOverlay" type="CanvasLayer" parent="."]
+visible = false
+
+[node name="LeaveButton" type="Button" parent="BattleOverlay"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -140.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 48.0
+grow_horizontal = 0
+text = "Leave"
+
+[connection signal="pressed" from="BattleOverlay/LeaveButton" to="." method="_on_battle_leave_pressed"]
+
+[node name="FrozenOverlay" type="CanvasLayer" parent="."]
+visible = false
+
+[node name="Dim" type="ColorRect" parent="FrozenOverlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="Center" type="CenterContainer" parent="FrozenOverlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="FrozenOverlay/Center"]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="FrozenOverlay/Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="FrozenOverlay/Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="FrozenOverlay/Center/Panel/Margin/VBox"]
+layout_mode = 2
+text = "Connecting…"
+horizontal_alignment = 1
+
+[node name="DescLabel" type="Label" parent="FrozenOverlay/Center/Panel/Margin/VBox"]
+layout_mode = 2
+text = "Waiting for the dropped player to rejoin (30s)"
+horizontal_alignment = 1
+
+[node name="LeaveButton" type="Button" parent="FrozenOverlay/Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Leave"
+
+[connection signal="pressed" from="FrozenOverlay/Center/Panel/Margin/VBox/LeaveButton" to="." method="_on_frozen_leave_pressed"]

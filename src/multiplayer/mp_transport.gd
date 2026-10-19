@@ -78,3 +78,10 @@ func send_to_host(_message: Dictionary) -> void:
 ## Host: send a message to one specific Peer.
 func send_to_peer(_peer_id: int, _message: Dictionary) -> void:
 	push_error("MpTransport.send_to_peer not implemented")
+
+
+## The local peer id — 1 for the Host, assigned for Peers (0 before the
+## welcome completes).
+func get_local_id() -> int:
+	push_error("MpTransport.get_local_id not implemented")
+	return 0

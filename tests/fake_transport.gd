@@ -105,6 +105,10 @@ func kick(peer_id: int) -> void:
 	peer.host_lost.emit()
 
 
+func get_local_id() -> int:
+	return _local_id
+
+
 ## Host-side: accept an incoming Peer, assigning the next id.
 func _accept_peer(peer: FakeTransport, peer_name: String, peer_version: String) -> void:
 	peer._local_id = _next_peer_id

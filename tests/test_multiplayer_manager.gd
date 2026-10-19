@@ -2,7 +2,7 @@ extends McpTestSuite
 
 ## Tests for the Multiplayer Scene manager: sub-scene swapping, Role
 ## Selector flow, and Waiting Room behavior. All network behavior is driven
-## through the injected FakeTransport — no real sockets.
+## through the injected FakeTransport ??no real sockets.
 
 const SCENE_PATH := "res://src/multiplayer_scene.tscn"
 const MENU_SCENE_PATH := "res://src/menu/menu.tscn"
@@ -131,7 +131,7 @@ func test_join_while_connecting_shows_connecting_state() -> void:
 	var manager: Node = parts["manager"]
 	_submit_join_form(manager, "Bob")
 	assert_eq(manager.role_selector.status_label.text, Loc.t("join_connecting"),
-		"While connecting the inline Connecting… state shows")
+		"While connecting the inline Connecting??state shows")
 	assert_true(manager.role_selector.join_form_button.disabled,
 		"Join button disabled while connecting")
 
@@ -426,7 +426,7 @@ func test_clicking_an_occupied_seat_changes_nothing() -> void:
 	var carol: Node = room["carol"]
 	carol.waiting_room.seat_a_button.emit_signal("pressed")
 	assert_eq(host.waiting_room.seat_a_name.text, "Alice",
-		"An occupied seat keeps its player — only one Player A")
+		"An occupied seat keeps its player ??only one Player A")
 	assert_true("Carol" in _spectator_names(host.waiting_room),
 		"The clicker stays a Spectator")
 
@@ -607,7 +607,7 @@ func test_room_full_rejection_kicks_the_peer() -> void:
 		return
 	var host_fake: FakeTransport = host.transport
 	# A raw fake Peer with no manager behind it never complies with the
-	# rejection — the Host must force-drop it at the transport level.
+	# rejection ??the Host must force-drop it at the transport level.
 	var raw := FakeTransport.create_peer()
 	raw.join("127.0.0.1", 8910, "Carol", "0.1.0")
 	assert_eq(host_fake.peer_count(), 1,
@@ -693,3 +693,241 @@ func test_battle_end_returns_to_waiting_room_and_allows_rematch() -> void:
 	host.waiting_room.start_game_button.emit_signal("pressed")
 	assert_true(host.battlefield != null, "The Host can start another game")
 	assert_true(bob.battlefield != null, "The Peer enters the rematch too")
+
+
+# ----- Battle-time Leave button (testing escape hatch) -----
+
+
+## Host Alice (Player A) + Bob (Player B) + Carol (Spectator), in battle.
+func _boot_room_in_battle_with_spectator() -> Dictionary:
+	var host := _boot_confirmed_host("Alice", 4)
+	if host == null:
+		return {}
+	var bob := _connect_peer("Bob")
+	var carol := _connect_peer("Carol")
+	if bob == null or carol == null:
+		return {}
+	host.waiting_room.start_game_button.emit_signal("pressed")
+	return {"host": host, "bob": bob, "carol": carol}
+
+
+func test_battle_leave_button_shown_to_host_and_players_not_spectators() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	assert_true(room["host"].battle_overlay.visible, "The Host sees the battle Leave button")
+	assert_true(room["bob"].battle_overlay.visible, "Player B sees the battle Leave button")
+	assert_false(room["carol"].battle_overlay.visible, "Spectators never see the battle Leave button")
+
+
+func test_host_battle_leave_returns_everyone_to_the_waiting_room() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	host.battle_leave_button.emit_signal("pressed")
+	assert_true(host.battlefield == null, "Battlefield freed on the Host")
+	assert_true(host.waiting_room.visible, "Host back in the Waiting Room")
+	assert_true(bob.battlefield == null, "Player B back without reconnecting")
+	assert_true(bob.waiting_room.visible, "Player B sees the Waiting Room")
+	assert_false(host.battle_overlay.visible, "Overlay hides after the battle")
+	assert_eq(host.waiting_room.seat_b_name.text, "Bob", "Seats are preserved")
+
+
+func test_player_battle_leave_returns_everyone_to_the_waiting_room() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	bob.battle_leave_button.emit_signal("pressed")
+	assert_true(host.battlefield == null, "A seated player's Leave ends the battle on the Host")
+	assert_true(bob.waiting_room.visible, "The clicking player returns to the Waiting Room")
+	assert_true(host.waiting_room.visible, "The Host returns to the Waiting Room")
+
+
+func test_spectator_cannot_end_the_battle() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var carol: Node = room["carol"]
+	# A Spectator has no button; even a forged request must be ignored.
+	carol.transport.send_to_host({"type": "end_battle_request"})
+	assert_true(host.battlefield != null, "Spectator requests never end the battle")
+	assert_true(host.battle_overlay.visible, "The battle continues on the Host")
+
+
+# ----- Rejoin Grace Period (ticket 06) -----
+
+
+func test_player_drop_mid_battle_freezes_everyone() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var carol: Node = room["carol"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(2)  # Bob (Player B) vanishes
+	assert_true(host.frozen_overlay.visible, "Host sees the frozen screen")
+	assert_true(carol.frozen_overlay.visible, "Spectators in the room see the frozen screen")
+	assert_eq(host.battlefield.process_mode, Node.PROCESS_MODE_DISABLED,
+		"The battle freezes on the Host")
+	assert_eq(carol.battlefield.process_mode, Node.PROCESS_MODE_DISABLED,
+		"The battle freezes on the Spectator")
+	assert_false(host.battle_overlay.visible, "Battle Leave hides while frozen")
+	assert_true(host.grace_active, "The grace period is running")
+
+
+func test_spectator_drop_never_freezes_the_game() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(3)  # Carol (Spectator) vanishes
+	assert_false(host.frozen_overlay.visible, "A Spectator drop never freezes the game")
+	assert_eq(host.battlefield.process_mode, Node.PROCESS_MODE_INHERIT,
+		"The battle keeps running")
+	assert_false(host.grace_active, "No grace period for a Spectator")
+	assert_false("Carol" in _spectator_names(host.waiting_room),
+		"The dropped Spectator leaves the room state")
+
+
+func test_dropped_player_rejoins_into_the_frozen_battle() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	var carol: Node = room["carol"]
+	var bob_fake: FakeTransport = bob.transport
+	bob_fake.simulate_host_lost()
+	# Bob's screen: back on the Role Selector's Join form, told why.
+	assert_true(bob.role_selector.visible, "The dropped player lands on the Role Selector")
+	assert_eq(bob.role_selector.status_label.text, Loc.t("notif_connection_lost"),
+		"The dropped player sees the connection-lost message")
+	assert_true(host.frozen_overlay.visible, "Everyone else is frozen")
+	# Bob rejoins with the same name (Version Check applies)…
+	_submit_join_form(bob, "Bob")
+	# …and lands directly in the resumed battle, skipping the Waiting Room.
+	assert_true(bob.battlefield != null, "The rejoiner is back in the battle")
+	assert_true(bob.battlefield.visible, "The rejoiner sees the battle")
+	assert_false(bob.waiting_room.visible, "Rejoining skips the Waiting Room")
+	assert_false(bob.frozen_overlay.visible, "The frozen screen lifts on resume")
+	assert_eq(bob.battlefield.process_mode, Node.PROCESS_MODE_INHERIT,
+		"The battle runs again on the rejoiner")
+	assert_eq(host.battlefield.process_mode, Node.PROCESS_MODE_INHERIT,
+		"The battle resumes on the Host")
+	assert_false(host.frozen_overlay.visible, "The Host's frozen screen lifts")
+	assert_false(host.grace_active, "The grace period ends on rejoin")
+	assert_eq(host.waiting_room.seat_b_name.text, "Bob", "The seat is reclaimed")
+	assert_true(bob.battle_overlay.visible, "The rejoiner is seated again")
+
+
+func test_grace_expiry_ends_the_game() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var carol: Node = room["carol"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(2)  # Bob (Player B) vanishes
+	assert_true(host.grace_active, "Grace started")
+	host.grace_timer.emit_signal("timeout")
+	assert_false(host.grace_active, "Grace ended")
+	assert_true(host.battlefield == null, "The Host's battle is over")
+	assert_true(host.waiting_room.visible, "The Host returns to the Waiting Room")
+	assert_true(carol.battlefield == null, "Still-connected Peers' battle is over")
+	assert_true(carol.waiting_room.visible, "Still-connected Peers return to the Waiting Room")
+	assert_eq(host.waiting_room.seat_b_name.text, Loc.t("wr_seat_empty"),
+		"The dropped player's seat empties")
+
+
+func test_frozen_leave_ends_the_grace_immediately() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var carol: Node = room["carol"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(2)  # Bob drops
+	assert_true(host.grace_active, "Grace started")
+	# A still-connected Peer clicks Leave on the frozen screen.
+	carol.frozen_leave_button.emit_signal("pressed")
+	assert_false(host.grace_active, "Leave ends the grace period immediately")
+	assert_true(host.waiting_room.visible, "Host returns to the Waiting Room")
+	assert_true(carol.waiting_room.visible, "Still-connected Peers return to the Waiting Room")
+	assert_true(carol.battlefield == null, "The battle is over for everyone")
+
+
+func test_non_matching_join_during_grace_is_rejected() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(2)  # Bob drops; grace starts
+	var dave := _connect_peer("Dave")
+	if dave == null:
+		return
+	assert_eq(dave.chosen_target.resource_path, MENU_SCENE_PATH,
+		"A different-named join during grace returns to the Menu")
+	assert_eq(PendingNotification.take_pending(), "notif_rejoin_only",
+		"They get the rejoin-only Notification")
+	assert_true(host.grace_active, "The grace period survives the rejected join")
+	assert_true(host.frozen_overlay.visible, "The battle stays frozen")
+
+
+func test_late_join_after_grace_expiry_is_rejected() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var host_fake: FakeTransport = host.transport
+	host_fake.simulate_peer_drop(2)  # Bob drops; grace starts
+	host.grace_timer.emit_signal("timeout")  # grace expires
+	var bob_late := _connect_peer("Bob")
+	if bob_late == null:
+		return
+	assert_eq(bob_late.chosen_target.resource_path, MENU_SCENE_PATH,
+		"A late joiner after expiry returns to the Menu")
+	assert_eq(PendingNotification.take_pending(), "notif_grace_expired",
+		"They get the game-ended Notification")
+
+
+func test_spectator_auto_reconnects_once_after_a_drop() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var carol: Node = room["carol"]
+	var carol_fake: FakeTransport = carol.transport
+	carol_fake.simulate_host_lost()
+	# The Spectator's own screen quietly retries the join (story 40)…
+	assert_true(carol.waiting_room.visible,
+		"…and lands back as a Spectator in the Waiting Room")
+	assert_false(host.grace_active, "The Host never froze")
+	assert_true(host.battlefield != null, "The match was never interrupted")
+	assert_true("Carol" in _spectator_names(host.waiting_room),
+		"The Spectator reappears in the room state")
+
+
+func test_rejoin_with_wrong_version_is_rejected() -> void:
+	var room := _boot_room_in_battle_with_spectator()
+	if room.is_empty():
+		return
+	var host: Node = room["host"]
+	var bob: Node = room["bob"]
+	var bob_fake: FakeTransport = bob.transport
+	bob_fake.simulate_host_lost()
+	# Version Check applies to rejoins, exactly like fresh joins.
+	bob.game_version = "0.0.0-bad"
+	_submit_join_form(bob, "Bob")
+	assert_eq(bob.chosen_target.resource_path, MENU_SCENE_PATH,
+		"A version-mismatched rejoin returns to the Menu")
+	assert_eq(PendingNotification.take_pending(), "notif_version_mismatch",
+		"The rejected rejoin gets the version-mismatch Notification")
+	assert_true(host.grace_active, "The grace period survives the rejected rejoin")
+	assert_true(host.frozen_overlay.visible, "The battle stays frozen for the room")

@@ -26,6 +26,7 @@ var _peers := {}  # host: logical id -> ENetPacketPeer (welcomed)
 var _pending: Array = []  # host: ENetPacketPeer awaiting hello
 var _server_peer: ENetPacketPeer = null  # client side
 var _welcomed := false
+var _local_id := 0  # client: assigned by the Host's welcome
 var _closed_cleanly := false
 var _connect_started_ms := -1
 var _join_name := ""
@@ -116,6 +117,10 @@ func send_to_peer(peer_id: int, message: Dictionary) -> void:
 	_conn.flush()
 
 
+func get_local_id() -> int:
+	return 1 if is_host else _local_id
+
+
 ## Services ENet: delivers events and enforces the connect deadline.
 ## Called by the manager every frame; tests pump it manually.
 func poll() -> void:
@@ -146,6 +151,7 @@ func dispose() -> void:
 	_welcomed = false
 	_closed_cleanly = false
 	_connect_started_ms = -1
+	_local_id = 0
 	is_serving = false
 
 
@@ -190,6 +196,7 @@ func _on_packet(peer: ENetPacketPeer, packet: Variant) -> void:
 			peer_joined.emit(id, packet.get("name", ""), packet.get("version", ""))
 		"welcome":
 			_welcomed = true
+			_local_id = packet.get("id", 0)
 			join_succeeded.emit()
 		"msg":
 			message_received.emit(_logical_id_of(peer), packet.get("d", {}))

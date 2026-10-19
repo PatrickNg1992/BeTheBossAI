@@ -22,6 +22,8 @@ const BATTLEFIELD_SCENE_PATH := "res://src/demo_bettlefield.tscn"
 ## The game version string, compared on every connect (Version Check).
 ## Mismatching Peers are rejected before any seat assignment.
 const GAME_VERSION := "0.1.0"
+## Rejoin Grace Period length in seconds (ADR-0004; configurable later).
+const GRACE_SECONDS := 30
 
 ## In-room roles (Player A / Player B / Spectator). The Host is peer id 1.
 const ROLE_A := "a"
@@ -32,6 +34,12 @@ const HOST_ID := 1
 @onready var role_selector: RoleSelector = $Container/RoleSelector
 @onready var waiting_room: WaitingRoom = $Container/WaitingRoom
 @onready var _container: Node = $Container
+@onready var battle_overlay: CanvasLayer = $BattleOverlay
+@onready var battle_leave_button: Button = $BattleOverlay/LeaveButton
+@onready var frozen_overlay: CanvasLayer = $FrozenOverlay
+@onready var frozen_title_label: Label = $FrozenOverlay/Center/Panel/Margin/VBox/TitleLabel
+@onready var frozen_desc_label: Label = $FrozenOverlay/Center/Panel/Margin/VBox/DescLabel
+@onready var frozen_leave_button: Button = $FrozenOverlay/Center/Panel/Margin/VBox/LeaveButton
 
 ## How Peers connect. v1: Dev mode only (direct IP + port); Steam is
 ## undecided and slots into _create_transport().
@@ -54,6 +62,22 @@ var notification_dialog: AcceptDialog = null
 ## the Host's instance is authoritative (ADR-0003).
 var battlefield: Node3D = null
 
+## Rejoin Grace Period state (ADR-0004): a seated player dropped mid-battle
+## and the battle is frozen until they rejoin or the grace ends.
+var grace_active := false
+## The grace timer; created at first freeze. Tests drive expiry by emitting
+## its timeout signal (no frame waiting in tests).
+var grace_timer: Timer = null
+var _dropped_name := ""
+var _dropped_role := ""
+## True on the Peer who rejoined into the frozen battle (their frozen Leave
+## routes to the Menu).
+var _am_rejoiner := false
+## Names rejected on join once their grace expired (story 39).
+var _grace_expired_names: Array[String] = []
+## Last submitted join credentials (spectator auto-reconnect, rejoin).
+var _last_join := {}
+
 ## Room state (Host-authoritative; Peers hold the mirrored copy).
 var peers: Dictionary = {}  # int peer_id -> {"name": String, "role": String}
 var host_name := ""
@@ -70,6 +94,16 @@ var _join_pending := false
 func _ready() -> void:
 	role_selector.manager = self
 	waiting_room.manager = self
+	_update_overlay_text()
+	Loc.language_changed.connect(_update_overlay_text)
+
+
+func _update_overlay_text() -> void:
+	battle_leave_button.text = Loc.t("wr_leave")
+	frozen_title_label.text = Loc.t("join_connecting")
+	frozen_leave_button.text = Loc.t("wr_leave")
+	if frozen_overlay.visible:
+		frozen_desc_label.text = Loc.t("frozen_waiting", {"seconds": GRACE_SECONDS})
 
 
 ## Pumps the transport every frame (no-op for in-memory transports).
@@ -105,6 +139,7 @@ func submit_join(player_name: String, ip: String, port_text: String) -> void:
 	is_host = false
 	_ensure_transport()
 	var port := int(port_text) if port_text.is_valid_int() else DEFAULT_PORT
+	_last_join = {"name": trimmed, "ip": ip, "port": port_text}
 	_join_pending = true
 	role_selector.set_status("join_connecting")
 	role_selector.set_connecting(true)
@@ -195,6 +230,7 @@ func request_start_game() -> void:
 		return
 	if _peer_in_role(ROLE_A) == 0 or _peer_in_role(ROLE_B) == 0:
 		return
+	_grace_expired_names.clear()  # a fresh battle ends the old rejection list
 	transport.broadcast({"type": "game_start"})
 	_start_battle()
 
@@ -216,6 +252,83 @@ func leave_room() -> void:
 	_go_to_menu()
 
 
+# ----- Rejoin Grace Period (ADR-0004) -----
+
+## Freeze the battle locally and show the frozen screen.
+func _freeze_battle() -> void:
+	if battlefield != null:
+		battlefield.process_mode = Node.PROCESS_MODE_DISABLED
+	frozen_desc_label.text = Loc.t("frozen_waiting", {"seconds": GRACE_SECONDS})
+	frozen_overlay.visible = true
+	_update_battle_overlay()
+
+
+## Unfreeze locally after the dropped player rejoined.
+func _unfreeze_battle() -> void:
+	if battlefield != null:
+		battlefield.process_mode = Node.PROCESS_MODE_INHERIT
+	frozen_overlay.visible = false
+	_update_battle_overlay()
+
+
+func _ensure_grace_timer() -> Timer:
+	if grace_timer == null:
+		grace_timer = Timer.new()
+		grace_timer.one_shot = true
+		grace_timer.timeout.connect(_end_grace_period)
+		add_child(grace_timer)
+	return grace_timer
+
+
+## Host-side: the dropped player rejoined during grace — restore their
+## role, send them straight into the frozen battle (skipping the Waiting
+## Room), then resume everyone.
+func _accept_rejoin(peer_id: int, peer_name: String) -> void:
+	# Re-key the reserved seat to the new peer id.
+	for old_id in peers.keys():
+		if peers[old_id].get("name", "") == _dropped_name and peers[old_id].get("role", "") == _dropped_role:
+			peers.erase(old_id)
+			break
+	peers[peer_id] = {"name": peer_name, "role": _dropped_role}
+	grace_active = false
+	_ensure_grace_timer().stop()
+	transport.send_to_peer(peer_id, {"type": "rejoin_battle"})
+	transport.broadcast({"type": "battle_resumed"})
+	_unfreeze_battle()
+	_broadcast_room_state()
+
+
+## Grace ended (timer expiry, or a Leave on the frozen screen): the game
+## ends — still-connected Peers return to the Waiting Room with the seat
+## emptied; the dropped player is rejected if they join later (story 39).
+func _end_grace_period() -> void:
+	if not grace_active:
+		return
+	grace_active = false
+	_ensure_grace_timer().stop()
+	_grace_expired_names.append(_dropped_name)
+	for peer_id in peers.keys():
+		if peers[peer_id].get("name", "") == _dropped_name and peers[peer_id].get("role", "") == _dropped_role:
+			peers.erase(peer_id)
+			break
+	transport.broadcast({"type": "grace_ended"})
+	_end_battle()
+	_broadcast_room_state()
+
+
+## Frozen-screen Leave: the Host ends the grace directly; the rejoined
+## dropped player ends it AND exits to the Menu; other Peers just ask.
+func _on_frozen_leave_pressed() -> void:
+	if is_host:
+		_end_grace_period()
+	elif _am_rejoiner:
+		transport.send_to_host({"type": "grace_leave"})
+		transport.leave()
+		_go_to_menu()
+	else:
+		transport.send_to_host({"type": "grace_leave"})
+
+
 # ----- battle (Start Game / return) -----
 
 ## Every Peer loads the same demo Battlefield into the container; the
@@ -228,12 +341,36 @@ func _start_battle() -> void:
 	if battlefield.has_signal("battle_finished"):
 		battlefield.battle_finished.connect(_on_battle_finished)
 	_show_sub_scene(battlefield)
+	_update_battle_overlay()
+
+
+## The battle-time Leave button (testing escape hatch) is visible during a
+## running, unfrozen battle, for the Host and seated players only.
+func _update_battle_overlay() -> void:
+	battle_overlay.visible = battlefield != null and not frozen_overlay.visible \
+		and (is_host or _my_role() != ROLE_SPECTATOR)
 
 
 ## Host-authoritative game end: the Host decides when the battle is over
 ## and tells every Peer to return to the Waiting Room (connection stays
 ## open — rematches need no reconnect).
 func _on_battle_finished() -> void:
+	_end_battle_for_all()
+
+
+## Battle-time Leave button: the Host ends the battle directly; a seated
+## player sends a request the Host validates; Spectators have no button.
+func _on_battle_leave_pressed() -> void:
+	if battlefield == null:
+		return
+	if is_host:
+		_end_battle_for_all()
+	elif _my_role() != ROLE_SPECTATOR:
+		transport.send_to_host({"type": "end_battle_request"})
+
+
+## Host-side: end the battle on every Peer and locally.
+func _end_battle_for_all() -> void:
 	if not is_host or transport == null:
 		return
 	transport.broadcast({"type": "game_end"})
@@ -245,8 +382,33 @@ func _end_battle() -> void:
 		_container.remove_child(battlefield)
 		battlefield.queue_free()
 		battlefield = null
+	frozen_overlay.visible = false
+	_am_rejoiner = false
+	_update_battle_overlay()
 	_show_sub_scene(waiting_room)
 	_render_room()
+
+
+## Peer-side teardown when the link to the Host dies mid-battle: free the
+## local battle and overlays (the Host's room decides the rest).
+func _teardown_battle_local() -> void:
+	if battlefield != null:
+		_container.remove_child(battlefield)
+		battlefield.queue_free()
+		battlefield = null
+	battle_overlay.visible = false
+	frozen_overlay.visible = false
+
+
+## The local Peer's role from the room state (Spectator when unknown).
+func _my_role() -> String:
+	var my_id := HOST_ID
+	if not is_host:
+		if transport == null:
+			return ROLE_SPECTATOR
+		my_id = transport.get_local_id()
+	var info: Dictionary = peers.get(my_id, {})
+	return info.get("role", ROLE_SPECTATOR)
 
 
 # ----- transport wiring -----
@@ -289,6 +451,19 @@ func _on_peer_joined(peer_id: int, peer_name: String, peer_version: String) -> v
 		transport.kick(peer_id)
 		_show_notification("notif_version_mismatch")
 		return
+	# During the grace period only the dropped player may join (rejoin).
+	if grace_active:
+		if peer_name == _dropped_name:
+			_accept_rejoin(peer_id, peer_name)
+		else:
+			transport.send_to_peer(peer_id, {"type": "rejected", "reason": "rejoin_only"})
+			transport.kick(peer_id)
+		return
+	# A late join after the grace expired: the game is dead (story 39).
+	if _grace_expired_names.has(peer_name):
+		transport.send_to_peer(peer_id, {"type": "rejected", "reason": "grace_expired"})
+		transport.kick(peer_id)
+		return
 	# Room Capacity reached: reject, then kick — enforcement does not rely
 	# on the Peer leaving voluntarily.
 	if peers.size() >= capacity:
@@ -310,9 +485,24 @@ func _on_peer_joined(peer_id: int, peer_name: String, peer_version: String) -> v
 func _on_peer_dropped(peer_id: int) -> void:
 	if not is_host:
 		return
-	if peers.erase(peer_id):
-		_broadcast_room_state()
-		_render_room()
+	var info: Dictionary = peers.get(peer_id, {})
+	if info.is_empty():
+		return
+	var role: String = info.get("role", ROLE_SPECTATOR)
+	if battlefield != null and (role == ROLE_A or role == ROLE_B):
+		# A seated player dropped mid-battle: freeze for everyone and start
+		# the Rejoin Grace Period (ADR-0004). The seat stays reserved by name.
+		_dropped_name = info.get("name", "")
+		_dropped_role = role
+		grace_active = true
+		_freeze_battle()
+		transport.broadcast({"type": "battle_frozen"})
+		_ensure_grace_timer().start(GRACE_SECONDS)
+		return
+	# Waiting-room drop, or a Spectator mid-battle: never freezes the game.
+	peers.erase(peer_id)
+	_broadcast_room_state()
+	_render_room()
 
 
 func _on_join_succeeded() -> void:
@@ -331,6 +521,20 @@ func _on_join_failed() -> void:
 
 
 func _on_host_lost() -> void:
+	if battlefield != null:
+		var my_role := _my_role()
+		_teardown_battle_local()
+		_show_sub_scene(role_selector)
+		role_selector.show_join_form()
+		if my_role == ROLE_SPECTATOR:
+			# Spectator drop: never freezes the game — quietly try to
+			# reconnect once; a "Connecting…" shows only here (story 40).
+			if not _last_join.is_empty():
+				submit_join(_last_join["name"], _last_join["ip"], _last_join["port"])
+		else:
+			# Dropped player: land on the Role Selector to rejoin (story 36).
+			role_selector.set_status("notif_connection_lost")
+		return
 	# The Host went offline while waiting: back to the Menu, notified.
 	PendingNotification.set_pending("notif_host_offline")
 	_go_to_menu()
@@ -350,12 +554,19 @@ func _on_serve_failed() -> void:
 
 func _on_message_received(sender_id: int, message: Dictionary) -> void:
 	if is_host:
-		# Peers send role-change requests; the Host validates them.
+		# Peers send role-change and battle-end requests; the Host validates.
 		match message.get("type", ""):
 			"take_seat":
 				_apply_take_seat(sender_id, message.get("seat", ""))
 			"step_down":
 				_apply_step_down(sender_id)
+			"end_battle_request":
+				# Only a seated player may end the battle; Spectators can't.
+				if battlefield != null and peers.get(sender_id, {}).get("role", ROLE_SPECTATOR) != ROLE_SPECTATOR:
+					_end_battle_for_all()
+			"grace_leave":
+				if grace_active:
+					_end_grace_period()
 	else:
 		match message.get("type", ""):
 			"room_state":
@@ -363,6 +574,20 @@ func _on_message_received(sender_id: int, message: Dictionary) -> void:
 			"game_start":
 				_start_battle()
 			"game_end":
+				_end_battle()
+			"battle_frozen":
+				# A seated player dropped: freeze and show "Connecting…".
+				_freeze_battle()
+			"battle_resumed":
+				_unfreeze_battle()
+			"rejoin_battle":
+				# We are the dropped player: land directly in the frozen
+				# battle, skipping the Waiting Room.
+				_am_rejoiner = true
+				_start_battle()
+				_freeze_battle()
+			"grace_ended":
+				# The game ended: still-connected Peers return to the room.
 				_end_battle()
 			"rejected":
 				# E.g. room full: disconnect and land on the Menu with the
@@ -407,7 +632,11 @@ func _apply_room_state(message: Dictionary) -> void:
 	peers.clear()
 	for id_key in message.get("peers", {}):
 		peers[int(id_key)] = message["peers"][id_key]
-	_show_sub_scene(waiting_room)
+	# Mid-battle room-state (e.g. on a rejoin) must not swap to the room.
+	if battlefield == null:
+		_show_sub_scene(waiting_room)
+	else:
+		_update_battle_overlay()
 	_render_room()
 
 

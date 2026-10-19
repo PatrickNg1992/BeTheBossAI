@@ -65,6 +65,9 @@ const EN := {
 	notif_version_mismatch = "Version mismatch.",
 	notif_room_full = "The room is full.",
 	notif_serve_failed = "Could not open the room on that port.",
+	frozen_waiting = "Waiting for the dropped player to rejoin ({seconds}s)",
+	notif_rejoin_only = "A battle is in progress — only the dropped player can rejoin.",
+	notif_grace_expired = "The game already ended.",
 }
 
 const ZH := {
@@ -119,6 +122,9 @@ const ZH := {
 	notif_version_mismatch = "版本不匹配。",
 	notif_room_full = "房间已满。",
 	notif_serve_failed = "无法在该端口开启房间。",
+	frozen_waiting = "等待掉线玩家重新加入（{seconds} 秒）",
+	notif_rejoin_only = "战斗进行中——仅掉线玩家可重新加入。",
+	notif_grace_expired = "对局已结束。",
 }
 
 

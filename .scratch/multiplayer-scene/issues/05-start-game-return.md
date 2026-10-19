@@ -16,3 +16,5 @@
 - [x] The same Battlefield scene is loaded on all Peers, with the Host's instance authoritative
 - [x] When the battle ends, every Peer returns to the Waiting Room without reconnecting
 - [x] After returning, the Host can start another game
+
+**Addition (user-requested testing hatch):** battle-time **Leave** button on a new `BattleOverlay` (top-right, `multiplayer_scene.tscn`) — visible to Host + seated players only, never Spectators. Clicking ends the battle for everyone (Host direct; seated players send `end_battle_request` the Host validates; Spectator requests ignored) and returns all to the Waiting Room. `get_local_id()` reintroduced on the transport seam so a Peer knows its own role.
