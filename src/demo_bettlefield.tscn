@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="5_h0345"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
 [ext_resource type="Script" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
+[ext_resource type="PackedScene" path="res://src/canvas/time_board.tscn" id="8_tb"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_table"]
 size = Vector3(20, 3, 20)
@@ -239,6 +240,9 @@ offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="TimeBoard" parent="Canvas" instance=ExtResource("8_tb")]
+demo_mode = true
 
 [node name="CardSystem" type="CanvasLayer" parent="Canvas" unique_id=1289326118]
 script = ExtResource("5_h0345")
