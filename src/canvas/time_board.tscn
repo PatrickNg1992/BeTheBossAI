@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/canvas/time_board.gd" id="1_tb"]
 [ext_resource type="Texture2D" path="res://src/resource/battlefield/wood_panel.png" id="2_wood"]
-[ext_resource type="Texture2D" path="res://src/resource/battlefield/sword.png" id="3_sword"]
+[ext_resource type="Texture2D" path="res://src/resource/battlefield/goal_flag.png" id="4_flag"]
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_wood"]
 texture = ExtResource("2_wood")
@@ -42,11 +42,12 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="SwordL" type="TextureRect" parent="Frame/Margin/Content"]
+[node name="Flag" type="TextureRect" parent="Frame/Margin/Content"]
+custom_minimum_size = Vector2(28, 36)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
-texture = ExtResource("3_sword")
+texture = ExtResource("4_flag")
 stretch_mode = 5
 
 [node name="Board" type="VBoxContainer" parent="Frame/Margin/Content"]
@@ -70,10 +71,3 @@ mouse_filter = 2
 layout_mode = 2
 mouse_filter = 2
 
-[node name="SwordR" type="TextureRect" parent="Frame/Margin/Content"]
-flip_h = true
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-texture = ExtResource("3_sword")
-stretch_mode = 5

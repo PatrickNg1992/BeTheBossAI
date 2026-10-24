@@ -56,10 +56,10 @@ func _make_wood_panel() -> void:
 	_save(img, "wood_panel.png")
 
 
-## Chunky pennant arrow, 26x16: shaft + triangle head. Bone white.
+## Chunky pennant arrow, 32x18: shaft + triangle head. Bone white.
 func _make_arrow(name: String, down: bool) -> void:
-	var w := 26
-	var h := 16
+	var w := 32
+	var h := 18
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var bone := Color(0.9, 0.86, 0.72, 1)
@@ -82,10 +82,10 @@ func _make_arrow(name: String, down: bool) -> void:
 	_save(img, name)
 
 
-## 20x24 flag-on-pole goal marker: brown pole, red pennant.
+## 28x36 flag-on-pole goal marker: brown pole, red pennant.
 func _make_goal_flag() -> void:
-	var w := 20
-	var h := 24
+	var w := 28
+	var h := 36
 	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	img.fill(Color(0, 0, 0, 0))
 	var pole := Color(0.3, 0.2, 0.11, 1)
@@ -93,14 +93,14 @@ func _make_goal_flag() -> void:
 	var dark_red := Color(0.5, 0.1, 0.09, 1)
 	for y in range(h):
 		for x in range(w):
-			if x >= 3 and x <= 4 and y >= 1:
+			if x >= 4 and x <= 5 and y >= 1:
 				img.set_pixel(x, y, pole)
-			# pennant: triangle from (5,2) to (17,5) to (5,9)
-			if y >= 2 and y <= 9 and x >= 5:
-				var t := float(y - 2) / 7.0
-				var reach := lerpf(12.0, 0.0, abs(t - 0.45) * 2.0)
-				if x - 5 <= reach:
-					img.set_pixel(x, y, dark_red if y >= 8 else red)
+			# pennant: triangle from (6,2) to (25,8) to (6,14)
+			if y >= 2 and y <= 14 and x >= 6:
+				var t := float(y - 2) / 12.0
+				var reach := lerpf(19.0, 0.0, abs(t - 0.45) * 2.0)
+				if x - 6 <= reach:
+					img.set_pixel(x, y, dark_red if y >= 13 else red)
 	_save(img, "goal_flag.png")
 
 

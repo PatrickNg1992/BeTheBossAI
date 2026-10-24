@@ -60,7 +60,12 @@ src/
 │
 ├── canvas/
 │   ├── canvas.gd               # HUD: boss multi-bar HP, enemy health bars, warnings
-│   └── card_canvas.gd          # Card UI: hand, selection, casting area + CD, deck/discard windows
+│   ├── card_canvas.gd          # Card UI: hand, selection, casting area + CD, deck/discard windows
+│   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, tag arrows (dumb view)
+│
+├── resource/
+│   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, goal_flag, sword PNGs
+│                               # (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
     └── localization.gd         # EN/ZH localization (autoload)

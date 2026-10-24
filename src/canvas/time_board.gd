@@ -3,11 +3,13 @@ extends Control
 
 ## The Time Board view: a dumb renderer for board state fed to it.
 ## Two serpentine 10-slot bars — slot 0 lower-left, slot 9 lower-right,
-## slot 10 upper-right, slot 19 (the goal, flagged) upper-left. The Energy
-## fill grows from slot 0 along the path; the charging slot fills smoothly
-## over the Turn. Tags are pennant arrows above the upper bar / below the
-## lower bar pointing into the bar, the unit count printed on the arrow and
-## the Turns-to-goal integer outside it.
+## slot 10 upper-right, slot 19 (the goal) upper-left. The Energy fill grows
+## from slot 0 along the path; the charging slot fills smoothly over the
+## Turn. Tags are pennant arrows above the upper bar / below the lower bar,
+## resting ON slot edges (the leading edge in the path direction) with the
+## unit count printed on the arrow and the Turns-to-goal integer outside it.
+## The integers count down exactly when a gliding arrow lands on the next
+## edge — never while it sits mid-box.
 ##
 ## All motion lives here and only here: smooth charging, a pop when a slot
 ## completes, the one-slot tag glide, the 9→10 fade-teleport wrap, and the
@@ -24,7 +26,7 @@ const SLOT_COUNT := 20
 const BAR_SIZE := 10
 const GOAL_SLOT := 19
 
-@export var slot_size := Vector2(30, 12)
+@export var slot_size := Vector2(32, 12)
 @export var slot_gap := 3.0
 ## Turn duration — the single configurable time knob (default 1s). Tag
 ## glides run this long so indicators slide continuously.
@@ -38,10 +40,8 @@ const GOAL_SLOT := 19
 @export var charging_color := Color(0.95, 0.72, 0.18, 0.4)
 @export var turns_color := Color(0.92, 0.86, 0.68, 1.0)
 @export var count_color := Color(0.22, 0.1, 0.06, 1.0)
-@export var wood_texture: Texture2D = preload("res://src/resource/battlefield/wood_panel.png")
 @export var arrow_down_texture: Texture2D = preload("res://src/resource/battlefield/arrow_down.png")
 @export var arrow_up_texture: Texture2D = preload("res://src/resource/battlefield/arrow_up.png")
-@export var flag_texture: Texture2D = preload("res://src/resource/battlefield/goal_flag.png")
 ## Ticket-01 scaffolding: cycle a crafted state to preview the animations.
 @export var demo_mode := false
 
@@ -85,10 +85,6 @@ func _build_board() -> void:
 	_tag_turns.resize(SLOT_COUNT)
 	_tag_counts.resize(SLOT_COUNT)
 	_tag_arrows.resize(SLOT_COUNT)
-	# The goal flag leads the upper bar (goal = slot 19 at the upper-left);
-	# a matching spacer keeps the upper tag row aligned with its slots.
-	_upper_bar.add_child(_make_flag_cell())
-	_upper_tags.add_child(_make_spacer_cell())
 	# Lower bar: slots 0..9 left→right. Upper bar: slots 19..10 left→right.
 	for slot in range(BAR_SIZE):
 		_lower_bar.add_child(_make_slot_cell(slot, false))
@@ -97,27 +93,6 @@ func _build_board() -> void:
 		var slot := GOAL_SLOT - column
 		_upper_bar.add_child(_make_slot_cell(slot, true))
 		_upper_tags.add_child(_make_tag_cell(slot, true))
-
-
-func _make_flag_cell() -> Control:
-	var cell := Control.new()
-	cell.custom_minimum_size = slot_size
-	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var flag := TextureRect.new()
-	flag.texture = flag_texture
-	flag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	flag.custom_minimum_size = Vector2(slot_size.x, slot_size.y + 6.0)
-	flag.position = Vector2(0, -6.0)
-	flag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	cell.add_child(flag)
-	return cell
-
-
-func _make_spacer_cell() -> Control:
-	var cell := Control.new()
-	cell.custom_minimum_size = slot_size
-	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return cell
 
 
 func _make_slot_cell(slot: int, upper: bool) -> Control:
@@ -151,26 +126,29 @@ func _make_slot_cell(slot: int, upper: bool) -> Control:
 	return cell
 
 
+## A tag cell holds one slot's tag. The mover (arrow + integers) rests with
+## the arrow centered on the slot's LEADING edge — the boundary in the path
+## direction — so tags sit on box edges, never mid-box.
 func _make_tag_cell(slot: int, upper: bool) -> Control:
 	var cell := Control.new()
-	cell.custom_minimum_size = Vector2(slot_size.x, slot_size.y + 14.0)
+	cell.custom_minimum_size = Vector2(slot_size.x, slot_size.y + 17.0)
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# The mover is the animated content: glides offset, or fades for the wrap.
 	var mover := Control.new()
 	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mover.modulate.a = 0.0
+	mover.position.x = _edge_offset(upper)
 	cell.add_child(mover)
 	var turns := Label.new()
 	turns.modulate = turns_color
-	turns.add_theme_font_size_override("font_size", 11)
+	turns.add_theme_font_size_override("font_size", 13)
 	turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	turns.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	turns.size = Vector2(slot_size.x, 12)
+	turns.size = Vector2(slot_size.x, 15)
 	turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mover.add_child(turns)
 	# The count sits on the arrow itself, in a contrasting color.
 	var arrow_frame := Control.new()
-	arrow_frame.size = Vector2(slot_size.x, slot_size.y + 2)
+	arrow_frame.size = Vector2(slot_size.x, slot_size.y + 6.0)
 	arrow_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var arrow := TextureRect.new()
 	arrow.texture = arrow_down_texture if upper else arrow_up_texture
@@ -180,25 +158,33 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	arrow_frame.add_child(arrow)
 	var count := Label.new()
 	count.modulate = count_color
-	count.add_theme_font_size_override("font_size", 11)
+	count.add_theme_font_size_override("font_size", 12)
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	arrow_frame.add_child(count)
 	mover.add_child(arrow_frame)
-	# Arrow nearest the bar, Turns integer outermost.
+	# Arrow nearest the bar, Turns integer outermost, with a gap so the
+	# arrow never overlaps the text line.
 	if upper:
 		turns.position = Vector2.ZERO
-		arrow_frame.position = Vector2(0, 12)
+		arrow_frame.position = Vector2(0, 17)
 	else:
 		arrow_frame.position = Vector2.ZERO
-		turns.position = Vector2(0, slot_size.y + 2)
+		turns.position = Vector2(0, slot_size.y + 8)
 	_tag_movers[slot] = mover
 	_tag_arrows[slot] = arrow
 	_tag_counts[slot] = count
 	_tag_turns[slot] = turns
 	return cell
+
+
+## The mover's resting x inside its cell: the slot's leading edge (right on
+## the lower bar, left on the upper bar — the path direction).
+func _edge_offset(upper: bool) -> float:
+	var direction := -1.0 if upper else 1.0
+	return direction * (slot_size.x / 2.0 + slot_gap / 2.0)
 
 
 # ----- public view API (the model→view seam) -----
@@ -220,31 +206,39 @@ func apply_state(state: Dictionary) -> void:
 	var old_energy: int = old.get("energy", 0)
 	var old_tags: Dictionary = old.get("tags", {})
 	var new_tags: Dictionary = state.get("tags", {})
+	# Detect movement before rendering (same count one slot further along
+	# the path = the same tag gliding; 9→10 wraps with a fade-teleport).
+	var glides: Array = []
+	var teleports: Array = []
+	for slot in new_tags:
+		if old_tags.has(slot):
+			continue
+		var prev: int = slot - 1
+		if old_tags.has(prev) and old_tags[prev].get("count", -1) == new_tags[slot].get("count", -2):
+			if prev == 9 and slot == 10:
+				teleports.append([prev, slot])
+			else:
+				glides.append([prev, slot])
 	if new_energy < old_energy:
 		kind = "rewind"
 		_play_rewind(old_energy, new_energy)
 	elif new_energy > old_energy:
 		for slot in range(old_energy, new_energy):
 			_play_charge_pop(slot)
-	# Tag movement: same count one slot further along the path = a glide;
-	# crossing 9→10 wraps with a fade-teleport.
-	for slot in new_tags:
-		var moved_from := -1
-		if not old_tags.has(slot):
-			var prev: int = slot - 1
-			if old_tags.has(prev) and old_tags[prev].get("count", -1) == new_tags[slot].get("count", -2):
-				moved_from = prev
-		if moved_from == 9 and slot == 10:
-			kind = "fade_teleport"
-			_play_fade_teleport(moved_from, slot)
-		elif moved_from >= 0:
-			if kind == "":
-				kind = "glide"
-			_play_glide(moved_from, slot)
+	if not teleports.is_empty():
+		kind = "fade_teleport"
+	elif not glides.is_empty():
+		kind = "glide"
 	last_animation_kind = kind
 	_state = state.duplicate(true)
 	_render_energy(state.get("energy", 0), state.get("charge", 0.0), true)
-	_render_tags(state.get("tags", {}))
+	_render_tags(new_tags)
+	# Post-render fix-ups: movers in motion show their OLD numbers until the
+	# arrow lands on the next edge, then count down.
+	for pair in glides:
+		_play_glide(pair[0], pair[1], old_tags[pair[0]], new_tags[pair[1]])
+	for pair in teleports:
+		_play_fade_teleport(pair[0], pair[1], old_tags[pair[0]])
 
 
 # ----- observable renderable output (test seam; never tween internals) -----
@@ -253,8 +247,7 @@ func slot_bar(slot: int) -> String:
 	return "upper" if slot >= BAR_SIZE else "lower"
 
 
-## Left-to-right screen column of a slot within its bar (0 = leftmost),
-## not counting the goal-flag prefix cell.
+## Left-to-right screen column of a slot within its bar (0 = leftmost).
 func slot_column(slot: int) -> int:
 	return GOAL_SLOT - slot if slot >= BAR_SIZE else slot
 
@@ -265,16 +258,17 @@ func slot_fill_ratio(slot: int) -> float:
 	return _fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Tag render info for a slot: {"side", "count", "turns", "arrow"}, or empty
-## when no tag is rendered there. Arrow is the actual texture direction.
+## Tag render info for a slot: {"side", "count", "turns", "arrow"} from the
+## committed state, or empty when no tag is rendered there. (Transient
+## in-flight label text is motion, not renderable output.)
 func tag_info(slot: int) -> Dictionary:
-	var mover := _tag_movers[slot]
-	if mover == null or mover.modulate.a <= 0.0:
+	var tags: Dictionary = _state.get("tags", {})
+	if not tags.has(slot):
 		return {}
 	return {
 		"side": "above" if slot >= BAR_SIZE else "below",
-		"count": int(_tag_counts[slot].text),
-		"turns": int(_tag_turns[slot].text),
+		"count": tags[slot].get("count", 0),
+		"turns": tags[slot].get("turns", 0),
 		"arrow": "down" if _tag_arrows[slot].texture == arrow_down_texture else "up",
 	}
 
@@ -321,31 +315,41 @@ func _render_tags(tags: Dictionary) -> void:
 	for slot in range(SLOT_COUNT):
 		var mover := _tag_movers[slot]
 		if tags.has(slot):
-			_tag_counts[slot].text = str(tags[slot].get("count", 0))
-			_tag_turns[slot].text = str(tags[slot].get("turns", 0))
+			_set_tag_text(slot, tags[slot])
 			mover.modulate.a = 1.0
 		else:
 			mover.modulate.a = 0.0
 
 
+func _set_tag_text(slot: int, tag: Dictionary) -> void:
+	_tag_counts[slot].text = str(tag.get("count", 0))
+	_tag_turns[slot].text = str(tag.get("turns", 0))
+
+
 # ----- animations (tuned visually in the editor; never asserted) -----
 
-## Smooth one-slot glide: content appears at the old column and slides over
-## (one Turn long, so indicators move continuously).
-func _play_glide(from_slot: int, to_slot: int) -> void:
+## Smooth one-slot glide along the leading edges: the arrow slides to the
+## next edge over one Turn; the integers count down when it lands.
+func _play_glide(from_slot: int, to_slot: int, old_tag: Dictionary, new_tag: Dictionary) -> void:
 	var mover := _tag_movers[to_slot]
-	var pitch := slot_size.x + slot_gap
-	# Lower bar path goes right; upper bar path goes left.
 	var direction := -1.0 if to_slot >= BAR_SIZE else 1.0
-	mover.position.x = -direction * pitch
+	var pitch := slot_size.x + slot_gap
+	var rest_x: float = mover.position.x
+	mover.position.x = rest_x - direction * pitch
+	_set_tag_text(to_slot, old_tag)  # keep the old numbers while in flight
 	var tween := create_tween()
-	tween.tween_property(mover, "position:x", 0.0, turn_duration * 0.9)
+	tween.tween_property(mover, "position:x", rest_x, turn_duration * 0.9)
+	tween.tween_callback(_set_tag_text.bind(to_slot, new_tag))
 
 
-## The 9→10 wrap: fade out at the lower-right, fade in at the upper-right.
-func _play_fade_teleport(from_slot: int, to_slot: int) -> void:
+## The 9→10 wrap: fade out at the lower-right edge, fade in at the
+## upper-right edge (the new numbers appear with the fade-in).
+func _play_fade_teleport(from_slot: int, to_slot: int, old_tag: Dictionary) -> void:
 	var old_mover := _tag_movers[from_slot]
 	var new_mover := _tag_movers[to_slot]
+	_set_tag_text(from_slot, old_tag)
+	old_mover.modulate.a = 1.0
+	new_mover.modulate.a = 0.0
 	var tween := create_tween()
 	tween.tween_property(old_mover, "modulate:a", 0.0, 0.12)
 	tween.tween_property(new_mover, "modulate:a", 1.0, 0.12)
