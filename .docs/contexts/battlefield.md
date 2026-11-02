@@ -111,14 +111,18 @@ _Avoid_: graveyard
 A hero's attack-preparation state, entered at Settle Time when its class condition (usually range) holds: it places a full-countdown attack tag, shows lighting VFX, and stands stationary until the tag fires or an Interrupt cancels it. Not to be confused with energy charging in Charging Time.
 
 **Auto-Attack**:
-Every puck's built-in attack against enemies in range, on its own cooldown. A scripted damage event with a simple animation in Action Time — deals damage only, never applies force. The Knight's attack is the exception: a self Cue-Shot resolved physically in Puck-puck Time (ADR-0002).
+Every puck's built-in attack against enemies in range, on its own cooldown. A scripted damage event with a simple animation in Action Time — deals damage only, never applies impulse. The Knight's attack is the exception: a self Cue-Shot resolved physically in Puck-puck Time (ADR-0002).
 
 **Cue-Shot**:
-The player's basic action: drag to aim, release to launch the Boss Monster, spending Energy. Allowed only when every puck on the table is at rest.
-_Avoid_: dash, basic attack
+The player's basic action: drag to aim, release to launch the Boss Monster with an Impulse proportional to the Energy spent ($J \propto E$, so initial speed $v_0 = J / m$ — heavier Boss Monsters launch slower). Allowed only when every puck on the table is at rest.
+_Avoid_: dash, basic attack, force (use Impulse)
+
+**Impulse**:
+The momentum transfer applied to a puck on a Cue-Shot or collision, producing a velocity change $\Delta v = J / m$. For a Cue-Shot, $J$ is proportional to the Energy consumed, so a heavier Boss Monster starts with a lower initial speed for the same Energy.
+_Avoid_: force
 
 **Energy**:
-The resource spent on Cue-Shots, shown as the energy fill on the Time Board. Capacity 20 — at full, further charging is discarded but Turns keep ticking; a shot costs 1-7; it regenerates one slot per Turn during Charging Time — the player's thinking time. The per-slot charge time is configurable (default 1s). Spending Energy rewinds the fill backward along the board with a quick animation.
+The resource spent on Cue-Shots, shown as the energy fill on the Time Board. Capacity 20 — at full, further charging is discarded but Turns keep ticking; a shot costs 1–9 slots in 0.5-slot increments (1.0, 1.5, …, 9.0; demo tuning value, may be simplified later); it regenerates one slot per Turn during Charging Time — the player's thinking time. The per-slot charge time is configurable (default 1s). Spending Energy rewinds the fill backward along the board with a quick animation.
 
 **Collision Damage**:
 Damage dealt by puck impacts above a small speed threshold. Enemy Heroes suffer it from any impact — except impacts with a Knight, which protects its allies. Only a Knight's impacts damage the Boss Monster, whoever initiated the collision.

@@ -62,13 +62,13 @@ It can be made by either
 
 - play a card effect
 
-## Force
+## Impulse
 
-Similar to classical physics, a force is applied to a puck to make it move when playing a cue shot.
+Similar to classical physics, an impulse is applied to a puck to give it velocity when playing a cue-shot ($v_0 = J / m$). A heavier puck starts with a slower speed for the same impulse.
 
 ## Friction
 
-Similar to classical physics, when a puck is moving, friction gradually slows it until it stops. The friction should be constant so that the puck's travel distance should be ∝ force².
+Similar to classical physics, when a puck is moving, friction gradually slows it until it stops. The deceleration rate is constant so that the puck's travel distance is $\propto v_0^2$.
 
 ## Energy
 
