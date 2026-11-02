@@ -12,7 +12,7 @@ The cushion width should be 2, and the height above the table should also be 2. 
 
 On the cushions, similar to the table, every 2 lengths are split. In the test scene, use brown and light brown to distinguish. Some split lengths may have special effects; these areas are called *Special Cushions*. When *pucks* hit the Special Cushion, the effects will be triggered.
 
-The corner squares at upper left and lower right are the same colour, and the remaining two are another colour.
+The corner squares at the upper left and lower right are the same colour, and the remaining two are another colour.
 
 ### Pockets Area
 
