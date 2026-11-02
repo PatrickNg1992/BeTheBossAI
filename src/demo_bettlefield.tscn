@@ -1,22 +1,13 @@
 [gd_scene format=3 uid="uid://c1dsavv5cg7me"]
 
-[ext_resource type="Script" uid="uid://7ieops1aff2c" path="res://src/battlefield/battlefield.gd" id="1_q4n8h"]
+[ext_resource type="PackedScene" path="res://src/battlefield/cue_table.tscn" id="1_q4n8h"]
 [ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="2_q4f6s"]
 [ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_opwfs"]
 [ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/canvas/canvas.gd" id="4_h05ap"]
 [ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="5_h0345"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
-[ext_resource type="Script" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
+[ext_resource type="Script" uid="uid://djgf65pa0op4e" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
 [ext_resource type="PackedScene" path="res://src/canvas/time_board.tscn" id="8_tb"]
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_table"]
-size = Vector3(20, 3, 20)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_table"]
-albedo_color = Color(0.15, 0.3, 0.12, 1)
-
-[sub_resource type="BoxMesh" id="BoxMesh_table"]
-size = Vector3(20, 3, 20)
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wtt4b"]
 height = 0.5
@@ -79,20 +70,10 @@ height = 0.35
 script = ExtResource("7_demo")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
-transform = Transform3D(1, 0, 0, 0, 0.545078, 0.83838534, 0, -0.83838534, 0.545078, 0, 17.09607, 14.409155)
+transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 32, 7)
 current = true
 
-[node name="Battlefield" type="StaticBody3D" parent="." unique_id=1712109379]
-script = ExtResource("1_q4n8h")
-
-[node name="TableCollision" type="CollisionShape3D" parent="Battlefield" unique_id=-1153374642]
-visible = false
-shape = SubResource("BoxShape3D_table")
-
-[node name="TableMesh" type="MeshInstance3D" parent="Battlefield" unique_id=-1576685468]
-visible = false
-material_override = SubResource("StandardMaterial3D_table")
-mesh = SubResource("BoxMesh_table")
+[node name="Battlefield" parent="." unique_id=1712109379 instance=ExtResource("1_q4n8h")]
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=475017923]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
@@ -153,7 +134,7 @@ material_override = SubResource("StandardMaterial3D_ranger")
 mesh = SubResource("CylinderMesh_xawwq")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=477215388]
-transform = Transform3D(1, 0, 0, 0, 0.43373775, 0.90103924, 0, -0.90103924, 0.43373775, 0, 8, 0)
+transform = Transform3D(1, 0, 0, 0, 0.17364822, 0.9848077, 0, -0.9848077, 0.17364822, 0, 8, 0)
 light_energy = 1.5
 shadow_enabled = true
 
@@ -241,7 +222,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="TimeBoard" parent="Canvas" instance=ExtResource("8_tb")]
+[node name="TimeBoard" parent="Canvas" unique_id=664790673 instance=ExtResource("8_tb")]
+layout_mode = 3
 demo_mode = true
 
 [node name="CardSystem" type="CanvasLayer" parent="Canvas" unique_id=1289326118]

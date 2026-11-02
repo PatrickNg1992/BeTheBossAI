@@ -43,6 +43,7 @@ func _physics_process(delta: float) -> void:
 			_chase_behavior(delta)
 		State.ATTACK:
 			_attack_behavior()
+	apply_table_physics(delta)
 	move_and_slide()
 
 

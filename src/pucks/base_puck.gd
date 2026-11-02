@@ -4,6 +4,8 @@ extends CharacterBody3D
 signal health_changed(current_hp: int, max_hp: int)
 signal died()
 
+const TABLE_GRAVITY: float = 25.0
+
 @export var max_hp: int = 100
 @export var move_speed: float = 3.0
 @export var attack_damage: int = 10
@@ -17,6 +19,22 @@ var _attack_timer: float = 0.0
 
 func _ready() -> void:
 	current_hp = max_hp
+	collision_mask = 3
+
+
+func apply_table_physics(delta: float) -> void:
+	var table := get_tree().get_first_node_in_group("cue_table") as Battlefield
+	var over_pocket := false
+	if table != null:
+		over_pocket = table.is_pocket_at_world(global_position)
+	if over_pocket:
+		collision_mask = 2
+	else:
+		collision_mask = 3
+	if over_pocket or not is_on_floor():
+		velocity.y -= TABLE_GRAVITY * delta
+	elif velocity.y < 0.0:
+		velocity.y = 0.0
 
 
 func take_damage(amount: int) -> void:

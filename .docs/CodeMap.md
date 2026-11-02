@@ -48,8 +48,11 @@ src/
 │   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
 │
 ├── battlefield/
-│   ├── battlefield.gd           # Procedural Cue Table: tiles, cushions, pockets.
-│   │                            # Still 20×20 square — 30×20 pending, see .scratch/cue-table/spec.md
+│   ├── cue_table.tscn           # Hardcoded 30×20 medieval Cue Table: numbered TableBlocks (1..150),
+│   │                            # CushionBlocks (1..54), hollow corner Pocket Areas, 4 CornerFlags
+│   ├── battlefield.gd           # Cue Table controller: block lookup, type customization & swapping
+│   ├── table_block.gd           # TableBlock (StaticBody3D): block_number, swappable BlockType & collision
+│   ├── cushion_block.gd         # CushionBlock (StaticBody3D): cushion_number, wood/grass CushionType & rebound math
 │   └── demo_battlefield.gd      # Demo battlefield root: surfaces `battle_finished` (boss died)
 │
 ├── cards/
@@ -75,4 +78,4 @@ src/
 
 - **Health bars** — enemy bars are 2D widgets on the CanvasLayer; each frame `Camera3D.unproject_position()` converts the enemy's world position to screen coordinates (`canvas.gd`). The boss's multi-bar HP with break flash also lives there.
 - **Cards** — `card_manager.gd` holds logic and signals (`hand_updated`, `deck_count_changed`, `discard_count_changed`, `card_played`, casting updates); `card_canvas.gd` is all card UI. Card effects are not yet implemented; demo effects (Rush / Teleport / Recover) are specced in `.scratch/card-effects/spec.md`.
-- **Battlefield** — the table is generated at runtime from constants in `battlefield.gd`; the table base mesh/shape is in `demo_bettlefield.tscn`.
+- **Battlefield** — the 30×20 medieval Cue Table lives in `src/battlefield/cue_table.tscn` (instanced as `Battlefield` in `demo_bettlefield.tscn`) with hardcoded numbered `TableBlock_1..150` (`table_block.gd`), `Cushion_1..54` (`cushion_block.gd`), and `CornerFlag_1..4`.

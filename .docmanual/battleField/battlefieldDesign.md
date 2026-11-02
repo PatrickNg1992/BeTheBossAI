@@ -6,6 +6,8 @@ The game battlefield is similar to a cue game. The main field is like a cue tabl
 
 The table is split into 15 × 10 square tiles, each 2 × 2 in size. For the test scene, please use alternative green and light green for the tiles. Some tiles may generate special effects in the future.
 
+The cue table has collision body preventing the pucks fall, except the pocket area.
+
 ### Cushion
 
 The cushion width should be 2, and the height above the table should also be 2. As the table is 30 × 20 in size, the sides of the cushion are 34 and 24.
@@ -14,6 +16,8 @@ On the cushions, similar to the table, every 2 lengths are split. In the test sc
 
 The corner squares at the upper left and lower right are the same colour, and the remaining two are another colour.
 
+The cue table has collision body preventing the pucks fall outside.
+
 ### Pockets Area
 
 In some of the tiles at the 4 corners on the cue table, there are special areas called Pocket Areas (which are like the pockets in a snooker game). The pocket areas are hollow.
@@ -21,6 +25,20 @@ In some of the tiles at the 4 corners on the cue table, there are special areas 
 When a puck falls into a Pocket Area, it will take damage and be removed from the battlefield first. If the unit's health is too low, it will be killed. Otherwise, it will come back to the field a few *Turns* later.
 
 Each Pocket Area is 2 × 2 in size.
+
+
+
+## Syle
+
+The table should be medieval style, like:
+
+- wooden style cushion
+- grass-style cushion
+- flags on corners, etc
+
+### Changible blocks
+
+The table squares and the side segments of the cushions are configurable. They may change into blocks with special effects and style. Each block should be assigned with a number so the code and control them later.
 
 ### Obstacle or Other things
 

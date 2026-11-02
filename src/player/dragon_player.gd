@@ -10,7 +10,7 @@ func _ready() -> void:
 	super()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
 
@@ -30,6 +30,7 @@ func _physics_process(_delta: float) -> void:
 
 	velocity.x = input_vector.x * speed
 	velocity.z = input_vector.z * speed
+	apply_table_physics(delta)
 	move_and_slide()
 
 	# _auto_attack()
