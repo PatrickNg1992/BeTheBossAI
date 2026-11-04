@@ -170,17 +170,17 @@ The game's first page — the scene the player sees on launch (the project's mai
 
 ## Single-Player Scene
 
-An invisible scene (like the Multiplayer Scene) that sets up an `OfflineMultiplayerPeer` and loads the Battlefield as its child. Entered via the Menu's **Play** button. Keeps one Battlefield load path across single- and multiplayer.
+An invisible scene (like the Multiplayer Scene) that sets up a local loopback `MpTransport` (with the local player as Host and Player A, and the Player B seat empty) and loads the Battlefield as its child. Entered via the Menu's **Play** button. Keeps one Battlefield load and data-sync path across single- and multiplayer.
 
 # Multiplayer
 
 ## Host
 
-The player who opened the multiplayer room and runs the game server. The Host is also a player — by default they take the **Player A** seat.
+The player who opened the multiplayer room and runs the game server. The Host is always the single source of truth for both the room and the battle, whether they are currently in the **Player A** seat (the default), the **Player B** seat, or watching as a **Spectator**.
 
 ## Player A / Player B
 
-The two playing roles in a PvP game — each controls one Boss Monster (one team). They appear as the two **seats** in the Waiting Room: Player A on the left, Player B on the right. Only one Player A and one Player B are allowed per room. By default the Host takes Player A and the first joiner takes Player B; any later joiner becomes a Spectator. Roles are not fixed at connect time — any Peer can change role inside the Waiting Room by clicking an empty seat (to take it) or the Spectator list (to step down).
+The two playing roles in a multiplayer game — each controls one Boss Monster. (Whether a 2-player battle is co-op or versus is undecided; the Player B seat can also be empty, as in a single-player game where the player is Player A and Player B is empty.) They appear as the two **seats** in the Waiting Room: Player A on the left, Player B on the right. Only one Player A and one Player B are allowed per room. By default the Host takes Player A and the first joiner takes Player B; any later joiner becomes a Spectator. Roles are not fixed at connect time — any Peer can change role inside the Waiting Room by clicking an empty seat (to take it) or the Spectator list (to step down).
 
 ## Spectator
 

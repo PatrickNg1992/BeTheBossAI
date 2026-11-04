@@ -19,7 +19,7 @@ The rest before each Wave. The coming Hero Team stands inert on the table, all c
 _Avoid_: checkpoint, break
 
 **Start Wave**:
-The player's only Preparation Phase action — ends the phase and activates the previewed Hero Team.
+The player's only Preparation Phase action — ends the phase and activates the previewed Hero Team. In a 2-player game (when both Player A and Player B are seated), both players must complete their preparation and press Start Wave before the Wave begins.
 
 ### Units
 
@@ -68,7 +68,7 @@ One tick of the battle clock: the time to charge one Energy slot (configurable, 
 _Avoid_: tick, second
 
 **Time Board**:
-The HUD board at the top of the battlefield canvas that visualizes battle time. Its parts are the Energy Bar — the fill showing Energy owned and the charging progress — and the Action Tags riding the slots. Laid out as two bars of 10 slots — upper and lower; contents slide one slot per Turn along a serpentine path: left→right on the lower bar, wrapping from lower-right to upper-right, then right→left on the upper bar toward the goal at the upper-left slot. Frozen except during Charging Time, unless an effect moves it (e.g. gaining or spending Energy — the fill rewinds with a quick animation). Contents glide smoothly; a slot completing means a new Energy is ready or an Action Tag has arrived. At full Energy the fill stops but Turns keep ticking and tags keep moving.
+The HUD board at the top of the battlefield canvas that visualizes battle time. Its parts are the Energy Bar — the fill showing Energy owned and the charging progress — and the Action Tags riding the slots. Laid out as two bars of 10 slots — upper and lower; contents slide one slot per Turn along a serpentine path: left→right on the lower bar, wrapping from lower-right to upper-right, then right→left on the upper bar toward the goal at the upper-left slot. Frozen except during Charging Time, unless an effect moves it (e.g. gaining or spending Energy — the fill rewinds with a quick animation). Contents glide smoothly; a slot completing means a new Energy is ready or an Action Tag has arrived. At full Energy the fill stops but Turns keep ticking and tags keep moving. In a 2-player battle, both players share one Time Board (a 2-player variant of the board) that shows both Player A's and Player B's Energy to all Peers.
 _Avoid_: energy bar (that's only the fill, not the whole board), timer
 
 **Prepare Time**:
@@ -78,7 +78,7 @@ The Timing of the Preparation Phase: the timing state machine does not run, no u
 The fundamental timing: Energy charges one slot per Turn and nothing else acts — the player's thinking time. Entering Play Time is allowed at most once per slot charged. A Turn that lands one or more Action Tags on the goal slot triggers Action Time.
 
 **Play Time**:
-Everything waits for the player. Exactly one action is allowed: one Cue-Shot, one card, or cancel back to Charging Time. A Cue-Shot leads to Puck-puck Time!; a card leads wherever its effect directs.
+Everything waits for the player. In a 2-player game, players press the Play button during Charging Time to compete for the **Playing Right** — the first player whose press reaches the Host becomes the active player for that Play Time, while the other player and Spectators watch. Exactly one action is allowed: one Cue-Shot, one card, or cancel back to Charging Time. A Cue-Shot leads to Puck-puck Time!; a card leads wherever its effect directs.
 
 **Action Time**:
 The units whose Action Tags reached the goal act — one action each, in spawn order; buff/debuff actions first (priority TBC), cue-shot actions (e.g. the Knight's) last. All other units and the player only spectate.

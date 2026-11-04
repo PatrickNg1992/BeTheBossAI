@@ -34,7 +34,7 @@ RPC:
 
 - Timing Change (e.g. from Charging Timing to Action Timing)
 
-- Player click the "Play" button
+- Player click the "Play" button: during Charging Time, players press the Play button to compete for the "playing right" — the first player whose press reaches the Host becomes the active player for that Play Time.
 
 - Any Players' actions on cards
 

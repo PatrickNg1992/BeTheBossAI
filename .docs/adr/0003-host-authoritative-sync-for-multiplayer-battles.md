@@ -1,6 +1,6 @@
 # Host-authoritative sync for multiplayer battles
 
-In PvP, the Host (a playing Boss Monster controller, listen-server) is the single source of truth for battle state. The other player's and Spectators' screens mirror the Host's state; player actions are sent to the Host and confirmed via reliable RPC only. Hands are visible owner-only; Spectators see neither hand.
+In multiplayer battles, the Host (the Peer who opened the room and runs the server) is always the single source of truth for battle state — whether the Host is playing as Player A, Player B, or watching as a Spectator. All Peers (Player A, Player B, and Spectators) — including the Host's own display and Single-Player mode (where the local player is Host and Player A, and the Player B seat is empty) — use the same flow: player inputs send action messages to the Host, the Host updates the authoritative state, and the display renders from that synced state. Hands are visible owner-only; Spectators see neither hand.
 
 Chosen over peer-to-peer negotiation or client-predictive sync because determinism matters little here — battle events (cue-shots, collisions, card effects) must resolve identically on every screen, and one authority avoids "two sources of truth" desyncs. Hard to reverse: the whole connection logic, battle sync, and hand-privacy model hang off this decision.
 

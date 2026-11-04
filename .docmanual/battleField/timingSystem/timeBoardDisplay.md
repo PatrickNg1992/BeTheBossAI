@@ -50,6 +50,7 @@ Therefore, the primary bar of energy is the lower bar.
 
 When player energy is consumed, the energy indicator will go backwards.
 
+## Two-Player Time Board
 
-
+In a 2-player game (when both Player A and Player B are present), they share a single Time Board for Turns and Action Tags, and a 2-player version of the Time Board is used so that both Player A's Energy and Player B's Energy are visible to both players and spectators (exact 2-player visual layout TBC).
 
