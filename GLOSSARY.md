@@ -64,11 +64,15 @@ It can be made by either
 
 ## Impulse
 
-Similar to classical physics, an impulse is applied to a puck to give it velocity when playing a cue-shot ($v_0 = J / m$). A heavier puck starts with a slower speed for the same impulse.
+A one-off momentum change applied to a puck ($\Delta \vec{v} = \vec{J} / m$). Collisions, cue-shots, and instantaneous card/unit effects apply Impulse to pucks. For a cue-shot, $J \propto E$, so a heavier puck starts with a slower speed for the same impulse.
+
+## Force
+
+A continuous velocity change over time applied to a puck ($\Delta \vec{v} = (\vec{F} / m) \cdot \Delta t$). Ground friction on table blocks (and continuous card/unit effects) applies Force to pucks at each 20 Hz velocity update.
 
 ## Friction
 
-Similar to classical physics, when a puck is moving, friction gradually slows it until it stops. The deceleration rate is constant so that the puck's travel distance is $\propto v_0^2$.
+A continuous Force acting opposite a moving puck's motion, proportional to the puck's mass ($\vec{F}_{\text{friction}} = -\mu \, m \, \hat{v}$). On a standard floor block, it produces a constant deceleration of $-1\text{ unit/sec}^2$ so travel distance is $\propto v_0^2$.
 
 ## Energy
 

@@ -1,10 +1,10 @@
 # Pucks
 
-In "Puck-puck Time!", the game should let the pucks collide freely using classic physics. To make it work, each puck needs an internal state stored in a script. To be specific, a puck should have radius, mass and velocity. The physics calculation should be done by a tailor-made calculation, as specified in other Markdown files in this folder. This is designed for flexibility to introduce more game mechanisms in the future. The original
+In "Puck-puck Time!", the game should let the pucks collide freely using classic physics. To make it work, each puck needs an internal state stored in a script. To be specific, a puck should have radius, mass and velocity. The physics calculation should be done by a tailor-made calculation, as specified in other Markdown files in this folder. This design allows flexibility to introduce more game mechanisms in the future. The original
 
 ## Motion change
 
-The velocities of the pucks are affected by *Impact* or *Force*. Impacts are one-off velocity changes. Collision and cue shots apply Impact to pucks. Forces are continuous velocity changes over time. Friction applies Force to pucks. Meanwhile, cards and units effects may apply impact or force.
+The velocities of the pucks are affected by *Impulse* or *Force*. Impulse are one-off velocity changes. Collision and cue shots apply Impulse to pucks. Forces are continuous velocity changes over time. Friction applies Force to pucks. Meanwhile, cards and units effects may apply impulse or force.
 
 ## Calculation
 

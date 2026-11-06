@@ -1,125 +1,124 @@
-# Spec: Cue-Shot, First-Rebound Aiming & Collision Physics
+# Spec: Cue-Shot, First-Rebound Aiming & Puck Physics System
 
 Status: ready-for-agent
 
-The player's core physical action in the Battlefield Scene: dragging from the Boss Monster puck to aim with a 3D first-rebound preview and Time Board Energy preview, releasing to launch with an Impulse, and resolving puck–puck and puck–cushion impacts during `Puck-puck Time!`. Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Boss Monster, Enemy Hero, Class, Cue Table, Tile, Cushion, Pocket Area, Puck, Cue-Shot, Impulse, Friction, Energy, Time Board, Play Time, Puck-puck Time!).
+The player's core physical action and the tailor-made Puck physics engine in the Battlefield Scene: dragging from the Boss Monster puck to aim with a 3D first-rebound preview and Time Board Energy preview, releasing to apply an Impulse, and resolving motion, ground Friction Forces, and Puck/Cushion collision Impulses during `Puck-puck Time!`. Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Boss Monster, Enemy Hero, Class, Cue Table, Tile, Cushion, Pocket Area, Puck, Cue-Shot, Impulse, Force, Friction, Energy, Time Board, Play Time, Puck-puck Time!).
 
 ## Problem Statement
 
-Today on the demo Battlefield, the Boss Monster moves via placeholder keyboard input and Enemy Heroes wander continuously with basic slide movement. There is no way for the player to drag and aim a Cue-Shot, no visual prediction of where the Boss Monster or a struck Enemy Hero will travel after impact, no Energy cost preview on the Time Board, and no classical-mechanics rebound physics when pucks strike each other or the Cushions. Without Drag-and-Shot aiming and `Puck-puck Time!` collision physics, the core "snooker with cards" gameplay loop cannot be played or tuned.
+Today on the demo Battlefield, the Boss Monster is driven by placeholder keyboard input and Enemy Heroes run continuous `move_and_slide()` wandering AI. Pucks do not store explicit `radius` and `mass` state for custom physics, there is no central velocity manager separating high-frequency position updates from 20 Hz velocity/collision/friction calculations, floor blocks do not expose an extendable ground-friction function to bring moving Pucks to a stop, and there is no Drag-and-Shot aiming UI, Time Board Energy preview, or first-rebound aiming line. Without these systems, Pucks cannot be launched, bounced, or reliably brought to rest after a Cue-Shot.
 
 ## Solution
 
-Replace placeholder Boss Monster keyboard movement (and pause continuous Enemy Hero wandering in the demo) with a Drag-and-Shot controller and a classical-mechanics collision engine:
+Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck scripts, Cue Table blocks, Time Board view, and a central `PuckVelocityManager` on the Battlefield:
 
-1. **Drag-and-Aim Input**: When all Pucks on the Cue Table are at rest, clicking the Boss Monster and dragging on the table surface aims a Cue-Shot opposite the drag direction. Drag distance selects the required Energy from `1.0` to `9.0` slots in `0.5`-slot increments.
-2. **Time Board Energy Preview (from Bottom-Left Slot 0)**: While dragging, the Time Board highlights the required Energy starting from `slot 0` (bottom-left) in a consume-preview colour. If the player drags past their owned Energy, the preview continues past the filled Energy slots in **red**.
-3. **3D First-Rebound Aiming Line**: A 3D arrowed aiming line lies just above the table surface, swept using the Boss Monster's cylinder radius. Its reach scales proportionally to the selected Impulse. If a Cushion or another Puck lies within that reach, a ghost contact ring is shown at the impact point along with the Boss Monster's first rebound arrow ($\vec{v}_{1f}$); if the first hit is another Puck, a second contrasting arrow from the struck Puck's center shows its outgoing direction ($\vec{v}_{2f}$). Both post-hit arrow lengths scale with their post-impact speeds.
-4. **Release, Cancel & `Puck-puck Time!` Physics**: Releasing inside a small cancel deadzone around the Boss Monster or while over-dragged (requiring more Energy than owned) cancels the drag with a cancellation sound and consumes no Energy. Releasing a valid drag deducts the Energy, applies an Impulse $\vec{J} \propto E$ ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$, so heavier Boss Monsters launch slower), and runs `Puck-puck Time!` physics — constant-rate Friction deceleration, mass-weighted puck–puck impulse collisions, perpendicular/parallel Cushion rebounds, and Pocket Area falls — until every Puck comes to rest.
+1. **Puck State & `PuckVelocityManager` (60 Hz Position / 20 Hz Velocity)**:
+   - Every Puck (`BasePuck` and subclasses) belongs to the `"pucks"` group and stores `radius`, `mass`, and `velocity` (default masses: Boss Monster `3.0`, Knight `2.0`, Warrior `1.5`, Ranger `1.2`, Mage `1.0`; `radius` read from its cylinder collider or exported property).
+   - A Battlefield-level `PuckVelocityManager` advances moving Puck positions every frame ($\Delta \vec{p} = \vec{v} \cdot \Delta t$, host-authoritative for `MultiplayerSynchronizer`) and runs velocity updates at **20 Hz (`0.05s` interval)** to resolve collisions and ground Friction Forces with minimal CPU overhead.
+2. **Extendable Ground Friction on `TableBlock` (`-1.0 unit/sec²`)**:
+   - Each `TableBlock` exposes an extendable method taking `puck: BasePuck` that computes the continuous ground effect on velocity.
+   - In the normal case, mass cancels out ($\vec{F}_{\text{friction}} \propto m \implies \vec{a} = \vec{F}/m$): a standard grass block decelerates a moving Puck at **$-1.0\text{ unit/sec}^2$** (scaled by `friction_factor`, so a Puck at `5 units/sec` slows to `4 units/sec` after `1s`), clamping velocity to `Vector3.ZERO` below a small stop threshold so Friction never reverses direction.
+3. **Extendable Cushion Impact on `CushionBlock` & Swept Puck Collisions**:
+   - At each 20 Hz velocity tick, `PuckVelocityManager` performs a simple swept/overlap check for moving Pucks against other Pucks and Cushions.
+   - Puck–Puck impacts exchange opposite Impulses along the collision normal $\hat{n}$ according to their relative masses ($m_1, m_2$) and restitution ($e$).
+   - Puck–Cushion impacts call an extendable impact method on the struck `CushionBlock` taking `(puck: BasePuck, normal: Vector3)` that applies the perpendicular restitution ($e$) and parallel Cushion friction ($f_c$) rebound equation (mass-independent in the normal case).
+4. **Time Board Half-Slot Energy & Bottom-Left Preview**:
+   - The Time Board view supports half-slot (`0.5`) Energy amounts (`0.0..20.0`) and an aiming `preview_cost` (`1.0..9.0` in `0.5` steps).
+   - While dragging, required Energy is highlighted starting from the **bottom-left (`slot 0`)** in a consume-preview colour up to owned Energy, and any over-dragged excess continues past the filled Energy slots in **red**.
+5. **Drag-and-Shot Input & 3D First-Rebound Aiming Line**:
+   - Clicking the Boss Monster when all Pucks are at rest and dragging on the `Y = 1.5` table plane aims opposite the drag direction.
+   - A 3D arrowed aiming line at `Y = 1.55` (swept with the Boss Monster's radius $R_{\text{boss}}$) extends up to a reach proportional to the selected Impulse. When a Cushion or another Puck lies within that reach, it renders a ghost contact ring at the impact point, the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$), and (when hitting a Puck) a contrasting arrow from the struck Puck's center along $\vec{v}_{2f}$, with post-hit arrow lengths proportional to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$.
+   - Releasing inside the deadzone or while over-dragged cancels the shot with a cancellation sound. Releasing a valid drag deducts the Energy and applies Impulse $\vec{J} = k \cdot E$ ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$) to enter `Puck-puck Time!`.
 
 ## User Stories
 
-1. As a player, I want to click on the Boss Monster puck and drag to aim a Cue-Shot, so that I can launch the Boss Monster across the Cue Table like a cue ball.
-2. As a player, I want the shooting direction to be opposite the drag direction, so that pulling back feels like drawing a slingshot or cue stick.
-3. As a player, I want to aim only when all Pucks on the Cue Table are at rest, so that I cannot interfere with an ongoing shot.
-4. As a player, I want the drag distance on the table plane to control how much Energy the shot consumes, so that pulling farther produces a stronger shot.
-5. As a player, I want Energy consumption for a single Cue-Shot to step in `0.5`-slot increments from a minimum of `1.0` slot to a maximum of `9.0` slots, so that I have fine-grained control over shot power.
-6. As a player, I want the Time Board to highlight the required Energy slots starting from the bottom-left (`slot 0`) while I drag, so that I can see how much Energy my shot will consume.
-7. As a player, I want any required Energy exceeding my currently owned Energy to continue past the filled Energy slots in red on the Time Board, so that I can immediately tell when I am over-dragging.
-8. As a player, I want to release the drag very close to the Boss Monster puck to cancel the shot, so that I can abort and re-aim without spending Energy.
-9. As a player, I want releasing the drag while over-dragged (requiring more Energy than I own) to cancel the shot, so that I never fire an unaffordable shot.
-10. As a player, I want a cancellation sound to play whenever a drag is cancelled, so that I get clear audio feedback that no shot was fired.
-11. As a player, I want cancelling a drag to keep the game in `Play Time` without spending Energy, so that I can immediately re-aim.
-12. As a player, I want a 3D arrowed aiming line displayed just above the Cue Table floor while dragging, so that I can see the exact path my Boss Monster will take.
-13. As a player, I want the primary aiming line's reach to be proportional to the Impulse to be applied, so that shorter drags show shorter reach and only reach distant obstacles when pulled hard enough.
-14. As a player, I want the aiming prediction to account for the Boss Monster's physical radius, so that glancing edge hits against other Pucks and Cushions are predicted accurately.
-15. As a player, I want the aiming line to show a ghost contact ring and the Boss Monster's first rebound arrow ($\vec{v}_{1f}$) when a Cushion or another Puck is within reach, so that I can plan bank shots and deflections.
-16. As a player, I want a second arrow in a contrasting colour drawn from the struck Puck's center showing its outgoing direction ($\vec{v}_{2f}$) when the first hit is another Puck, so that I can aim enemies into other Pucks or Pocket Areas.
-17. As a player, I want the lengths of both post-hit arrows ($\vec{v}_{1f}$ and $\vec{v}_{2f}$) to be proportional to their post-impact speeds from the collision equations, so that hitting a light Mage visibly shows a longer launch than hitting a heavy Knight.
-18. As a player, I want all 3D aiming line segments to turn red when I over-drag past my owned Energy or stay inside the cancel deadzone, so that I don't have to look away from the table to know the shot will cancel.
-19. As a player, I want a valid release to deduct the selected Energy from my owned Energy (rewinding the Time Board fill) and apply an Impulse proportional to the Energy spent, so that higher-Energy shots hit harder.
-20. As a player, I want the Boss Monster's initial launch speed to be $\vec{v}_0 = \vec{J} / m_{\text{boss}}$, so that a heavier Boss Monster starts with a slower speed for the same Energy while carrying greater momentum into collisions.
-21. As a player, I want each Puck to have a relative mass based on the unit it represents (Boss Monster > Knight > Warrior > Ranger > Mage), so that heavier units are harder to knock around and transfer more momentum to lighter units.
-22. As a player, I want moving Pucks to decelerate at a constant rate due to table Friction (scaled by the underlying Tile's friction factor) until they stop, so that travel distance scales with $v_0^2$.
-23. As a player, I want two colliding Pucks to exchange opposite Impulses along their collision normal using classical elastic/inelastic mechanics ($e$), so that chain reactions feel physical and predictable.
-24. As a player, I want a Puck colliding with a Cushion to rebound with perpendicular restitution ($e$) and parallel Cushion friction ($f_c$), so that bank shots behave like a real cue table.
-25. As a player, I want a Puck that enters a hollow Pocket Area during `Puck-puck Time!` to fall into the pocket and, in the demo sandbox, respawn at the nearest free Tile once all Pucks come to rest, so that I can continuously test shots without running out of targets.
-26. As a designer, I want Enemy Hero AI movement paused in the demo sandbox and Energy to start at `15.0` and refill to `15.0` every `20` seconds, so that I can freely test Drag-and-Shot, rebounds, and mass values before integrating the full `TimingManager` rotation.
+1. As a player, I want every moving Puck on the Cue Table to gradually slow down and come to a complete stop due to ground Friction, so that every Cue-Shot finishes cleanly and transitions out of `Puck-puck Time!`.
+2. As a player, I want a Puck on a standard grass Tile to decelerate at `-1.0 unit/sec²` (slowing from `5 units/sec` to `4 units/sec` after `1` second) and stop cleanly at zero without ever reversing direction, so that shot stopping distances are predictable.
+3. As a designer, I want different `TableBlock` types (`GRASS`, `STONE`, `MUD`, `ICE`, and future custom blocks) to modify ground Friction or apply custom Forces via an extendable method on `TableBlock` that receives the Puck as input, so that swapping table blocks creates fun gameplay variations.
+4. As a player, I want each Puck to have a `radius` and a relative `mass` based on the unit it represents (Boss Monster > Knight > Warrior > Ranger > Mage), so that heavier Pucks are harder to knock around and transfer more momentum to lighter Pucks.
+5. As a developer, I want Puck positions updated every frame while velocity changes (collisions and ground Friction) are calculated at ~20 Hz (`0.05s`) by a central `PuckVelocityManager`, so that motion looks smooth at 60+ FPS while physics calculation overhead stays low.
+6. As a player, I want two colliding Pucks to exchange opposite Impulses along their contact normal using classical mechanics ($m_1, m_2, e$), so that chain collisions feel physical and reward hitting lighter Enemy Heroes with a heavy Boss Monster.
+7. As a player, I want a Puck hitting a Cushion to rebound with perpendicular restitution ($e$) and parallel Cushion friction ($f_c$) via an extendable impact method on `CushionBlock`, so that bank shots behave like a cue game and future Special Cushions can override the impact.
+8. As a player, I want any Puck that falls into a hollow Pocket Area during `Puck-puck Time!` to respawn at the nearest unoccupied non-pocket Tile once all Pucks come to rest in the demo sandbox, so that I can keep testing shots without running out of Pucks.
+9. As a player, I want the Time Board to display half-slot (`0.5`) Energy amounts (`0.0..20.0`), so that spending `.5` Energy increments is accurately reflected on the bar.
+10. As a player, I want the Time Board to highlight the required Energy for my shot starting from the bottom-left (`slot 0`) while I drag, so that I can see the Energy cost at a glance.
+11. As a player, I want any required Energy exceeding my currently owned Energy to continue past the filled Energy slots in red on the Time Board, so that I clearly see when I am over-dragging.
+12. As a player, I want to click on the Boss Monster puck when all Pucks are at rest and drag on the table plane to aim a Cue-Shot opposite the drag direction, so that aiming feels like drawing back a cue or slingshot.
+13. As a player, I want my drag distance to select an Energy cost from `1.0` to `9.0` slots in `0.5`-slot steps, so that I can control shot power precisely.
+14. As a player, I want releasing the drag very close to the Boss Monster puck (inside the deadzone) or while over-dragged to cancel the shot, play a cancellation sound, and stay in `Play Time` without spending Energy, so that I can safely abort or adjust my aim.
+15. As a player, I want releasing a valid drag to spend the selected Energy and apply an Impulse $\vec{J} \propto E$ ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$) to the Boss Monster, so that a heavier Boss Monster starts with a slower speed for the same Energy while carrying heavy mass into impacts.
+16. As a player, I want a 3D arrowed aiming line at `Y = 1.55` whose reach scales with the selected Impulse, so that I can see whether my shot has enough power to reach a target.
+17. As a player, I want the aiming line to sweep the Boss Monster's physical radius $R_{\text{boss}}$ and show a ghost contact ring plus the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$) when a Cushion or Puck lies within reach, so that I can aim angled cuts and bank shots accurately.
+18. As a player, I want a second contrasting arrow drawn from a struck Puck's center along its post-impact velocity ($\vec{v}_{2f}$) when the first hit is another Puck, with both post-hit arrow lengths proportional to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$, so that I can predict where both Pucks will go after impact.
+19. As a player, I want all 3D aiming visuals to turn red when I am inside the cancel deadzone or over-dragged, so that I can see on the table when the shot will cancel.
+20. As a designer, I want Enemy Hero wandering AI paused in the demo battlefield and Energy to start at `15.0` and refill to `15.0` every `20` seconds, so that I can test Drag-and-Shot, friction stopping, and rebounds interactively before the full `TimingManager` rotation is wired.
 
 ## Implementation Decisions
 
-- **Drag Plane & Input Mapping**:
-  - Mouse input is raycast from the active 3D camera onto the horizontal Cue Table top plane (`Y = 1.5`).
-  - Dragging begins when the player presses left mouse button on (or within the pick radius of) the Boss Monster puck while all Pucks on the table are at rest.
-  - The drag vector is $\vec{d} = \vec{p}_{\text{mouse}} - \vec{p}_{\text{boss}}$ on the XZ plane (`Y = 0` component). The shot direction is $\hat{u} = -\vec{d} / \|\vec{d}\|$.
-  - If $\|\vec{d}\| < d_{\text{deadzone}}$ (very close to the Boss Monster puck), the drag is in the cancel zone.
-  - Beyond $d_{\text{deadzone}}$, drag distance maps linearly up to a max drag distance, quantized to `0.5`-slot steps in the range `[1.0, 9.0]`:
-    $$\text{required\_energy} = \text{clamp}(\text{ snapped}(1.0 + t \cdot 8.0,\; 0.5),\; 1.0,\; 9.0)$$
-  - A drag is **over-dragged** when $\text{required\_energy} > \text{owned\_energy}$. Releasing while in the deadzone or while over-dragged cancels the drag, plays a procedural/audio cancellation sound, clears the preview, and stays ready to aim in `Play Time`.
-- **Time Board Energy & Preview Contract**:
-  - The Time Board state contract is extended to support half-slot Energy values (`energy: float` in `0.0..20.0`) and an optional aiming preview (`preview_cost: float`, `0.0` when not aiming).
-  - When `preview_cost > 0.0`, the Time Board colours slots starting from the **bottom-left (`slot 0`)** along the serpentine path up to `preview_cost`:
-    - The portion from `0.0` to $\min(\text{preview\_cost}, \text{owned\_energy})$ renders in a distinct consume-preview colour.
-    - Any over-dragged portion from $\text{owned\_energy}$ to $\text{preview\_cost}$ continues past the filled Energy slots in **red**.
-    - Any remaining owned Energy from $\text{preview\_cost}$ to $\text{owned\_energy}$ stays in the normal gold Energy colour.
-    - Half-slot boundaries (`0.5`) fill half of the corresponding slot cell horizontally in that slot's travel direction.
-- **Impulse, Mass & Friction Model**:
-  - Every Puck carries an exported `mass: float` and `restitution: float` (`e`), plus a horizontal velocity vector (`velocity.x`, `velocity.z`).
-  - Default relative masses:
-    - Boss Monster: `3.0`
+- **Puck State (`BasePuck`, `DragonPlayer`, `EnemyHero`)**:
+  - `BasePuck` registers itself in the `"pucks"` group and owns:
+    - `@export var mass: float = 1.0`
+    - `@export var radius: float = 0.5` (auto-initialized on `_ready()` from its `CollisionShape3D`'s `CylinderShape3D.radius` if present)
+    - `@export var restitution: float = 0.85`
+    - `velocity: Vector3` (horizontal motion in `velocity.x` and `velocity.z`)
+    - `apply_impulse(impulse: Vector3) -> void`: one-off velocity change `velocity += impulse / mass`.
+  - Default unit masses:
+    - Boss Monster (`DragonPlayer`): `3.0`
     - Knight: `2.0`
     - Warrior: `1.5`
     - Ranger: `1.2`
     - Mage: `1.0`
-  - Firing a Cue-Shot with consumed Energy $E \in [1.0, 9.0]$ applies an Impulse magnitude $J_{\text{shot}} = k_{\text{impulse}} \cdot E$ along $\hat{u}$, setting the Boss Monster's initial velocity to:
-    $$\vec{v}_0 = \frac{J_{\text{shot}}}{m_{\text{boss}}} \, \hat{u}$$
-  - During `Puck-puck Time!`, each moving Puck decelerates at a constant rate per second:
-    $$a_{\text{friction}} = \text{base\_deceleration} \times \text{tile\_friction\_factor}$$
-    reducing $\|\vec{v}_{xz}\|$ linearly toward `0` and snapping to rest (`Vector3.ZERO`) below a small rest speed threshold.
-- **Puck–Puck & Puck–Cushion Collision Equations**:
-  - **Puck–Puck impact** between Puck 1 ($\vec{p}_1, \vec{v}_1, m_1$) and Puck 2 ($\vec{p}_2, \vec{v}_2, m_2$) with combined restitution $e$:
-    1. Collision normal on the table plane: $\hat{n} = (\vec{p}_1 - \vec{p}_2) / \|\vec{p}_1 - \vec{p}_2\|$
-    2. Relative closing velocity: $v_{\text{rel}} = (\vec{v}_1 - \vec{v}_2) \cdot \hat{n}$
-    3. Guard: only apply impulse when approaching ($v_{\text{rel}} < 0$), plus positional separation if cylinders overlap:
-       $$J = \frac{-(1 + e)\,v_{\text{rel}}}{(1 / m_1) + (1 / m_2)}$$
-    4. Velocity update:
-       $$\vec{v}_{1f} = \vec{v}_1 + \frac{J}{m_1}\hat{n}, \qquad \vec{v}_{2f} = \vec{v}_2 - \frac{J}{m_2}\hat{n}$$
-  - **Puck–Cushion impact** against a Cushion with inward normal $\hat{n}$, restitution $e$, and parallel Cushion friction $f_c$:
-    $$\vec{v}_{1f} = (1 - f_c)\left(\vec{v}_1 - (\vec{v}_1 \cdot \hat{n})\hat{n}\right) - e\,(\vec{v}_1 \cdot \hat{n})\hat{n}$$
-- **Swept 3D Aiming Line & First-Rebound Calculation**:
-  - A pure trajectory prediction helper sweeps a circle of radius $R_{\text{boss}}$ from the Boss Monster's XZ position along $\hat{u}$ up to a reach distance proportional to the selected Impulse ($L_{\text{max}} = k_{\text{aim}} \cdot J_{\text{shot}}$).
-  - It finds the earliest time-of-impact $t_{\text{hit}} \in [0, L_{\text{max}}]$ against:
-    - Any active Puck cylinder $(p_2, R_2)$ via ray–circle intersection of radius $R_{\text{boss}} + R_2$, or
-    - The inner Cushion planes ($x = \pm(15 - R_{\text{boss}})$, $z = \pm(10 - R_{\text{boss}})$).
-  - If no hit occurs within $L_{\text{max}}$, the primary arrow ends at $\vec{p}_{\text{boss}} + L_{\text{max}}\hat{u}$ with no rebound arrows.
-  - If a hit occurs at contact center $\vec{p}_{\text{hit}}$:
-    - Primary line runs from $\vec{p}_{\text{boss}}$ to $\vec{p}_{\text{hit}}$ with a 3D contact ring of radius $R_{\text{boss}}$ at $\vec{p}_{\text{hit}}$.
-    - Post-impact velocity $\vec{v}_{1f}$ (and $\vec{v}_{2f}$ if hitting another Puck with $\vec{v}_2 = \vec{0}$) is computed using the exact collision equations above, and the post-hit arrow lengths scale proportionally to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$.
-- **Demo Sandbox Mode & Pocket Respawn**:
-  - In the demo battlefield (`demo_bettlefield.tscn`), Enemy Hero AI wandering/chasing is disabled by default so Pucks remain stationary outside `Puck-puck Time!`.
-  - Demo Energy starts at `15.0` and refills to `15.0` every `20.0` seconds (with `TimeBoard.demo_mode` set to `false` on the battlefield instance so the board reflects real shot Energy and drag previews).
-  - If any Puck falls into a Pocket Area during `Puck-puck Time!`, it is flagged as pocketed and, once all remaining Pucks come to rest, respawns at the nearest unoccupied non-pocket Tile at `Y = 1.5 + half_height` with zero velocity.
+  - In the demo sandbox, `BaseEnemy` autonomous wandering/chasing is gated by an `@export var ai_enabled: bool = false` flag so Enemy Heroes stay stationary unless moved by `PuckVelocityManager`.
+- **`PuckVelocityManager` (60 Hz Position / 20 Hz Velocity & Swept Collision)**:
+  - Hosted on the Battlefield (and callable directly in tests via `step_positions(delta: float)` and `step_velocities(tick_dt: float)`):
+    - **`_process(delta)` → `step_positions(delta)`**: Advances each moving Puck's horizontal position by `velocity * delta` (and vertical pocket fall via `apply_table_physics(delta)`).
+    - **20 Hz accumulator (`TICK_INTERVAL = 0.05s`) → `step_velocities(tick_dt)`**:
+      1. **Swept / Overlap Collision Check**: Over the `tick_dt` window, checks moving Pucks against other active Pucks (swept circle–circle intersection of combined radius $r_1 + r_2$) and against Cushion inner boundaries ($x = \pm(15 - r)$, $z = \pm(10 - r)$). Separates any positional overlap along $\hat{n}$ so Pucks never snag inside each other or inside a Cushion.
+      2. **Puck–Puck Impulse**: When two Pucks collide with relative closing velocity $v_{\text{rel}} = (\vec{v}_1 - \vec{v}_2) \cdot \hat{n} < 0$:
+         $$J = \frac{-(1 + e)\,v_{\text{rel}}}{(1 / m_1) + (1 / m_2)}, \qquad \vec{v}_{1f} = \vec{v}_1 + \frac{J}{m_1}\hat{n}, \qquad \vec{v}_{2f} = \vec{v}_2 - \frac{J}{m_2}\hat{n}$$
+      3. **Puck–Cushion Impact**: Calls the struck `CushionBlock`'s extendable impact function `calculate_cushion_impact(puck, normal)` to update the Puck's velocity.
+      4. **Ground Friction Force**: Queries the `TableBlock` beneath each moving Puck (`Battlefield.get_table_block_at_world(puck.global_position)`) and calls its extendable ground-effect function `apply_ground_effect(puck, tick_dt)` (or `calculate_ground_velocity_delta(puck, tick_dt)`).
+      5. **All-at-rest & Pocket Respawn**: When all non-pocketed Pucks reach `velocity == Vector3.ZERO`, any Puck that fell into a Pocket Area (`is_pocket_at_world` or `global_position.y < 1.0`) is repositioned at the nearest unoccupied non-pocket Tile at `Y = 1.5 + half_height` with `velocity = Vector3.ZERO`.
+- **Extendable `TableBlock` Ground Friction (`-1.0 unit/sec²` Standard)**:
+  - `TableBlock` defines `@export var base_deceleration: float = 1.0` (`1.0 unit/sec²` for standard blocks) and `friction_factor: float` (`1.0` for grass, `0.75` for stone, `2.0` for mud, `0.2` for ice).
+  - Extendable method on `TableBlock`:
+    ```gdscript
+    func calculate_ground_velocity_delta(puck: BasePuck, dt: float) -> Vector3
+    ```
+  - In the normal case, mass cancels out: for a Puck with horizontal speed $s = \|\vec{v}_{xz}\| > 0$, deceleration magnitude is $d = \text{base\_deceleration} \times \text{friction\_factor} \times dt$. If $s \le d$ or $s - d < \text{ STOP\_THRESHOLD}$, velocity snaps to `Vector3.ZERO`; otherwise horizontal speed reduces by $d$ along $-\hat{v}$.
+- **Extendable `CushionBlock` Impact**:
+  - `CushionBlock` defines an extendable method:
+    ```gdscript
+    func calculate_cushion_impact(puck: BasePuck, normal_override: Vector3 = Vector3.ZERO) -> Vector3
+    ```
+  - Returns the velocity change $\Delta \vec{v} = \vec{v}_{1f} - \vec{v}_1$ (where $\vec{v}_{1f} = (1 - f_c)(\vec{v}_1 - (\vec{v}_1 \cdot \hat{n})\hat{n}) - e(\vec{v}_1 \cdot \hat{n})\hat{n}$, independent of `puck.mass` in the normal case) when `puck` approaches the cushion ($\vec{v}_1 \cdot \hat{n} < 0$).
+- **Time Board Half-Slot Energy & Bottom-Left Preview**:
+  - `TimeBoard` supports floating-point `energy` (`0.0..20.0` in `0.5` steps) and `preview_cost` (`0.0` when idle, `1.0..9.0` in `0.5` steps while aiming).
+  - When `preview_cost > 0`, slots starting from **`slot 0` (bottom-left)** up to `min(preview_cost, energy)` display the consume-preview colour; any portion from `energy` to `preview_cost` (when `preview_cost > energy`) continues past the filled Energy slots in **red**; any remaining owned Energy from `preview_cost` to `energy` displays in the normal gold Energy colour.
+- **Drag-and-Shot & Swept 3D First-Rebound Aiming Line**:
+  - Dragging starts on left-click on the Boss Monster when all Pucks are at rest, raycasting the mouse onto the `Y = 1.5` plane.
+  - Drag distance outside `deadzone_radius` maps to `required_energy` in `[1.0, 9.0]` snapped to `0.5`-slot steps.
+  - Releasing inside `deadzone_radius` or with `required_energy > owned_energy` cancels the shot, plays a cancellation sound, clears `preview_cost`, and stays in `Play Time`.
+  - Releasing a valid drag deducts `required_energy`, applies Impulse $\vec{J}_{\text{shot}} = (k_{\text{impulse}} \cdot E)\hat{u}$ to the Boss Monster ($\vec{v}_0 = \vec{J}_{\text{shot}} / m_{\text{boss}}$), and enters `Puck-puck Time!`.
+  - While dragging, the 3D aiming line at `Y = 1.55` sweeps $R_{\text{boss}}$ up to reach $L_{\text{max}} \propto \|\vec{J}_{\text{shot}}\|$. If a Cushion or Puck is hit within $L_{\text{max}}$, it displays a ghost contact ring of radius $R_{\text{boss}}$ at the contact center, the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$), and (for a Puck hit) a contrasting arrow from the struck Puck's center along $\vec{v}_{2f}$, with arrow lengths proportional to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$. All aiming visuals turn red when in the deadzone or over-dragged.
 
 ## Testing Decisions
 
-- **What makes a good test**: Tests drive public methods and assert observable state and physics outcomes (calculated required Energy, cancel/fire decision, aiming trajectory points and post-hit velocity vectors, Puck velocities/positions after impacts, and Time Board slot fill/colour states) — never internal mesh nodes, shader parameters, or audio stream internals.
-- **Two seams**:
-  1. **Battlefield Shot & Physics Seam**: Drive drag start/update/release and physics steps; assert:
-     - `0.5`-slot quantization in `[1.0, 9.0]`, deadzone cancellation, and over-drag cancellation.
-     - Launch velocity $\vec{v}_0 = (k \cdot E / m_{\text{boss}})\hat{u}$ verifying that a heavier Boss Monster launches slower for the same Energy.
-     - First-rebound aiming calculation against both a Cushion and an Enemy Hero Puck (contact point, $\vec{v}_{1f}$, and $\vec{v}_{2f}$).
-     - Puck–puck impulse exchange (heavy vs. light Puck momentum transfer) and Puck–cushion rebound velocity.
-     - Constant-friction deceleration to rest and pocketed Puck respawn at the nearest free Tile when all Pucks settle.
-  2. **Time Board View Seam**: Extend `test_time_board_view.gd` (or a dedicated suite) to assert that feeding `preview_cost` highlights slots starting from `slot 0` (including `.5` half-slots) and colours slots beyond `owned_energy` in red.
-- **Prior art**: `tests/test_cue_table.gd` (3D table & cushion rebound assertions) and `tests/test_time_board_view.gd` (crafted state → observable slot ratios/colours on `TimeBoard`).
+- **What makes a good test**: Drive public methods (`render_state`, `begin_drag` / `update_drag` / `release_drag`, `step_positions`, `step_velocities`) and assert observable state (slot fill ratios and preview colours on `TimeBoard`, Puck velocities and positions after 20 Hz ticks, and aiming preview trajectory data) — never private node hierarchies or tween internals.
+- **Modules tested**:
+  1. `TimeBoard` view (`src/canvas/time_board.gd`) — half-slot fills (`0.5`), consume preview starting from `slot 0`, and red over-drag preview past owned Energy.
+  2. `TableBlock` (`src/battlefield/table_block.gd`) & `PuckVelocityManager` — standard `-1.0 unit/sec²` friction deceleration (e.g. `5.0 → 4.0 units/sec` after `1.0s` of 20 Hz ticks), stop-threshold clamping without reversing direction, and block-type friction scaling (`ICE` vs `MUD`).
+  3. `CushionBlock` (`src/battlefield/cushion_block.gd`) & `PuckVelocityManager` — swept Puck–Puck impulse collisions across different masses ($m_1, m_2$), `CushionBlock.calculate_cushion_impact` rebounds, and pocketed Puck respawn after all Pucks come to rest.
+  4. Drag-and-Shot controller & First-Rebound Aiming calculator — `0.5`-slot Energy quantization in `[1.0, 9.0]`, deadzone/over-drag cancellation, mass-dependent launch speed ($\vec{v}_0 = \vec{J}/m_{\text{boss}}$), and swept first-rebound vectors ($\vec{v}_{1f}, \vec{v}_{2f}$).
+- **Prior art**: `tests/test_time_board_view.gd` and `tests/test_cue_table.gd`.
 
 ## Out of Scope
 
-- Full `TimingManager` turn rotation (`Prepare` → `Charging` → `Play` → `Action` → `Puck-puck Time!` → `Settle`) and Action Tag scheduling (covered by `.scratch/timing-system/spec.md`).
-- Collision Damage numbers, Knight protection rules, Focusing Interrupts, and staged damage application in Settle Time.
-- Card effects that launch or move Pucks (covered by `.scratch/card-effects/spec.md`).
-- Final audio assets and VFX particles.
+- Full `TimingManager` state machine (`Prepare`, `Charging`, `Play`, `Action`, `Puck-puck Time!`, `Settle`) and Action Tag scheduling.
+- Collision Damage calculation, Knight protection rules, Focusing Interrupts, and staged damage in Settle Time.
+- Multiplayer `MultiplayerSynchronizer` scene wiring (covered by `.docmanual/battleField/battleFieldDataSync.md`).
+- Card effects and final audio/VFX assets.
 
 ## Further Notes
 
-- All tuning knobs (`impulse_per_energy`, `drag_distance_per_energy`, `deadzone_radius`, `base_deceleration`, `aim_length_per_impulse`, `rest_speed_threshold`) should be `@export` properties so they can be tweaked live in the Godot Inspector while testing in `demo_bettlefield.tscn`.
+- All physics and aiming constants (`impulse_per_energy`, `drag_distance_per_energy`, `deadzone_radius`, `base_deceleration`, `stop_speed_threshold`, `aim_length_per_impulse`) are `@export` properties for live tuning in the Godot Inspector.

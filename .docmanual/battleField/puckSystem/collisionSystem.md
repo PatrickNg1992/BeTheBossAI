@@ -98,6 +98,6 @@ fc is the cushion friction factor
 
 ## Collision effects
 
-Besides the normal rebound impact, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impact applied to pucks that hit the blocks of the cuhsion. The function should be in a script that attached to cushion blocks and extendable. 
+Besides the normal rebound impulse, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impulse applied to pucks that hit the blocks of the cuhsion. The function should be in a script that attached to cushion blocks and extendable. 
 
 ## Gravity
