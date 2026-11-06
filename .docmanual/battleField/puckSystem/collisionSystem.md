@@ -52,8 +52,6 @@ v1f = v1 + (J/m1)n
 
 v2f = v2 - (J/m2)n
 
-
-
 where 
 
 p1, p2 are positions
@@ -90,8 +88,6 @@ or rearranged:
 
 v1f = (1-fc) (v1 - (v1．n)n) - e (v1．n)n
 
-
-
 where 
 
 n is the normalised perpendicular direction
@@ -101,5 +97,7 @@ fc is the cushion friction factor
 *\* For interest, the actual e or J can be affected by the effects of the puck units
 
 ## Collision effects
+
+Besides the normal rebound impact, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impact applied to pucks that hit the blocks of the cuhsion. The function should be in a script that attached to cushion blocks and extendable. 
 
 ## Gravity
