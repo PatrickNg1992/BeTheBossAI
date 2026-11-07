@@ -12,4 +12,5 @@
 - [ ] After acting, the unit re-places its tag a unit-specific offset back from the goal
 - [ ] A pocketed unit's planned tag is cancelled and replaced by a return tag at goal−5
 - [ ] Membership changes apply in Settle Time per the spec
+- [ ] Remove the temporary `Action` test button (`%ActionButton` in `demo_bettlefield.tscn`) and the 5-second `Action Time` placeholder timer (`ACTION_PLACEHOLDER_SECONDS` in `demo_battlefield.gd`), replacing them with true Action Tag arrival and unit action execution
 - [ ] No code or docs still use "Shot Resolution"

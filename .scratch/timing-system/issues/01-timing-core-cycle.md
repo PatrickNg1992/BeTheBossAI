@@ -4,7 +4,15 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** implemented
+**Status:** implemented (83/83 tests green — UI verified by user)
+
+**Progress notes & temporary scaffolding to clean up in later tickets:**
+- Core clock implemented in `src/battlefield/timing_manager.gd` (`class_name TimingManager`) with unit/integration tests in `tests/test_timing_manager.gd`.
+- UI controls added to `src/demo_bettlefield.tscn` and wired in `src/battlefield/demo_battlefield.gd`: centered **Play / Cancel** button below the Time Board, top-right **Pause** button, top-right **Fast Play** speed-cycle button (`x1` → `x1.5` → `x2` → `x2.5` → `x1` with double-arrow icon), and bottom **"Puck-puck Time!"** slide-in/hold/slide-out ribbon banner (`src/resource/battlefield/puck_puck_banner.png`).
+- Enemy Heroes (`src/pucks/base_enemy.gd`) are gated via `TimingManager` signals so they only move and attack during `Action Time`.
+- **Temporary test scaffolding (tracked in 03 and 04 to remove later):**
+  1. Temporary `Action` button (`%ActionButton` below Pause) + 5-second `Action Time` timer (`ACTION_PLACEHOLDER_SECONDS = 5.0`) -> remove in **03** when Action Tags & true unit actions are implemented.
+  2. Temporary `Space` key press in `Play Time` (`_unhandled_input` `KEY_SPACE` -> `fire_cue_shot()`) + 5-second `Puck-puck Time!` timer (`PUCK_PUCK_PLACEHOLDER_SECONDS = 5.0`) -> remove in **04** / `cue-shot-energy` when real Cue-Shot launch and all-pucks-at-rest detection land.
 
 - [x] All six Timings exist with names per `.docs/contexts/battlefield.md` (including "Puck-puck Time!")
 - [x] Exactly one Timing is active at any moment; the manager is the only writer of the clock

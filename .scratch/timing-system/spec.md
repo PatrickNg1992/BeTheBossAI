@@ -79,3 +79,11 @@ A single battle clock — the timing state machine — that every battle system 
 - The timing system has no code yet; this is a new subsystem, not a refactor.
 - Once implemented, `dragon_player.gd`'s free movement and `base_enemy.gd`'s always-on AI must be gated by the Timing signals — that wiring is part of this spec, redesigning those behaviours is not.
 - Open design points explicitly parked during the grilling session: buff/debuff tag priority, additional Settle triggers, per-unit slot offsets (tuned per Class).
+
+## Temporary Test Scaffolding (To Replace / Remove Later)
+
+The following temporary scaffolding was added in `src/demo_bettlefield.tscn` and `src/battlefield/demo_battlefield.gd` while implementing ticket 01 before Cue-Shot and Action Tags exist:
+
+- [ ] **Temporary `Action` button & 5-second `Action Time` timer (`ActionButton` in `demo_bettlefield.tscn`, `ACTION_PLACEHOLDER_SECONDS` in `demo_battlefield.gd`)**: Added below the Pause button to manually enter `Action Time` and let Enemy Heroes move/attack for 5 seconds before returning to the next timing phase. **Must be removed** once Action Tags on the Time Board and true unit Action Time execution (ticket 03) are implemented.
+- [ ] **Temporary `Space`-key transition from `Play Time` → `Puck-puck Time!` and 5-second `Puck-puck Time!` timer (`_unhandled_input` `KEY_SPACE` and `PUCK_PUCK_PLACEHOLDER_SECONDS` in `demo_battlefield.gd`)**: Pressing `Space` in `Play Time` currently triggers `fire_cue_shot()` and ends `Puck-puck Time!` after 5 seconds as a placeholder before Cue-Shot exists. **Must be removed** and replaced by real drag-to-aim Cue-Shot launch and physics all-pucks-at-rest detection (ticket 04 + `cue-shot-energy`).
+
