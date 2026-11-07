@@ -53,7 +53,8 @@ src/
 │   ├── battlefield.gd           # Cue Table controller: block lookup, type customization & swapping
 │   ├── table_block.gd           # TableBlock (StaticBody3D): block_number, swappable BlockType & collision
 │   ├── cushion_block.gd         # CushionBlock (StaticBody3D): cushion_number, wood/grass CushionType & rebound math
-│   └── demo_battlefield.gd      # Demo battlefield root: surfaces `battle_finished` (boss died)
+│   ├── timing_manager.gd        # TimingManager: 6-Timing state machine, Energy charging, staged damage, Pause & Fast Play
+│   └── demo_battlefield.gd      # Demo battlefield root: wires TimingManager + Play/Fast Play/Pause UI + surfaces `battle_finished`
 │
 ├── cards/
 │   ├── base_card_info.gd       # Card data Resource: type, name, description, color
@@ -67,8 +68,8 @@ src/
 │   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, tag arrows (dumb view)
 │
 ├── resource/
-│   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, goal_flag, sword PNGs
-│                               # (regenerate via tests/_gen_assets.tscn)
+│   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, double_arrow, goal_flag, sword,
+│                               # puck_puck_banner PNGs (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
     └── localization.gd         # EN/ZH localization (autoload)

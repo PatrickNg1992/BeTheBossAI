@@ -13,6 +13,8 @@ func _ready() -> void:
 	_make_arrow("arrow_up.png", false)
 	_make_goal_flag()
 	_make_sword()
+	_make_double_arrow()
+	_make_puck_puck_banner()
 	_make_grass_tile("grass_dark.png", Color(0.18, 0.46, 0.19), Color(0.12, 0.33, 0.13), 101)
 	_make_grass_tile("grass_light.png", Color(0.28, 0.58, 0.26), Color(0.20, 0.44, 0.19), 202)
 	_make_wood_cushion("wood_dark.png", Color(0.38, 0.24, 0.12), Color(0.22, 0.14, 0.07), 303)
@@ -136,6 +138,74 @@ func _make_sword() -> void:
 			if y >= 20 and y <= 21 and x >= 10 and x <= 12:
 				img.set_pixel(x, y, iron)
 	_save(img, "sword.png")
+
+
+## 22x18 double right-arrow (fast-forward) icon in gold/bone.
+func _make_double_arrow() -> void:
+	var w := 22
+	var h := 18
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var gold := Color(0.96, 0.84, 0.42, 1.0)
+	var shade := Color(0.68, 0.52, 0.20, 1.0)
+	var cy := (h - 1) / 2.0
+	for y in range(h):
+		var dy := absf(float(y) - cy)
+		if dy > 6.0:
+			continue
+		var reach := int(roundf(6.0 - dy))
+		for x in range(2, 2 + reach + 1):
+			var is_edge := (x == 2 or x == 2 + reach)
+			img.set_pixel(x, y, shade if is_edge else gold)
+		for x in range(11, 11 + reach + 1):
+			var is_edge := (x == 11 or x == 11 + reach)
+			img.set_pixel(x, y, shade if is_edge else gold)
+	_save(img, "double_arrow.png")
+
+
+## 480x84 medieval crimson-and-gold ribbon banner image for "Puck-puck Time!".
+func _make_puck_puck_banner() -> void:
+	var w := 480
+	var h := 84
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var noise := FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.seed = 777
+	noise.frequency = 0.06
+	var cy := (h - 1) / 2.0
+	for y in range(h):
+		var dy := absf(float(y) - cy)
+		if dy > 36.0:
+			continue
+		# Swallowtail ribbon notch on left and right ends
+		var indent := int(roundf((36.0 - dy) * 0.78))
+		var left_x := 6 + indent
+		var right_x := w - 7 - indent
+		for x in range(left_x, right_x + 1):
+			var edge_dist_x := mini(x - left_x, right_x - x)
+			var edge_dist_y := 36.0 - dy
+			var n := noise.get_noise_2d(float(x) * 0.5, float(y) * 1.2) * 0.06
+			var col := Color(0.58, 0.12, 0.11, 0.96).lightened(n + (1.0 - dy / 36.0) * 0.10)
+			# Outer dark iron/shadow trim
+			if edge_dist_y < 2.0 or edge_dist_x < 2:
+				col = Color(0.18, 0.10, 0.06, 0.98)
+			# Gold outer border and inner filigree line
+			elif edge_dist_y < 5.0 or edge_dist_x < 5:
+				col = Color(0.95, 0.76, 0.24, 1.0)
+			elif (edge_dist_y >= 7.0 and edge_dist_y < 8.5) or (edge_dist_x >= 8 and edge_dist_x <= 9):
+				col = Color(0.82, 0.62, 0.18, 0.90)
+			img.set_pixel(x, y, col)
+	# Gold diamond emblems near both ends
+	for cx in [58, w - 59]:
+		for y in range(int(cy) - 10, int(cy) + 11):
+			for x in range(cx - 10, cx + 11):
+				var md: float = absf(float(x - cx)) + absf(float(y) - cy)
+				if md <= 9.0:
+					img.set_pixel(x, y, Color(0.98, 0.84, 0.32, 1.0) if md <= 6.0 else Color(0.35, 0.20, 0.08, 1.0))
+	_save(img, "puck_puck_banner.png")
+
+
 
 
 ## 64x64 medieval turf/grass tile texture with subtle blades and mossy edge trim.

@@ -77,3 +77,9 @@ It will take a short time to display the event that happened.
 Time spent in the preparation phase. 
 
 The player can click to start the next phase and do some preparations.
+
+## Pause and Fast Play
+
+At any timing, the game allows the player to pause. 
+
+Also, add a switch button on the battlefield screen to enable fast play in single-player games. Fast play should affect all timing except Play Time and Prepare Time because these two are basically waiting for user actions.

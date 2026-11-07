@@ -68,6 +68,13 @@ const EN := {
 	frozen_waiting = "Waiting for the dropped player to rejoin ({seconds}s)",
 	notif_rejoin_only = "A battle is in progress — only the dropped player can rejoin.",
 	notif_grace_expired = "The game already ended.",
+	timing_play = "Play",
+	timing_cancel = "Cancel",
+	timing_fast_play = "Fast Play",
+	timing_pause = "Pause",
+	timing_resume = "Resume",
+	timing_action = "Action",
+	timing_puck_puck_time = "Puck-puck Time!",
 }
 
 const ZH := {
@@ -125,6 +132,13 @@ const ZH := {
 	frozen_waiting = "等待掉线玩家重新加入（{seconds} 秒）",
 	notif_rejoin_only = "战斗进行中——仅掉线玩家可重新加入。",
 	notif_grace_expired = "对局已结束。",
+	timing_play = "行动",
+	timing_cancel = "取消",
+	timing_fast_play = "加速",
+	timing_pause = "暂停",
+	timing_resume = "继续",
+	timing_action = "敌方行动",
+	timing_puck_puck_time = "弹珠时间！",
 }
 
 

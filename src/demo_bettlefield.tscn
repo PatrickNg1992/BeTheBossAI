@@ -8,6 +8,11 @@
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
 [ext_resource type="Script" uid="uid://djgf65pa0op4e" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
 [ext_resource type="PackedScene" path="res://src/canvas/time_board.tscn" id="8_tb"]
+[ext_resource type="Script" path="res://src/battlefield/timing_manager.gd" id="9_tm"]
+[ext_resource type="Texture2D" path="res://src/resource/battlefield/wood_panel.png" id="10_wood"]
+[ext_resource type="Texture2D" path="res://src/resource/battlefield/sword.png" id="11_sword"]
+[ext_resource type="Texture2D" path="res://src/resource/battlefield/double_arrow.png" id="12_darrow"]
+[ext_resource type="Texture2D" path="res://src/resource/battlefield/puck_puck_banner.png" id="13_ppbanner"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wtt4b"]
 height = 0.5
@@ -68,6 +73,10 @@ height = 0.35
 
 [node name="Node3D" type="Node3D" unique_id=741025768]
 script = ExtResource("7_demo")
+
+[node name="TimingManager" type="Node" parent="." unique_id=881025769]
+unique_name_in_owner = true
+script = ExtResource("9_tm")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
 transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 32, 7)
@@ -223,11 +232,116 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="TimeBoard" parent="Canvas" unique_id=664790673 instance=ExtResource("8_tb")]
+unique_name_in_owner = true
 layout_mode = 3
-demo_mode = true
+
+[node name="PlayButton" type="Button" parent="Canvas" unique_id=664790675]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(148, 42)
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -56.0
+offset_top = 98.0
+offset_right = 92.0
+offset_bottom = 140.0
+grow_horizontal = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 18
+text = "Play"
+icon = ExtResource("11_sword")
+alignment = 1
+expand_icon = false
+
+[node name="TopRightControls" type="VBoxContainer" parent="Canvas" unique_id=664790674]
+unique_name_in_owner = true
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -216.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 98.0
+grow_horizontal = 0
+theme_override_constants/separation = 8
+alignment = 0
+
+[node name="TopRow" type="HBoxContainer" parent="Canvas/TopRightControls" unique_id=664790679]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="FastPlayButton" type="Button" parent="Canvas/TopRightControls/TopRow" unique_id=664790676]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 14
+text = "x1"
+icon = ExtResource("12_darrow")
+alignment = 1
+
+[node name="PauseButton" type="Button" parent="Canvas/TopRightControls/TopRow" unique_id=664790677]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 14
+text = "Pause"
+
+[node name="ActionRow" type="HBoxContainer" parent="Canvas/TopRightControls" unique_id=664790680]
+layout_mode = 2
+alignment = 2
+
+[node name="ActionButton" type="Button" parent="Canvas/TopRightControls/ActionRow" unique_id=664790681]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 14
+text = "Action"
 
 [node name="CardSystem" type="CanvasLayer" parent="Canvas" unique_id=1289326118]
 script = ExtResource("5_h0345")
+
+[node name="PuckPuckBanner" type="TextureRect" parent="Canvas/CardSystem" unique_id=664790678]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+custom_minimum_size = Vector2(480, 84)
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -126.0
+offset_right = 240.0
+offset_bottom = -42.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+texture = ExtResource("13_ppbanner")
+stretch_mode = 5
+
+[node name="BannerLabel" type="Label" parent="Canvas/CardSystem/PuckPuckBanner" unique_id=664790682]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.45, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.06, 0.04, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/outline_size = 6
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 3
+theme_override_font_sizes/font_size = 30
+text = "Puck-puck Time!"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="CardManager" type="Node" parent="Canvas/CardSystem" unique_id=626773743]
 unique_name_in_owner = true

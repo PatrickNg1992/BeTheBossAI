@@ -37,6 +37,8 @@ A single battle clock — the timing state machine — that every battle system 
 21. As a developer, I want battle systems (AI, auto-attacks, energy, card input) to key off Timing-change signals, so that the clock is the single authority.
 22. As a developer, I want Action Tags to re-place themselves a unit-specific slot offset ahead after acting, so that initiative needs no separate scheduler.
 23. As a designer, I want buff/debuff actions to fire before normal actions on the same slot (priority TBC), so that setup effects land before attacks.
+24. As a player, I want to pause the game at any Timing and resume where I left off, so that I can step away at any moment.
+25. As a player in a single-player game, I want a Fast Play switch button on the battlefield screen that speeds up all Timings except Play Time and Prepare Time, so that Charging, Action, Puck-puck Time!, and Settle run faster while waiting-for-input phases stay unhurried.
 
 ## Implementation Decisions
 
@@ -52,6 +54,8 @@ A single battle clock — the timing state machine — that every battle system 
 - **Energy**: capacity 20, Cue-Shot cost 1–9 in 0.5-slot steps (minimum 1, no free shots; demo test value), regeneration only via Charging Time slots. Supersedes the stale capacity-12/cost-1–6 draft and the 16-slot note in the old glossary.
 - **Damage staging**: one staged-damage accumulator collects pending damage from all sources (collisions, pocket falls, action-time attacks); Settle Time applies the whole accumulator at once.
 - **Pocketed units**: a pocketed unit's planned Action Tag is cancelled and replaced by a "return" tag placed 5 slots ahead of the goal — 5 Turns, not seconds, so the return cadence follows the same configurable per-slot time. When the return tag fires, the puck re-enters at the nearest free Tile and places its next Action Tag as usual. (Applied in Settle Time, per the membership-change rule.)
+- **Pause**: Allowed at any Timing. Pausing freezes the battle clock and all timing progression in place without changing the active Timing or losing fractional Turn progress; unpausing resumes from the exact paused state.
+- **Fast Play (Single-Player)**: A switch button on the battlefield screen (enabled in single-player games) toggles Fast Play. When enabled, time scale / progression speed is accelerated across all time-driven Timings (`Charging Time`, `Action Time`, `Puck-puck Time!`, `Settle Time`), while `Play Time` and `Prepare Time` are unaffected because they wait for user actions.
 - **Terminology**: "Shot Resolution" is retired everywhere in favour of "Puck-puck Time!".
 
 ## Testing Decisions
@@ -59,7 +63,7 @@ A single battle clock — the timing state machine — that every battle system 
 - **Seam: the TimingManager's public surface — its signals and its input methods** (charge-slot-completed, play pressed/cancelled, cue-shot fired, all-pucks-at-rest, actions-finished). Tests drive these inputs and assert on emitted Timing transitions. No other seam is introduced; battle systems are faked behind the signals.
 - A good test asserts **external behaviour only**: which Timing is active and which transitions fire for a given input sequence — never internal node structure, timers, or private state.
 - **Modules tested**: the TimingManager only. Physics, damage numbers, AI and card effects are out of the test harness; pucks' "at rest" state and units' Action Tags are stubbed.
-- Key cases: entering Prepare sets Energy to 10 and places initial tags (board then freezes); Charging → Play → cancel → Charging; the once-per-slot Play rule; Charging past a tagged slot → Action; same-slot tag ordering (buff/debuff first, spawn order, cue-shot last); cue-shot from Play or from a Knight → Puck-puck Time! → (events ? Settle : skip) → Charging; staged damage applied only at Settle.
+- Key cases: entering Prepare sets Energy to 10 and places initial tags (board then freezes); Charging → Play → cancel → Charging; the once-per-slot Play rule; Charging past a tagged slot → Action; same-slot tag ordering (buff/debuff first, spawn order, cue-shot last); cue-shot from Play or from a Knight → Puck-puck Time! → (events ? Settle : skip) → Charging; staged damage applied only at Settle; pausing/resuming at any Timing preserves active Timing and progress; Fast Play switch accelerates Charging, Action, Puck-puck Time!, and Settle while leaving Play Time and Prepare Time unaffected (single-player only).
 - **Prior art**: none in-repo — this introduces `res://tests/` with `test_*.gd` suites, matching the repo's MCP test-runner discovery convention.
 
 ## Out of Scope
