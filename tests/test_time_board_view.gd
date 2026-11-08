@@ -150,3 +150,75 @@ func test_view_renders_whatever_it_is_fed() -> void:
 	assert_eq(_board.tag_info(19).get("count"), 1, "Even the goal slot renders what it's fed")
 	assert_eq(_board.tag_info(10).get("count"), 5, "Upper-right slot renders verbatim")
 	assert_true(_board.tag_info(7).is_empty(), "Empty slots render no tag")
+
+
+# ----- Ticket 01 (cue-shot-energy): half-slot energy + bottom-left consume/over-drag preview -----
+
+
+func test_half_slot_energy_renders_accurately_along_serpentine_path() -> void:
+	if _board == null:
+		return
+	_board.render_state({"energy": 11.5, "charge": 0.6, "tags": {}})
+	assert_eq(_board.slot_fill_ratio(0), 1.0, "Slot 0 filled")
+	assert_eq(_board.slot_fill_ratio(10), 1.0, "Slot 10 filled")
+	assert_eq(_board.slot_fill_ratio(11), 0.5, "Slot 11 shows the 0.5 half-slot owned Energy")
+	assert_eq(_board.slot_fill_kind(11), "energy", "Half-slot owned Energy renders in normal energy kind")
+	assert_true(is_equal_approx(_board.slot_fill_ratio(12), 0.6), "Next full slot (12) shows the fractional Turn charge")
+	assert_eq(_board.slot_fill_kind(12), "charging", "Slot 12 renders in charging kind")
+	assert_eq(_board.slot_fill_ratio(13), 0.0, "Slot 13 empty")
+
+
+func test_affordable_preview_cost_highlights_from_slot_0_and_keeps_remaining_energy_gold() -> void:
+	if _board == null:
+		return
+	_board.render_state({"energy": 6.5, "charge": 0.0, "preview_cost": 3.5, "tags": {}})
+	assert_eq(_board.slot_consume_ratio(0), 1.0, "Slot 0 is fully highlighted in consume-preview colour")
+	assert_eq(_board.slot_consume_ratio(2), 1.0, "Slot 2 is fully highlighted in consume-preview colour")
+	assert_eq(_board.slot_consume_ratio(3), 0.5, "Slot 3 has first 0.5 highlighted in consume-preview colour")
+	assert_eq(_board.slot_fill_ratio(3), 1.0, "Slot 3 still has full 1.0 owned Energy underneath")
+	assert_eq(_board.slot_consume_ratio(4), 0.0, "Slot 4 is past preview_cost and has no consume highlight")
+	assert_eq(_board.slot_fill_ratio(5), 1.0, "Slot 5 remains in normal owned Energy colour")
+	assert_eq(_board.slot_fill_ratio(6), 0.5, "Slot 6 shows the remaining 0.5 owned Energy")
+	assert_eq(_board.slot_overdrag_ratio(3), 0.0, "No red overdrag when preview_cost <= energy")
+
+
+func test_overdrag_preview_cost_highlights_owned_energy_and_continues_in_red() -> void:
+	if _board == null:
+		return
+	# Owned energy = 2.5, preview_cost = 4.5 -> 0..2.5 consume-preview, 2.5..4.5 red overdrag
+	_board.render_state({"energy": 2.5, "charge": 0.0, "preview_cost": 4.5, "tags": {}})
+	assert_eq(_board.slot_consume_ratio(0), 1.0, "Slot 0 is consume-preview")
+	assert_eq(_board.slot_consume_ratio(1), 1.0, "Slot 1 is consume-preview")
+	assert_eq(_board.slot_consume_ratio(2), 0.5, "Slot 2 first half is consume-preview")
+	assert_eq(_board.slot_overdrag_ratio(2), 0.5, "Slot 2 second half is red overdrag")
+	assert_eq(_board.slot_overdrag_ratio(3), 1.0, "Slot 3 is full red overdrag")
+	assert_eq(_board.slot_overdrag_ratio(4), 0.5, "Slot 4 first half is red overdrag")
+	assert_eq(_board.slot_overdrag_ratio(5), 0.0, "Slot 5 is untouched")
+
+	# Clearing preview_cost (0.0) restores normal owned Energy display
+	_board.set_preview_cost(0.0)
+	assert_eq(_board.slot_consume_ratio(0), 0.0, "Clearing preview_cost removes consume highlight")
+	assert_eq(_board.slot_overdrag_ratio(2), 0.0, "Clearing preview_cost removes red overdrag")
+	assert_eq(_board.slot_fill_ratio(0), 1.0, "Owned Energy on slot 0 restored")
+	assert_eq(_board.slot_fill_ratio(2), 0.5, "Half-slot owned Energy on slot 2 restored")
+
+
+func test_all_energy_reductions_trigger_sequential_rewind_animation() -> void:
+	if _board == null:
+		return
+	_board.render_state({"energy": 8.5, "charge": 0.0, "tags": {}})
+	# 1. Reduction via apply_state (e.g. TimingManager.energy_changed after consume_energy / set_energy)
+	_board.apply_state({"energy": 5.0, "charge": 0.0, "tags": {}})
+	assert_eq(_board.last_animation_kind, "rewind", "Energy reduction via apply_state triggers sequential rewind")
+	assert_eq(_board.slot_fill_ratio(4), 1.0, "Slot 4 remains filled")
+	assert_eq(_board.slot_fill_ratio(5), 0.0, "Slots 5..8 drained")
+
+	# 2. Reduction via reusable animate_energy_reduction helper (e.g. card cost or drain effect)
+	_board.last_animation_kind = ""
+	_board.animate_energy_reduction(2.5)
+	assert_eq(_board.last_animation_kind, "rewind", "animate_energy_reduction triggers the same sequential rewind")
+	assert_eq(_board.slot_fill_ratio(1), 1.0, "Slot 1 remains filled")
+	assert_eq(_board.slot_fill_ratio(2), 0.5, "Slot 2 reduced to half-slot 0.5")
+	assert_eq(_board.slot_fill_ratio(3), 0.0, "Slots 3..4 drained")
+
+

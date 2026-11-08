@@ -4,14 +4,14 @@
 
 **Blocked by:** 01 — Time Board half-slot Energy and bottom-left consume/over-drag preview
 
-**Status:** ready-for-agent
+**Status:** implemented (93/93 tests green)
 
-- [ ] Enemy Hero AI movement is paused in the demo battlefield so Pucks stand stationary outside `Puck-puck Time!`
-- [ ] Each Puck stores `radius`, `mass`, and `velocity`; `PuckVelocityManager` updates Puck positions each frame and recalculates velocity changes at 20 Hz (`0.05s`)
-- [ ] `TableBlock` exposes an extendable ground-effect function taking `puck: BasePuck` that decelerates moving Pucks at `-1.0 unit/sec²` on standard blocks (e.g. `5 units/sec` slows to `4 units/sec` after `1s`) and clamps to `Vector3.ZERO` below the stop threshold
-- [ ] Demo Energy starts at `15.0` on the Time Board and refills to `15.0` every `20` seconds
-- [ ] Clicking the Boss Monster at rest and dragging on the `Y = 1.5` table plane computes shot direction opposite the drag and required Energy in `[1.0, 9.0]` at `0.5`-slot steps, updating the Time Board preview live
-- [ ] A 3D arrowed aiming line renders at `Y = 1.55` with length proportional to the selected Impulse, turning red when inside the cancel deadzone or over-dragged
-- [ ] Releasing inside the deadzone or when `required_energy > owned_energy` cancels the shot, plays a cancellation sound, and spends no Energy
-- [ ] Releasing a valid shot deducts `required_energy`, launches the Boss Monster with $\vec{v}_0 = (k \cdot E / m_{\text{boss}})\hat{u}$, and decelerates it to rest
-- [ ] Automated tests verify `0.5`-slot quantization, deadzone/over-drag cancellation, mass-dependent launch speed ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$), and `-1.0 unit/sec²` ground friction deceleration to rest
+- [x] Enemy Hero AI movement is paused in the demo battlefield so Pucks stand stationary outside `Puck-puck Time!`
+- [x] Each Puck stores `radius`, `mass`, and `velocity`; `PuckVelocityManager` updates Puck positions each frame and recalculates velocity changes at 20 Hz (`0.05s`)
+- [x] `TableBlock` exposes an extendable ground-effect function taking `puck: BasePuck` that decelerates moving Pucks at `-1.0 unit/sec²` on standard blocks (e.g. `5 units/sec` slows to `4 units/sec` after `1s`) and clamps to `Vector3.ZERO` below the stop threshold
+- [x] Demo Energy starts at `15.0` on the Time Board and refills to `15.0` every `20` seconds
+- [x] Clicking the Boss Monster at rest and dragging on the `Y = 1.5` table plane computes shot direction opposite the drag and required Energy in `[1.0, 9.0]` at `0.5`-slot steps, updating the Time Board preview live
+- [x] A 3D arrowed aiming line renders at `Y = 1.55` with length proportional to the selected Impulse, turning red when inside the cancel deadzone or over-dragged
+- [x] Releasing inside the deadzone or when `required_energy > owned_energy` cancels the shot, plays a cancellation sound, and spends no Energy
+- [x] Releasing a valid shot deducts `required_energy`, launches the Boss Monster with $\vec{v}_0 = (k \cdot E / m_{\text{boss}})\hat{u}$, and decelerates it to rest
+- [x] Automated tests verify `0.5`-slot quantization, deadzone/over-drag cancellation, mass-dependent launch speed ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$), and `-1.0 unit/sec²` ground friction deceleration to rest

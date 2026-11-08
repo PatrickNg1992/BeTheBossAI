@@ -27,6 +27,8 @@ const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass
 		_apply_block_type()
 
 @export var friction_factor: float = 1.0
+@export var base_deceleration: float = 1.0
+@export var stop_speed_threshold: float = 0.002
 
 
 func _ready() -> void:
@@ -43,6 +45,37 @@ func set_block_type(new_type: BlockType) -> void:
 
 func is_pocket() -> bool:
 	return block_type == BlockType.POCKET
+
+
+## Extendable ground-effect calculation: returns the horizontal velocity change
+## over dt. In the normal case, mass cancels out (F_friction = -mu * m * v_hat
+## -> a = F / m = -base_deceleration * friction_factor * v_hat), decelerating at
+## -1.0 unit/sec^2 on standard grass blocks and clamping to Vector3.ZERO below
+## stop_speed_threshold so friction never reverses direction.
+func calculate_ground_velocity_delta(puck: BasePuck, dt: float) -> Vector3:
+	if puck == null or dt <= 0.0 or is_pocket():
+		return Vector3.ZERO
+	var horiz := Vector3(puck.velocity.x, 0.0, puck.velocity.z)
+	var speed := horiz.length()
+	if speed <= 0.0001:
+		return Vector3.ZERO
+	var decel := base_deceleration * friction_factor * dt
+	if speed <= decel or (speed - decel) < stop_speed_threshold:
+		return -horiz
+	return -horiz.normalized() * decel
+
+
+## Applies the block's continuous ground effect directly to the puck's velocity.
+func apply_ground_effect(puck: BasePuck, dt: float) -> void:
+	if puck == null:
+		return
+	var dv := calculate_ground_velocity_delta(puck, dt)
+	puck.velocity.x += dv.x
+	puck.velocity.z += dv.z
+	if Vector2(puck.velocity.x, puck.velocity.z).length() < stop_speed_threshold:
+		puck.velocity.x = 0.0
+		puck.velocity.z = 0.0
+
 
 
 func _apply_block_type() -> void:

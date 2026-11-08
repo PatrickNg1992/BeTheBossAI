@@ -119,6 +119,8 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
 		return
+	if _selected_index < 0 or _selected_index >= _card_nodes.size():
+		return
 	# Don't process if click is on the hand area (UI handles it)
 	if hand_container.get_global_rect().has_point(event.position):
 		return

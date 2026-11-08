@@ -6,10 +6,10 @@ enum HeroClass { WARRIOR, KNIGHT, MAGE, RANGER }
 @export var hero_class: HeroClass = HeroClass.WARRIOR
 
 const CLASS_CONFIG := {
-	HeroClass.WARRIOR: {"hp": 80, "damage": 12, "speed": 2.5, "color": Color(0.8, 0.2, 0.2)},
-	HeroClass.KNIGHT: {"hp": 100, "damage": 8, "speed": 2.0, "color": Color(0.2, 0.2, 0.8)},
-	HeroClass.MAGE: {"hp": 50, "damage": 15, "speed": 2.0, "color": Color(0.6, 0.2, 0.8)},
-	HeroClass.RANGER: {"hp": 60, "damage": 10, "speed": 3.0, "color": Color(0.2, 0.7, 0.3)},
+	HeroClass.WARRIOR: {"hp": 80, "damage": 12, "speed": 2.5, "mass": 1.5, "color": Color(0.8, 0.2, 0.2)},
+	HeroClass.KNIGHT: {"hp": 100, "damage": 8, "speed": 2.0, "mass": 2.0, "color": Color(0.2, 0.2, 0.8)},
+	HeroClass.MAGE: {"hp": 50, "damage": 15, "speed": 2.0, "mass": 1.0, "color": Color(0.6, 0.2, 0.8)},
+	HeroClass.RANGER: {"hp": 60, "damage": 10, "speed": 3.0, "mass": 1.2, "color": Color(0.2, 0.7, 0.3)},
 }
 
 
@@ -20,6 +20,7 @@ func _ready() -> void:
 	current_hp = max_hp
 	attack_damage = config["damage"]
 	move_speed = config["speed"]
+	mass = config["mass"]
 
 
 func take_damage(amount: int) -> void:

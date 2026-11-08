@@ -4,10 +4,10 @@
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** implemented (90/90 tests green)
 
-- [ ] The Time Board renders half-slot (`0.5`) Energy values (`0.0..20.0`) accurately along the serpentine path
-- [ ] Feeding an affordable `preview_cost` (`<= owned_energy`) highlights slots starting from `slot 0` (bottom-left) up to `preview_cost` in the consume-preview colour while leaving the rest of `owned_energy` in the normal Energy colour
-- [ ] Feeding an over-dragged `preview_cost` (`> owned_energy`) highlights `0..owned_energy` in the consume-preview colour and continues from `owned_energy..preview_cost` in red
-- [ ] Clearing `preview_cost` (`0.0`) restores the normal owned Energy fill display
-- [ ] View-seam tests verify half-slot fills, affordable consume preview from `slot 0`, and red over-drag preview past owned Energy
+- [x] The Time Board renders half-slot (`0.5`) Energy values (`0.0..20.0`) accurately along the serpentine path
+- [x] Feeding an affordable `preview_cost` (`<= owned_energy`) highlights slots starting from `slot 0` (bottom-left) up to `preview_cost` in the consume-preview colour while leaving the rest of `owned_energy` in the normal Energy colour
+- [x] Feeding an over-dragged `preview_cost` (`> owned_energy`) highlights `0..owned_energy` in the consume-preview colour and continues from `owned_energy..preview_cost` in red
+- [x] Clearing `preview_cost` (`0.0`) restores the normal owned Energy fill display
+- [x] View-seam tests verify half-slot fills, affordable consume preview from `slot 0`, and red over-drag preview past owned Energy

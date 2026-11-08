@@ -5,8 +5,8 @@ extends Node
 ## transition rules.
 
 signal timing_changed(new_timing: String, old_timing: String)
-signal charge_slot_completed(new_energy: int)
-signal energy_changed(new_energy: int, charge_progress: float)
+signal charge_slot_completed(new_energy: float)
+signal energy_changed(new_energy: float, charge_progress: float)
 signal staged_damage_applied(applied_damage: Dictionary, settle_events: Array)
 signal pause_changed(paused: bool)
 signal fast_play_changed(enabled: bool)
@@ -18,7 +18,7 @@ const TIMING_ACTION := "Action Time"
 const TIMING_PUCK_PUCK := "Puck-puck Time!"
 const TIMING_SETTLE := "Settle Time"
 
-const MAX_ENERGY := 20
+const MAX_ENERGY := 20.0
 
 @export var turn_duration: float = 1.0
 @export var settle_duration: float = 0.6
@@ -26,7 +26,7 @@ const MAX_ENERGY := 20
 @export var single_player_mode: bool = true
 
 var _current_timing: String = TIMING_CHARGING
-var _energy: int = 0
+var _energy: float = 0.0
 var _charge_progress: float = 0.0
 var _play_used_in_current_slot: bool = false
 var _staged_damage: Dictionary = {}
@@ -48,7 +48,7 @@ func get_current_timing() -> String:
 	return _current_timing
 
 
-func get_energy() -> int:
+func get_energy() -> float:
 	return _energy
 
 
@@ -152,24 +152,33 @@ func enter_action_time() -> bool:
 	return true
 
 
-func fire_cue_shot(energy_cost: int = 0) -> bool:
+func fire_cue_shot(energy_cost: float = 0.0) -> bool:
 	if _paused:
 		return false
 	if _current_timing != TIMING_PLAY and _current_timing != TIMING_ACTION:
 		return false
-	if energy_cost > 0:
-		set_energy(maxi(0, _energy - energy_cost))
+	if energy_cost > 0.0:
+		consume_energy(energy_cost)
 	_transition_to(TIMING_PUCK_PUCK)
 	return true
 
 
-func play_card(target_timing: String = TIMING_CHARGING) -> bool:
+func play_card(target_timing: String = TIMING_CHARGING, energy_cost: float = 0.0) -> bool:
 	if _paused or _current_timing != TIMING_PLAY:
 		return false
 	if target_timing != TIMING_CHARGING and target_timing != TIMING_ACTION and target_timing != TIMING_PUCK_PUCK:
 		return false
+	if energy_cost > 0.0:
+		consume_energy(energy_cost)
 	_transition_to(target_timing)
 	return true
+
+
+func consume_energy(amount: float) -> float:
+	if amount <= 0.0:
+		return _energy
+	set_energy(maxf(0.0, _energy - amount))
+	return _energy
 
 
 func stage_damage(target_id: Variant, amount: int) -> void:
@@ -217,8 +226,8 @@ func notify_settle_finished() -> bool:
 	return true
 
 
-func set_energy(amount: int) -> void:
-	_energy = clampi(amount, 0, MAX_ENERGY)
+func set_energy(amount: float) -> void:
+	_energy = clampf(snappedf(amount, 0.5), 0.0, MAX_ENERGY)
 	if _energy >= MAX_ENERGY:
 		_charge_progress = 0.0
 	energy_changed.emit(_energy, _charge_progress)
@@ -253,7 +262,7 @@ func complete_charge_slot() -> void:
 
 func _finish_charge_slot() -> void:
 	if _energy < MAX_ENERGY:
-		_energy += 1
+		_energy = minf(MAX_ENERGY, _energy + 1.0)
 	_play_used_in_current_slot = false
 	charge_slot_completed.emit(_energy)
 

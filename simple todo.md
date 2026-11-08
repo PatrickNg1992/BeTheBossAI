@@ -1,0 +1,4 @@
+- check floor and cushion logic
+- puck puck time should be adopt the fast play
+- make puck faster but decelerate faster as well
+- ensure sync data work

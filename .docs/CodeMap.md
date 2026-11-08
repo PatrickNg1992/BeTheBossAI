@@ -51,9 +51,11 @@ src/
 │   ├── cue_table.tscn           # Hardcoded 30×20 medieval Cue Table: numbered TableBlocks (1..150),
 │   │                            # CushionBlocks (1..54), hollow corner Pocket Areas, 4 CornerFlags
 │   ├── battlefield.gd           # Cue Table controller: block lookup, type customization & swapping
-│   ├── table_block.gd           # TableBlock (StaticBody3D): block_number, swappable BlockType & collision
+│   ├── table_block.gd           # TableBlock (StaticBody3D): block_number, swappable BlockType & ground friction
 │   ├── cushion_block.gd         # CushionBlock (StaticBody3D): cushion_number, wood/grass CushionType & rebound math
 │   ├── timing_manager.gd        # TimingManager: 6-Timing state machine, Energy charging, staged damage, Pause & Fast Play
+│   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz ground friction & at-rest detection
+│   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot, 0.5-slot Energy preview, 3D aiming arrow & launch
 │   └── demo_battlefield.gd      # Demo battlefield root: wires TimingManager + Play/Fast Play/Pause UI + surfaces `battle_finished`
 │
 ├── cards/

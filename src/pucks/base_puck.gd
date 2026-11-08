@@ -11,6 +11,9 @@ const TABLE_GRAVITY: float = 25.0
 @export var attack_damage: int = 10
 @export var attack_range: float = 2.5
 @export var attack_cooldown: float = 1.0
+@export var mass: float = 1.0
+@export var radius: float = 0.5
+@export var restitution: float = 0.85
 
 var current_hp: int
 var is_dead: bool = false
@@ -18,8 +21,20 @@ var _attack_timer: float = 0.0
 
 
 func _ready() -> void:
+	add_to_group("pucks")
 	current_hp = max_hp
 	collision_mask = 3
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null and col_shape.shape is CylinderShape3D:
+		radius = (col_shape.shape as CylinderShape3D).radius
+
+
+func apply_impulse(impulse: Vector3) -> void:
+	if is_dead:
+		return
+	var safe_mass := maxf(mass, 0.0001)
+	velocity.x += impulse.x / safe_mass
+	velocity.z += impulse.z / safe_mass
 
 
 func apply_table_physics(delta: float) -> void:

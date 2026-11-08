@@ -2,16 +2,19 @@ class_name DragonPlayer
 extends BaseBossMonster
 
 @export var speed: float = 5.0
+@export var keyboard_movement_enabled: bool = false
 
 
 func _ready() -> void:
 	max_bars = 15
 	bar_max_hp = 100
+	mass = 3.0
+	radius = 0.75
 	super()
 
 
 func _physics_process(delta: float) -> void:
-	if is_dead:
+	if is_dead or not keyboard_movement_enabled:
 		return
 
 	var input_vector := Vector3.ZERO

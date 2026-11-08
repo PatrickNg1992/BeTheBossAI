@@ -13,6 +13,8 @@
 [ext_resource type="Texture2D" path="res://src/resource/battlefield/sword.png" id="11_sword"]
 [ext_resource type="Texture2D" path="res://src/resource/battlefield/double_arrow.png" id="12_darrow"]
 [ext_resource type="Texture2D" path="res://src/resource/battlefield/puck_puck_banner.png" id="13_ppbanner"]
+[ext_resource type="Script" path="res://src/battlefield/cue_shot_manager.gd" id="14_csm"]
+[ext_resource type="Script" path="res://src/battlefield/puck_velocity_manager.gd" id="15_pvm"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wtt4b"]
 height = 0.5
@@ -77,6 +79,14 @@ script = ExtResource("7_demo")
 [node name="TimingManager" type="Node" parent="." unique_id=881025769]
 unique_name_in_owner = true
 script = ExtResource("9_tm")
+
+[node name="PuckVelocityManager" type="Node" parent="." unique_id=881025771]
+unique_name_in_owner = true
+script = ExtResource("15_pvm")
+
+[node name="CueShotManager" type="Node" parent="." unique_id=881025770]
+unique_name_in_owner = true
+script = ExtResource("14_csm")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
 transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 32, 7)

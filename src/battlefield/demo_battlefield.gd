@@ -9,6 +9,7 @@ signal battle_finished()
 
 const PUCK_PUCK_PLACEHOLDER_SECONDS := 5.0
 const ACTION_PLACEHOLDER_SECONDS := 5.0
+const DEMO_INITIAL_ENERGY := 15.0
 const FAST_PLAY_SPEEDS: Array[float] = [1.0, 1.5, 2.0, 2.5]
 const FAST_PLAY_LABELS: Array[String] = ["x1", "x1.5", "x2", "x2.5"]
 const WOOD_PANEL_TEX: Texture2D = preload("res://src/resource/battlefield/wood_panel.png")
@@ -17,6 +18,8 @@ const DOUBLE_ARROW_ICON_TEX: Texture2D = preload("res://src/resource/battlefield
 
 @onready var _player: Node3D = $Player
 @onready var timing_manager: TimingManager = %TimingManager
+@onready var puck_velocity_manager: PuckVelocityManager = %PuckVelocityManager
+@onready var cue_shot_manager: CueShotManager = %CueShotManager
 @onready var time_board: TimeBoard = %TimeBoard
 @onready var play_button: Button = %PlayButton
 @onready var fast_play_button: Button = %FastPlayButton
@@ -43,6 +46,7 @@ func _ready() -> void:
 
 	var is_single_player := multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer is OfflineMultiplayerPeer
 	timing_manager.set_single_player_mode(is_single_player)
+	timing_manager.set_energy(DEMO_INITIAL_ENERGY)
 
 	timing_manager.timing_changed.connect(_on_timing_changed)
 	timing_manager.charge_slot_completed.connect(_on_charge_slot_completed)
@@ -73,8 +77,9 @@ func _process(delta: float) -> void:
 	if current == TimingManager.TIMING_PUCK_PUCK:
 		_puck_puck_elapsed += delta * timing_manager.get_effective_time_scale()
 		if _puck_puck_elapsed >= PUCK_PUCK_PLACEHOLDER_SECONDS - 0.00001:
-			_puck_puck_elapsed = 0.0
-			timing_manager.notify_all_pucks_at_rest()
+			if puck_velocity_manager == null or puck_velocity_manager.are_all_pucks_at_rest():
+				_puck_puck_elapsed = 0.0
+				timing_manager.notify_all_pucks_at_rest()
 	elif current == TimingManager.TIMING_ACTION:
 		_action_elapsed += delta * timing_manager.get_effective_time_scale()
 		if _action_elapsed >= ACTION_PLACEHOLDER_SECONDS - 0.00001:
@@ -132,11 +137,11 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	_refresh_controls()
 
 
-func _on_charge_slot_completed(_new_energy: int) -> void:
+func _on_charge_slot_completed(_new_energy: float) -> void:
 	_refresh_controls()
 
 
-func _on_energy_changed(new_energy: int, charge_progress: float) -> void:
+func _on_energy_changed(new_energy: float, charge_progress: float) -> void:
 	if time_board != null:
 		time_board.apply_state({
 			"energy": new_energy,
