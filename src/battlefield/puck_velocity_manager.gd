@@ -69,6 +69,7 @@ func _process(delta: float) -> void:
 	var scale := timing_manager.get_effective_time_scale() if timing_manager != null else 1.0
 	var scaled_dt := delta * scale
 	step_positions(scaled_dt)
+	# Step velocities at fixed intervals (20 Hz) to avoid framerate-dependent physics.
 	_tick_accumulator += scaled_dt
 	while _tick_accumulator >= TICK_INTERVAL - 0.00001:
 		_tick_accumulator = maxf(_tick_accumulator - TICK_INTERVAL, 0.0)
