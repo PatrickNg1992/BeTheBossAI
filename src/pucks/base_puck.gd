@@ -37,6 +37,34 @@ func apply_impulse(impulse: Vector3) -> void:
 	velocity.z += impulse.z / safe_mass
 
 
+## Continuous force application over dt, scaled by fast_play_ratio:
+##   dv = (F / m) * (dt * fast_play_ratio)
+func apply_force(force: Vector3, dt: float, fast_play_ratio: float = 1.0) -> void:
+	if is_dead or dt <= 0.0:
+		return
+	var safe_mass := maxf(mass, 0.0001)
+	var eff_dt := dt * maxf(fast_play_ratio, 0.0)
+	var before := Vector2(velocity.x, velocity.z)
+	var dv := Vector2(force.x / safe_mass, force.z / safe_mass) * eff_dt
+	var after := before + dv
+	# If force acts opposite current motion and would reverse direction, clamp to zero
+	if before.length_squared() > 0.000001 and before.dot(dv) < 0.0 and before.dot(after) <= 0.0:
+		velocity.x = 0.0
+		velocity.z = 0.0
+	else:
+		velocity.x = after.x
+		velocity.z = after.y
+
+
+## Calculates the next position from current velocity over dt, scaled by fast_play_ratio:
+##   p_next = p + v * (dt * fast_play_ratio)
+func calculate_position(dt: float, fast_play_ratio: float = 1.0) -> Vector3:
+	if is_dead or dt <= 0.0:
+		return global_position
+	var eff_dt := dt * maxf(fast_play_ratio, 0.0)
+	return global_position + Vector3(velocity.x * eff_dt, velocity.y * eff_dt, velocity.z * eff_dt)
+
+
 func apply_table_physics(delta: float) -> void:
 	var table := get_tree().get_first_node_in_group("cue_table") as Battlefield
 	var over_pocket := false

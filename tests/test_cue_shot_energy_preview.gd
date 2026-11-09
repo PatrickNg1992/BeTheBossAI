@@ -239,17 +239,18 @@ func test_puck_mass_radius_and_table_block_ground_friction_deceleration() -> voi
 	puck.apply_impulse(Vector3(15.0, 0.0, 0.0))
 	assert_true(is_equal_approx(puck.velocity.x, 5.0), "apply_impulse divides impulse by mass (15 / 3 = 5.0)")
 
-	# Standard grass TableBlock decelerates at -1.0 unit/sec^2 (5.0 -> 4.0 after 1.0s of 20 Hz ticks)
+	# Standard grass TableBlock decelerates at -1.2 unit/sec^2 (5.0 -> 3.8 after 1.0s of 20 Hz ticks)
 	var grass_block := TableBlock.new()
 	grass_block.block_type = TableBlock.BlockType.GRASS_DARK
 	_root.add_child(grass_block)
+	assert_true(is_equal_approx(grass_block.base_deceleration, 1.2), "Default base_deceleration is 1.2 unit/sec^2")
 	for _i in range(20):
-		grass_block.apply_ground_effect(puck, 0.05)
-	assert_true(is_equal_approx(puck.velocity.x, 4.0), "5.0 units/sec slows to 4.0 units/sec after 1s (20 x 0.05s ticks)")
+		grass_block.apply_ground_effect(puck, 0.05, 1.0)
+	assert_true(is_equal_approx(puck.velocity.x, 3.8), "5.0 units/sec slows to 3.8 units/sec after 1s at -1.2 unit/sec^2")
 
-	# Decelerate the remaining 4s + extra ticks -> clamps cleanly to Vector3.ZERO without reversing direction
+	# Decelerate the remaining time -> clamps cleanly to Vector3.ZERO without reversing direction
 	for _i in range(90):
-		grass_block.apply_ground_effect(puck, 0.05)
+		grass_block.apply_ground_effect(puck, 0.05, 1.0)
 	assert_eq(puck.velocity, Vector3.ZERO, "Friction clamps velocity to Vector3.ZERO and never reverses direction")
 
 	# Block-type friction scaling: MUD (2.0) decelerates faster than ICE (0.2)
@@ -260,8 +261,8 @@ func test_puck_mass_radius_and_table_block_ground_friction_deceleration() -> voi
 	puck.velocity = Vector3(5.0, 0.0, 0.0)
 	var mud_dv := mud_block.calculate_ground_velocity_delta(puck, 0.5)
 	var ice_dv := ice_block.calculate_ground_velocity_delta(puck, 0.5)
-	assert_true(is_equal_approx(mud_dv.x, -1.0), "MUD (2.0 factor) reduces speed by 1.0 over 0.5s")
-	assert_true(is_equal_approx(ice_dv.x, -0.1), "ICE (0.2 factor) reduces speed by 0.1 over 0.5s")
+	assert_true(is_equal_approx(mud_dv.x, -1.2), "MUD (2.0 factor * 1.2 base * 0.5s) reduces speed by 1.2")
+	assert_true(is_equal_approx(ice_dv.x, -0.12), "ICE (0.2 factor * 1.2 base * 0.5s) reduces speed by 0.12")
 	mud_block.free()
 	ice_block.free()
 
@@ -283,28 +284,41 @@ func test_puck_velocity_manager_steps_positions_and_20hz_ground_friction_to_rest
 	assert_eq(PuckVelocityManager.TICK_INTERVAL, 0.05, "20 Hz velocity update interval is 0.05s")
 	assert_true(pvm.are_all_pucks_at_rest(), "Puck starts at rest")
 
-	# Launch with speed 2.0 units/sec along +X in Puck-puck Time!
+	# Launch with speed 2.4 units/sec along +X in Puck-puck Time!
 	_tm.set_energy(5.0)
 	_tm.request_play()
 	_tm.fire_cue_shot(1.0)
-	puck.velocity = Vector3(2.0, 0.0, 0.0)
+	puck.velocity = Vector3(2.4, 0.0, 0.0)
 	assert_false(pvm.are_all_pucks_at_rest(), "Puck is moving after launch")
 
-	# Step 1.0s via 20 frames of 0.05s -> speed drops from 2.0 to 1.0, position advances along +X
+	# Step 1.0s via 20 frames of 0.05s -> speed drops from 2.4 to 1.2, position advances along +X
 	for _i in range(20):
-		pvm.step_positions(0.05)
-		pvm.step_velocities(0.05)
-	assert_true(is_equal_approx(puck.velocity.x, 1.0), "Speed after 1.0s on grass is 1.0 unit/sec")
-	assert_true(puck.global_position.x > 1.4 and puck.global_position.x < 1.6, "Position advanced ~1.5 units in 1.0s")
+		pvm.step_positions(0.05, 1.0)
+		pvm.step_velocities(0.05, 1.0)
+	assert_true(is_equal_approx(puck.velocity.x, 1.2), "Speed after 1.0s on grass is 1.2 unit/sec")
+	assert_true(puck.global_position.x > 1.7 and puck.global_position.x < 1.9, "Position advanced ~1.8 units in 1.0s")
 	assert_eq(_tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Still in Puck-puck Time! while moving")
 
 	# Step remaining 1.0s -> speed reaches 0.0, all_pucks_at_rest triggers transition back to Charging Time
 	for _i in range(20):
-		pvm.step_positions(0.05)
-		pvm.step_velocities(0.05)
+		pvm.step_positions(0.05, 1.0)
+		pvm.step_velocities(0.05, 1.0)
 	assert_true(puck.velocity.is_zero_approx(), "Puck decelerated to rest after 2.0s")
 	assert_true(pvm.are_all_pucks_at_rest(), "All pucks are at rest")
 	assert_eq(_tm.get_current_timing(), TimingManager.TIMING_CHARGING, "Automatically transitions out of Puck-puck Time! when at rest")
+
+	# Verify apply_force and calculate_position adopt fast_play_ratio (e.g. x2.0)
+	puck.global_position = Vector3(0.0, 1.75, 0.0)
+	puck.velocity = Vector3.ZERO
+	pvm.apply_impulse_to_puck(puck, Vector3(7.2, 0.0, 0.0))
+	assert_true(is_equal_approx(puck.velocity.x, 2.4), "apply_impulse_to_puck sets v = 7.2 / 3.0 = 2.4")
+
+	# At fast_play_ratio = 2.0: 0.5s of wall time (10 ticks of 0.05s) advances the same distance and deceleration as 1.0s at x1.0
+	for _i in range(10):
+		pvm.calculate_puck_position(puck, 0.05, 2.0)
+		pvm.apply_force_to_puck(puck, Vector3(-1.2 * puck.mass, 0.0, 0.0), 0.05, 2.0)
+	assert_true(is_equal_approx(puck.velocity.x, 1.2), "At x2.0 fast play, 10 ticks of 0.05s decelerates from 2.4 to 1.2")
+	assert_true(puck.global_position.x > 1.7 and puck.global_position.x < 1.9, "At x2.0 fast play, 10 ticks of 0.05s advances ~1.8 units")
 
 
 func test_aiming_line_at_y_1_55_red_on_deadzone_or_overdrag_and_mass_dependent_impulse_launch() -> void:

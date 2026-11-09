@@ -2,9 +2,10 @@ class_name PuckVelocityManager
 extends Node
 
 ## Central Battlefield Puck physics manager:
-## - Advances moving Puck positions every frame (step_positions)
-## - Recalculates velocity changes (ground Friction Forces, and in ticket 03
-##   Puck/Cushion collisions) at 20 Hz (TICK_INTERVAL = 0.05s)
+## - Advances moving Puck positions every frame (step_positions / calculate_puck_position)
+## - Recalculates velocity changes (ground Friction Forces via apply_force_to_puck,
+##   and in ticket 03 Puck/Cushion collisions) at 20 Hz (TICK_INTERVAL = 0.05s)
+## - Adopts Fast Play ratio across both position calculation and force application
 ## - Detects when all Pucks come to rest during Puck-puck Time! and notifies
 ##   TimingManager.
 
@@ -12,6 +13,7 @@ signal all_pucks_at_rest()
 
 const TICK_INTERVAL := 0.05
 const STOP_SPEED_THRESHOLD := 0.002
+const DEFAULT_DECELERATION := 1.2
 
 var battlefield: Battlefield = null
 var timing_manager: TimingManager = null
@@ -59,6 +61,53 @@ func _on_pause_changed(paused: bool) -> void:
 	_clock_paused = paused
 
 
+func get_fast_play_ratio(override_ratio: float = -1.0) -> float:
+	if override_ratio >= 0.0:
+		return override_ratio
+	if timing_manager != null:
+		return timing_manager.get_effective_time_scale()
+	return 1.0
+
+
+func apply_impulse_to_puck(puck: BasePuck, impulse: Vector3) -> void:
+	if puck == null:
+		return
+	puck.apply_impulse(impulse)
+
+
+func apply_force_to_puck(puck: BasePuck, force: Vector3, dt: float, fast_play_ratio: float = -1.0) -> void:
+	if puck == null or dt <= 0.0:
+		return
+	var ratio := get_fast_play_ratio(fast_play_ratio)
+	puck.apply_force(force, dt, ratio)
+	if Vector2(puck.velocity.x, puck.velocity.z).length() < STOP_SPEED_THRESHOLD:
+		puck.velocity.x = 0.0
+		puck.velocity.z = 0.0
+
+
+func calculate_puck_position(puck: BasePuck, delta: float, fast_play_ratio: float = -1.0) -> Vector3:
+	if puck == null or puck.is_dead or delta <= 0.0:
+		return puck.global_position if puck != null else Vector3.ZERO
+	var ratio := get_fast_play_ratio(fast_play_ratio)
+	var eff_dt := delta * ratio
+	var horiz_sq := puck.velocity.x * puck.velocity.x + puck.velocity.z * puck.velocity.z
+	if horiz_sq > 0.000001:
+		var next_pos := puck.calculate_position(delta, ratio)
+		puck.global_position.x = next_pos.x
+		puck.global_position.z = next_pos.z
+		_clamp_inside_table_bounds(puck)
+	puck.apply_table_physics(eff_dt)
+	if absf(puck.velocity.y) > 0.0001:
+		puck.global_position.y += puck.velocity.y * eff_dt
+		var table := battlefield
+		var over_pocket := table != null and table.is_pocket_at_world(puck.global_position)
+		var floor_y := Battlefield.TABLE_TOP_Y + 0.25
+		if not over_pocket and puck.global_position.y <= floor_y and puck.velocity.y < 0.0:
+			puck.global_position.y = floor_y
+			puck.velocity.y = 0.0
+	return puck.global_position
+
+
 func _process(delta: float) -> void:
 	if _clock_paused or delta <= 0.0:
 		return
@@ -66,44 +115,31 @@ func _process(delta: float) -> void:
 		_in_puck_puck_time = timing_manager.get_current_timing() == TimingManager.TIMING_PUCK_PUCK
 		if not _in_puck_puck_time:
 			return
-	var scale := timing_manager.get_effective_time_scale() if timing_manager != null else 1.0
-	var scaled_dt := delta * scale
-	step_positions(scaled_dt)
-	# Step velocities at fixed intervals (20 Hz) to avoid framerate-dependent physics.
-	_tick_accumulator += scaled_dt
+	var ratio := get_fast_play_ratio()
+	step_positions(delta, ratio)
+	_tick_accumulator += delta
 	while _tick_accumulator >= TICK_INTERVAL - 0.00001:
 		_tick_accumulator = maxf(_tick_accumulator - TICK_INTERVAL, 0.0)
-		step_velocities(TICK_INTERVAL)
+		step_velocities(TICK_INTERVAL, ratio)
 		if timing_manager != null and timing_manager.get_current_timing() != TimingManager.TIMING_PUCK_PUCK:
 			break
 
 
-func step_positions(delta: float) -> void:
+func step_positions(delta: float, fast_play_ratio: float = -1.0) -> void:
 	if delta <= 0.0:
 		return
+	var ratio := get_fast_play_ratio(fast_play_ratio)
 	for puck in _get_pucks():
 		if puck.is_dead:
 			continue
-		var horiz_sq := puck.velocity.x * puck.velocity.x + puck.velocity.z * puck.velocity.z
-		if horiz_sq > 0.000001:
-			puck.global_position.x += puck.velocity.x * delta
-			puck.global_position.z += puck.velocity.z * delta
-			_clamp_inside_table_bounds(puck)
-		puck.apply_table_physics(delta)
-		if absf(puck.velocity.y) > 0.0001:
-			puck.global_position.y += puck.velocity.y * delta
-			var table := battlefield
-			var over_pocket := table != null and table.is_pocket_at_world(puck.global_position)
-			var floor_y := Battlefield.TABLE_TOP_Y + 0.25
-			if not over_pocket and puck.global_position.y <= floor_y and puck.velocity.y < 0.0:
-				puck.global_position.y = floor_y
-				puck.velocity.y = 0.0
+		calculate_puck_position(puck, delta, ratio)
 
 
-func step_velocities(tick_dt: float = TICK_INTERVAL) -> void:
+func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1.0) -> void:
 	if tick_dt <= 0.0:
 		return
 	_resolve_references()
+	var ratio := get_fast_play_ratio(fast_play_ratio)
 	for puck in _get_pucks():
 		if puck.is_dead:
 			continue
@@ -116,16 +152,10 @@ func step_velocities(tick_dt: float = TICK_INTERVAL) -> void:
 		if battlefield != null:
 			block = battlefield.get_table_block_at_world(puck.global_position)
 		if block != null:
-			block.apply_ground_effect(puck, tick_dt)
+			block.apply_ground_effect(puck, tick_dt, ratio)
 		else:
-			var speed := horiz.length()
-			if speed <= tick_dt or (speed - tick_dt) < STOP_SPEED_THRESHOLD:
-				puck.velocity.x = 0.0
-				puck.velocity.z = 0.0
-			else:
-				var dir := horiz.normalized()
-				puck.velocity.x -= dir.x * tick_dt
-				puck.velocity.z -= dir.y * tick_dt
+			var force := -Vector3(puck.velocity.x, 0.0, puck.velocity.z).normalized() * (DEFAULT_DECELERATION * puck.mass)
+			apply_force_to_puck(puck, force, tick_dt, ratio)
 
 	if are_all_pucks_at_rest():
 		all_pucks_at_rest.emit()

@@ -27,7 +27,7 @@ const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass
 		_apply_block_type()
 
 @export var friction_factor: float = 1.0
-@export var base_deceleration: float = 1.0
+@export var base_deceleration: float = 1.2
 @export var stop_speed_threshold: float = 0.002
 
 
@@ -48,33 +48,65 @@ func is_pocket() -> bool:
 
 
 ## Extendable ground-effect calculation: returns the horizontal velocity change
-## over dt. In the normal case, mass cancels out (F_friction = -mu * m * v_hat
-## -> a = F / m = -base_deceleration * friction_factor * v_hat), decelerating at
-## -1.0 unit/sec^2 on standard grass blocks and clamping to Vector3.ZERO below
-## stop_speed_threshold so friction never reverses direction.
-func calculate_ground_velocity_delta(puck: BasePuck, dt: float) -> Vector3:
-	if puck == null or dt <= 0.0 or is_pocket():
+## over dt (scaled by fast_play_ratio). In the normal case, mass cancels out
+## (F_friction = -mu * m * v_hat -> a = F / m = -base_deceleration * friction_factor * v_hat),
+## decelerating at -1.2 unit/sec^2 on standard grass blocks and clamping to
+## Vector3.ZERO below stop_speed_threshold so friction never reverses direction.
+func calculate_ground_velocity_delta(puck: BasePuck, dt: float, fast_play_ratio: float = 1.0) -> Vector3:
+	var eff_dt := dt * maxf(fast_play_ratio, 0.0)
+	if puck == null or eff_dt <= 0.0 or is_pocket():
 		return Vector3.ZERO
 	var horiz := Vector3(puck.velocity.x, 0.0, puck.velocity.z)
 	var speed := horiz.length()
 	if speed <= 0.0001:
 		return Vector3.ZERO
-	var decel := base_deceleration * friction_factor * dt
+	var decel := base_deceleration * friction_factor * eff_dt
 	if speed <= decel or (speed - decel) < stop_speed_threshold:
 		return -horiz
 	return -horiz.normalized() * decel
 
 
-## Applies the block's continuous ground effect directly to the puck's velocity.
-func apply_ground_effect(puck: BasePuck, dt: float) -> void:
+## Computes the standard ground friction Force vector:
+##   F_friction = -(base_deceleration * factor * mass) * v_hat
+func calculate_standard_friction_force(puck: BasePuck, custom_friction_factor: float = -1.0) -> Vector3:
+	if puck == null or is_pocket():
+		return Vector3.ZERO
+	var horiz := Vector3(puck.velocity.x, 0.0, puck.velocity.z)
+	if horiz.length_squared() <= 0.000001:
+		return Vector3.ZERO
+	var factor := friction_factor if custom_friction_factor < 0.0 else custom_friction_factor
+	return -horiz.normalized() * (base_deceleration * factor * puck.mass)
+
+
+## Computes the continuous ground friction Force vector (F = -m * a * v_hat).
+func calculate_ground_force(puck: BasePuck) -> Vector3:
+	return calculate_standard_friction_force(puck)
+
+
+## Reusable helper that applies standard ground friction (with optional custom
+## friction factor) to `puck` and clamps below `stop_speed_threshold`.
+## Custom block effects in `apply_ground_effect()` can call this directly or
+## combine it with additional forces.
+func apply_standard_friction(
+	puck: BasePuck,
+	dt: float,
+	fast_play_ratio: float = 1.0,
+	custom_friction_factor: float = -1.0
+) -> void:
 	if puck == null:
 		return
-	var dv := calculate_ground_velocity_delta(puck, dt)
-	puck.velocity.x += dv.x
-	puck.velocity.z += dv.z
+	var force := calculate_standard_friction_force(puck, custom_friction_factor)
+	puck.apply_force(force, dt, fast_play_ratio)
 	if Vector2(puck.velocity.x, puck.velocity.z).length() < stop_speed_threshold:
 		puck.velocity.x = 0.0
 		puck.velocity.z = 0.0
+
+
+## Extendable ground-effect entry point called each 20 Hz velocity tick.
+## By default delegates to `apply_standard_friction()`; special block types can
+## override or branch on `block_type` while reusing `apply_standard_friction()`.
+func apply_ground_effect(puck: BasePuck, dt: float, fast_play_ratio: float = 1.0) -> void:
+	apply_standard_friction(puck, dt, fast_play_ratio)
 
 
 
