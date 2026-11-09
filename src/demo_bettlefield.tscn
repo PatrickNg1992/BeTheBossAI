@@ -8,13 +8,12 @@
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
 [ext_resource type="Script" uid="uid://djgf65pa0op4e" path="res://src/battlefield/demo_battlefield.gd" id="7_demo"]
 [ext_resource type="PackedScene" path="res://src/canvas/time_board.tscn" id="8_tb"]
-[ext_resource type="Script" path="res://src/battlefield/timing_manager.gd" id="9_tm"]
-[ext_resource type="Texture2D" path="res://src/resource/battlefield/wood_panel.png" id="10_wood"]
-[ext_resource type="Texture2D" path="res://src/resource/battlefield/sword.png" id="11_sword"]
-[ext_resource type="Texture2D" path="res://src/resource/battlefield/double_arrow.png" id="12_darrow"]
-[ext_resource type="Texture2D" path="res://src/resource/battlefield/puck_puck_banner.png" id="13_ppbanner"]
-[ext_resource type="Script" path="res://src/battlefield/cue_shot_manager.gd" id="14_csm"]
-[ext_resource type="Script" path="res://src/battlefield/puck_velocity_manager.gd" id="15_pvm"]
+[ext_resource type="Script" uid="uid://caxrxkqqci2vg" path="res://src/battlefield/timing_manager.gd" id="9_tm"]
+[ext_resource type="Texture2D" uid="uid://0ft0c78k4keg" path="res://src/resource/battlefield/sword.png" id="11_sword"]
+[ext_resource type="Texture2D" uid="uid://bjfupsktie5h2" path="res://src/resource/battlefield/double_arrow.png" id="12_darrow"]
+[ext_resource type="Texture2D" uid="uid://pxflfm5g886i" path="res://src/resource/battlefield/puck_puck_banner.png" id="13_ppbanner"]
+[ext_resource type="Script" uid="uid://b8yrrnrbv2h0t" path="res://src/battlefield/cue_shot_manager.gd" id="14_csm"]
+[ext_resource type="Script" uid="uid://2aalm6f12725" path="res://src/battlefield/puck_velocity_manager.gd" id="15_pvm"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wtt4b"]
 height = 0.5
@@ -260,8 +259,6 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 18
 text = "Play"
 icon = ExtResource("11_sword")
-alignment = 1
-expand_icon = false
 
 [node name="TopRightControls" type="VBoxContainer" parent="Canvas" unique_id=664790674]
 unique_name_in_owner = true
@@ -274,7 +271,6 @@ offset_right = -12.0
 offset_bottom = 98.0
 grow_horizontal = 0
 theme_override_constants/separation = 8
-alignment = 0
 
 [node name="TopRow" type="HBoxContainer" parent="Canvas/TopRightControls" unique_id=664790679]
 layout_mode = 2
@@ -289,7 +285,6 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 14
 text = "x1"
 icon = ExtResource("12_darrow")
-alignment = 1
 
 [node name="PauseButton" type="Button" parent="Canvas/TopRightControls/TopRow" unique_id=664790677]
 unique_name_in_owner = true
@@ -343,11 +338,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/font_color = Color(1, 0.92, 0.45, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.06, 0.04, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
-theme_override_constants/outline_size = 6
+theme_override_colors/font_outline_color = Color(0.18, 0.06, 0.04, 1)
 theme_override_constants/shadow_offset_x = 2
 theme_override_constants/shadow_offset_y = 3
+theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 30
 text = "Puck-puck Time!"
 horizontal_alignment = 1

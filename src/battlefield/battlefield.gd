@@ -25,9 +25,52 @@ const TABLE_TOP_Y: float = TABLE_HEIGHT / 2.0
 
 const POCKET_BLOCK_NUMBERS: Array[int] = [1, 15, 136, 150]
 
+## Spatial location index mapping `Vector2i(x, z)` integer floor coordinates
+## (`int(floor(local_x)), int(floor(local_z))`) to the `TableBlock` covering
+## that 1x1 cell. Built at startup to allow O(1) lookup and arbitrary/special
+## rectangular table shapes.
+var _block_location_index: Dictionary = {}
+
 
 func _ready() -> void:
 	add_to_group("cue_table")
+	build_location_index()
+
+
+## Builds the `Vector2i(x, z) -> TableBlock` location index from all child
+## `TableBlock` nodes under `TableBlocks`, using each block's rectangular
+## XZ footprint.
+func build_location_index() -> void:
+	_block_location_index.clear()
+	var blocks_root := get_node_or_null("TableBlocks")
+	if blocks_root == null:
+		return
+	for child in blocks_root.get_children():
+		if not child is TableBlock:
+			continue
+		var block := child as TableBlock
+		var size := _get_block_xz_size(block)
+		var min_x := int(roundf(block.position.x - size.x * 0.5))
+		var max_x := int(roundf(block.position.x + size.x * 0.5))
+		var min_z := int(roundf(block.position.z - size.y * 0.5))
+		var max_z := int(roundf(block.position.z + size.y * 0.5))
+		for ix in range(min_x, max_x):
+			for iz in range(min_z, max_z):
+				_block_location_index[Vector2i(ix, iz)] = block
+
+
+func _get_block_xz_size(block: TableBlock) -> Vector2:
+	var col := block.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col != null and col.shape is BoxShape3D:
+		var box := col.shape as BoxShape3D
+		return Vector2(box.size.x * block.scale.x, box.size.z * block.scale.z)
+	return Vector2(TableBlock.BLOCK_SIZE.x * block.scale.x, TableBlock.BLOCK_SIZE.z * block.scale.z)
+
+
+func get_table_block_at_xz(ix: int, iz: int) -> TableBlock:
+	if _block_location_index.is_empty():
+		build_location_index()
+	return _block_location_index.get(Vector2i(ix, iz), null) as TableBlock
 
 
 func get_table_block(block_number: int) -> TableBlock:
@@ -61,9 +104,9 @@ func get_table_block_at_grid(row: int, col: int) -> TableBlock:
 
 func get_table_block_at_world(world_pos: Vector3) -> TableBlock:
 	var local_pos := to_local(world_pos)
-	var col := int(floor((local_pos.x + TABLE_HALF_X) / TILE_SIZE))
-	var row := int(floor((local_pos.z + TABLE_HALF_Z) / TILE_SIZE))
-	return get_table_block_at_grid(row, col)
+	var ix := int(floor(local_pos.x))
+	var iz := int(floor(local_pos.z))
+	return get_table_block_at_xz(ix, iz)
 
 
 func is_pocket_at_world(world_pos: Vector3) -> bool:

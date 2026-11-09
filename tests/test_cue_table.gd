@@ -144,3 +144,35 @@ func test_medieval_style_wooden_and_grass_cushions_and_corner_flags() -> void:
 	assert_eq(c1.cushion_type, CushionBlock.CushionType.GRASS_DARK, "Cushion switched to grass style")
 	_table.set_cushion_block_type(1, CushionBlock.CushionType.WOOD_LIGHT)
 	assert_eq(c1.cushion_type, CushionBlock.CushionType.WOOD_LIGHT, "Cushion switched to wooden style")
+
+
+func test_location_index_maps_integer_xz_cells_and_supports_irregular_table_shapes() -> void:
+	if _table == null:
+		return
+	# TableBlock_1 is centered at (-14, 0, -9) with size 2x3x2 -> covers integer cells (-15, -10), (-14, -10), (-15, -9), (-14, -9)
+	var b1 := _table.get_table_block(1)
+	assert_eq(_table.get_table_block_at_xz(-15, -10), b1, "(-15, -10) maps to TableBlock_1")
+	assert_eq(_table.get_table_block_at_xz(-14, -9), b1, "(-14, -9) maps to TableBlock_1")
+	assert_eq(_table.get_table_block_at_world(Vector3(-14.2, 1.5, -9.7)), b1, "World lookup uses integer (x, z) index")
+
+	# Out-of-bounds integer cell returns null
+	assert_true(_table.get_table_block_at_xz(-25, 0) == null, "Cell outside table returns null")
+
+	# Add a custom rectangular block at a non-standard extension (x: 20..24, z: 0..2) and rebuild index
+	var extra_block := TableBlock.new()
+	extra_block.name = "TableBlock_Extra"
+	extra_block.block_number = 999
+	extra_block.position = Vector3(22.0, 0.0, 1.0)
+	var extra_col := CollisionShape3D.new()
+	extra_col.name = "CollisionShape3D"
+	var extra_box := BoxShape3D.new()
+	extra_box.size = Vector3(4.0, 3.0, 2.0)
+	extra_col.shape = extra_box
+	extra_block.add_child(extra_col)
+	_table.get_node("TableBlocks").add_child(extra_block)
+	_table.build_location_index()
+
+	assert_eq(_table.get_table_block_at_xz(20, 0), extra_block, "Custom rectangular block indexed at (20, 0)")
+	assert_eq(_table.get_table_block_at_xz(23, 1), extra_block, "Custom 4x2 block indexed across all its integer (x, z) cells")
+	assert_eq(_table.get_table_block_at_world(Vector3(23.4, 1.5, 1.8)), extra_block, "World lookup finds custom irregular block")
+
