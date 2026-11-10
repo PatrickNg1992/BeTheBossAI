@@ -515,6 +515,87 @@ func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
 	tree.get_multiplayer().multiplayer_peer = null
 
 
+# ----- Ticket 03 (remaining points): CushionBlock extendable impact rebound during motion & pocketed Puck respawn after all Pucks come to rest -----
+
+
+func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -> void:
+	var packed_table := ResourceLoader.load("res://src/battlefield/cue_table.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	var table := packed_table.instantiate() as Battlefield
+	_root.add_child(table)
+
+	var pvm := PuckVelocityManager.new()
+	pvm.battlefield = table
+	pvm.timing_manager = _tm
+	_root.add_child(pvm)
+
+	# 1. CushionBlock extendable impact function: mass-independent rebound
+	#   v1f = (1 - fc) * (v1 - (v1 . n) * n) - e * (v1 . n) * n
+	var top_cushion := table.get_cushion_block(8) # Top rail at z = -11, inward_normal = (0, 0, 1)
+	top_cushion.restitution = 0.8
+	top_cushion.cushion_friction = 0.1
+
+	var boss := DragonPlayer.new()
+	boss.mass = 3.0
+	var mage := EnemyHero.new()
+	mage.hero_class = EnemyHero.HeroClass.MAGE
+	mage.mass = 1.0
+	_root.add_child(boss)
+	_root.add_child(mage)
+
+	boss.velocity = Vector3(10.0, 0.0, -5.0)
+	mage.velocity = Vector3(10.0, 0.0, -5.0)
+	var dv_boss := top_cushion.calculate_cushion_impact(boss, Vector3(0.0, 0.0, 1.0))
+	var dv_mage := top_cushion.calculate_cushion_impact(mage, Vector3(0.0, 0.0, 1.0))
+	# Expected v1f = (9.0, 0.0, 4.0) -> dv = (-1.0, 0.0, 9.0) for both regardless of mass
+	assert_true(is_equal_approx(dv_boss.x, -1.0) and is_equal_approx(dv_boss.z, 9.0),
+		"CushionBlock.calculate_cushion_impact returns (-1.0, 0, 9.0)")
+	assert_true(dv_boss.is_equal_approx(dv_mage),
+		"Cushion impact velocity delta is mass-independent in the normal case")
+
+	top_cushion.apply_cushion_impact(boss, Vector3(0.0, 0.0, 1.0))
+	assert_true(is_equal_approx(boss.velocity.x, 9.0) and is_equal_approx(boss.velocity.z, 4.0),
+		"apply_cushion_impact updates puck velocity to (9.0, 0.0, 4.0)")
+
+	# 2. Moving Puck hitting top Cushion during PuckVelocityManager tick calls CushionBlock impact
+	boss.global_position = Vector3(0.0, 1.75, -9.1)
+	boss.velocity = Vector3(10.0, 0.0, -5.0)
+	mage.global_position = Vector3(0.0, 1.675, 0.0)
+	mage.velocity = Vector3.ZERO
+	pvm.step_positions(0.05, 1.0)
+	pvm.step_velocities(0.05, 1.0)
+	assert_true(boss.velocity.z > 2.5, "Boss rebounded off top Cushion with positive Z velocity")
+	assert_true(boss.velocity.x < 9.5, "Parallel X speed was reduced by cushion_friction (fc) as well as ground friction")
+
+	# 3. Pocketed Puck respawns at nearest unoccupied non-pocket Tile once all Pucks come to rest
+	# Corner block 1 is a Pocket Area at (-14, 0, -9). Drop mage into that pocket while boss is still moving
+	_tm.set_energy(5.0)
+	_tm.request_play()
+	_tm.fire_cue_shot(1.0)
+	mage.global_position = Vector3(-14.0, 0.2, -9.0)
+	mage.velocity = Vector3(0.0, -5.0, 0.0)
+	boss.global_position = Vector3(0.0, 1.75, 0.0)
+	boss.velocity = Vector3(1.2, 0.0, 0.0)
+
+	# Step 0.5s (10 ticks): boss is still moving (speed ~0.6), so mage has NOT respawned yet
+	for _i in range(10):
+		pvm.step_positions(0.05, 1.0)
+		pvm.step_velocities(0.05, 1.0)
+	assert_false(pvm.are_all_pucks_at_rest(), "Boss is still moving at 0.5s")
+
+	# Step another 0.6s (12 ticks): boss comes to rest -> mage respawns at nearest free non-pocket Tile!
+	for _i in range(12):
+		pvm.step_positions(0.05, 1.0)
+		pvm.step_velocities(0.05, 1.0)
+	assert_true(pvm.are_all_pucks_at_rest(), "All pucks are now at rest")
+	assert_false(table.is_pocket_at_world(mage.global_position), "Pocketed puck respawned onto a non-pocket Tile")
+	assert_true(mage.global_position.y >= 1.5, "Respawned puck is back on top of the table floor")
+	assert_true(mage.velocity.is_zero_approx(), "Respawned puck has zero velocity")
+	# Nearest non-pocket tiles to (-14, -9) are block 2 at (-12, -9) or block 16 at (-14, -7) (distance 2.0)
+	var dist_to_corner := Vector2(mage.global_position.x - (-14.0), mage.global_position.z - (-9.0)).length()
+	assert_true(is_equal_approx(dist_to_corner, 2.0), "Respawned at the nearest non-pocket Tile (distance 2.0 from corner pocket)")
+
+
+
 
 
 

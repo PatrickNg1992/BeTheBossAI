@@ -55,6 +55,7 @@ const GOAL_SLOT := 19
 @onready var _lower_tags: HBoxContainer = $Frame/Margin/Content/Board/LowerTags
 
 var _fills: Array[ColorRect] = []
+var _charging_fills: Array[ColorRect] = []
 var _consume_fills: Array[ColorRect] = []
 var _overdrag_fills: Array[ColorRect] = []
 var _tag_movers: Array[Control] = []
@@ -64,6 +65,7 @@ var _tag_arrows: Array[TextureRect] = []
 var _fill_tweens: Dictionary = {}
 var _rewind_tween: Tween = null
 var _target_energy_ratios: Array[float] = []
+var _target_charging_ratios: Array[float] = []
 
 ## The animation kind the last apply_state() requested — "glide",
 ## "fade_teleport", "rewind", or "" for none. The observable animation seam
@@ -89,10 +91,13 @@ func _build_board() -> void:
 	for row in [_lower_bar, _upper_bar, _lower_tags, _upper_tags]:
 		row.add_theme_constant_override("separation", int(slot_gap))
 	_fills.resize(SLOT_COUNT)
+	_charging_fills.resize(SLOT_COUNT)
 	_consume_fills.resize(SLOT_COUNT)
 	_overdrag_fills.resize(SLOT_COUNT)
 	_target_energy_ratios.resize(SLOT_COUNT)
 	_target_energy_ratios.fill(0.0)
+	_target_charging_ratios.resize(SLOT_COUNT)
+	_target_charging_ratios.fill(0.0)
 	_tag_movers.resize(SLOT_COUNT)
 	_tag_turns.resize(SLOT_COUNT)
 	_tag_counts.resize(SLOT_COUNT)
@@ -119,6 +124,9 @@ func _make_slot_cell(slot: int, upper: bool) -> Control:
 	var fill := _make_bar_rect(energy_color, upper)
 	cell.add_child(fill)
 	_fills[slot] = fill
+	var charging_fill := _make_bar_rect(charging_color, upper)
+	cell.add_child(charging_fill)
+	_charging_fills[slot] = charging_fill
 	var consume_fill := _make_bar_rect(consume_preview_color, upper)
 	cell.add_child(consume_fill)
 	_consume_fills[slot] = consume_fill
@@ -309,18 +317,35 @@ func slot_column(slot: int) -> int:
 
 
 ## Rendered fill ratio of a slot: 1.0 filled, 0.5 on a half-filled energy
-## slot, the fractional charge on the charging slot, 0.0 otherwise.
+## slot, the fractional charge on a charging-only slot, 0.0 otherwise.
 func slot_fill_ratio(slot: int) -> float:
 	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_energy_ratios.size():
-		return _target_energy_ratios[slot]
-	return _fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
+		if _target_energy_ratios[slot] > 0.0001:
+			return _target_energy_ratios[slot]
+		return _target_charging_ratios[slot]
+	var owned_ratio := _fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
+	if owned_ratio > 0.0001:
+		return owned_ratio
+	return slot_charging_ratio(slot)
+
+
+## Rendered charging-progress ratio on a slot (0.0..1.0).
+func slot_charging_ratio(slot: int) -> float:
+	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_charging_ratios.size():
+		return _target_charging_ratios[slot]
+	return _charging_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
 ## Rendered fill kind of a slot's base fill ("energy", "charging", or "empty").
 func slot_fill_kind(slot: int) -> String:
-	if slot_fill_ratio(slot) <= 0.0001:
-		return "empty"
-	return "charging" if _fills[slot].color == charging_color else "energy"
+	var owned_ratio := _fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
+	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_energy_ratios.size():
+		owned_ratio = _target_energy_ratios[slot]
+	if owned_ratio > 0.0001:
+		return "energy"
+	if slot_charging_ratio(slot) > 0.0001:
+		return "charging"
+	return "empty"
 
 
 ## Rendered consume-preview ratio on a slot (0.0..1.0).
@@ -355,19 +380,26 @@ func _render_energy(energy: float, charge: float, animate: bool) -> void:
 		_rewind_tween.kill()
 		_rewind_tween = null
 	var clamped_energy := clampf(energy, 0.0, float(SLOT_COUNT))
-	var charging_slot := int(ceilf(clamped_energy - 0.0001)) if clamped_energy > 0.0 else 0
+	var clamped_charge := clampf(charge, 0.0, 1.0)
+	var charge_end := clampf(clamped_energy + clamped_charge, 0.0, float(SLOT_COUNT))
 	for slot in range(SLOT_COUNT):
+		var slot_f := float(slot)
 		var fill := _fills[slot]
-		var energy_in_slot := clampf(clamped_energy - float(slot), 0.0, 1.0)
-		if energy_in_slot > 0.0001:
-			_target_energy_ratios[slot] = energy_in_slot
-			_set_fill(fill, slot, energy_in_slot, energy_color, animate)
-		elif slot == charging_slot and charging_slot < SLOT_COUNT and charge > 0.0001:
-			_target_energy_ratios[slot] = clampf(charge, 0.0, 1.0)
-			_set_fill(fill, slot, _target_energy_ratios[slot], charging_color, animate)
-		else:
-			_target_energy_ratios[slot] = 0.0
-			_set_fill(fill, slot, 0.0, energy_color, animate)
+		var energy_in_slot := clampf(clamped_energy - slot_f, 0.0, 1.0)
+		_target_energy_ratios[slot] = energy_in_slot
+		# Set owned Energy width immediately (charge progress already advanced smoothly
+		# over the Turn, and _play_charge_pop handles the completion flash — tweening
+		# _fills[slot] from 0 -> 1 over 0.15s after _charging_fills cleared caused a
+		# visible empty blink when a slot completed).
+		_set_fill(fill, slot, energy_in_slot, energy_color, false)
+
+		# Charging progress starts right where owned Energy ends (e.g. at 0.5 on a half-filled slot)
+		# and continues seamlessly without leaving any empty half-slot gap.
+		var ch_start := clampf(clamped_energy - slot_f, 0.0, 1.0)
+		var ch_end := clampf(charge_end - slot_f, 0.0, 1.0)
+		var ch_ratio := maxf(0.0, ch_end - ch_start)
+		_target_charging_ratios[slot] = ch_ratio
+		_apply_segment(_charging_fills[slot], charging_color, ch_start, maxf(ch_start, ch_end))
 
 
 func _render_preview(energy: float, preview_cost: float) -> void:
@@ -482,32 +514,26 @@ func _play_rewind_sequential(old_energy: float, new_energy: float, charge: float
 
 	var clamped_old := clampf(old_energy, 0.0, float(SLOT_COUNT))
 	var clamped_new := clampf(new_energy, 0.0, float(SLOT_COUNT))
-	var charging_slot := int(ceilf(clamped_new - 0.0001)) if clamped_new > 0.0 else 0
+	var clamped_charge := clampf(charge, 0.0, 1.0)
+	var charge_end := clampf(clamped_new + clamped_charge, 0.0, float(SLOT_COUNT))
 
 	# Record target ratios and ensure all slots start at their pre-spend widths
 	for slot in range(SLOT_COUNT):
+		var slot_f := float(slot)
 		var fill := _fills[slot]
-		var old_ratio := clampf(clamped_old - float(slot), 0.0, 1.0)
-		var new_ratio := clampf(clamped_new - float(slot), 0.0, 1.0)
-		if new_ratio > 0.0001:
-			_target_energy_ratios[slot] = new_ratio
-		elif slot == charging_slot and charging_slot < SLOT_COUNT and charge > 0.0001:
-			_target_energy_ratios[slot] = clampf(charge, 0.0, 1.0)
-		else:
-			_target_energy_ratios[slot] = 0.0
+		var old_ratio := clampf(clamped_old - slot_f, 0.0, 1.0)
+		var new_ratio := clampf(clamped_new - slot_f, 0.0, 1.0)
+		_target_energy_ratios[slot] = new_ratio
+		var ch_start := clampf(clamped_new - slot_f, 0.0, 1.0)
+		var ch_end := clampf(charge_end - slot_f, 0.0, 1.0)
+		_target_charging_ratios[slot] = maxf(0.0, ch_end - ch_start)
+		_apply_segment(_charging_fills[slot], charging_color, 0.0, 0.0)
 
+		fill.color = energy_color
 		if old_ratio > new_ratio + 0.0001:
-			fill.color = energy_color
 			_apply_fill_width(fill, slot_size.x * old_ratio)
-		elif new_ratio > 0.0001:
-			fill.color = energy_color
-			_apply_fill_width(fill, slot_size.x * new_ratio)
-		elif slot == charging_slot and charging_slot < SLOT_COUNT and charge > 0.0001:
-			fill.color = charging_color
-			_apply_fill_width(fill, slot_size.x * clampf(charge, 0.0, 1.0))
 		else:
-			fill.color = energy_color
-			_apply_fill_width(fill, 0.0)
+			_apply_fill_width(fill, slot_size.x * new_ratio)
 
 	var top_slot := mini(SLOT_COUNT - 1, int(ceilf(clamped_old - 0.0001)) - 1)
 	var bottom_slot := maxi(0, int(floorf(clamped_new + 0.0001)))

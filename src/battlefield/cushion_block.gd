@@ -62,6 +62,32 @@ func compute_rebound_velocity(incident_velocity: Vector3, normal_override: Vecto
 	return (1.0 - cushion_friction) * v_parallel - restitution * v_perp
 
 
+## Extendable Cushion impact function: takes `(puck: BasePuck, normal: Vector3)`
+## and returns the velocity delta `v1f - v1` (mass-independent in the normal
+## case) when the puck is approaching the Cushion (`v1 . n < 0`).
+func calculate_cushion_impact(puck: BasePuck, normal_override: Vector3 = Vector3.ZERO) -> Vector3:
+	if puck == null or puck.is_dead:
+		return Vector3.ZERO
+	var n := normal_override.normalized() if normal_override.length_squared() > 0.0001 else inward_normal.normalized()
+	if n.length_squared() <= 0.0001:
+		return Vector3.ZERO
+	var v_in := Vector3(puck.velocity.x, 0.0, puck.velocity.z)
+	if v_in.dot(n) >= -0.0001:
+		return Vector3.ZERO
+	var v_out := compute_rebound_velocity(v_in, n)
+	return v_out - v_in
+
+
+## Applies the Cushion impact velocity change directly to `puck`.
+func apply_cushion_impact(puck: BasePuck, normal_override: Vector3 = Vector3.ZERO) -> void:
+	if puck == null or puck.is_dead:
+		return
+	var dv := calculate_cushion_impact(puck, normal_override)
+	puck.velocity.x += dv.x
+	puck.velocity.z += dv.z
+
+
+
 func _apply_cushion_type() -> void:
 	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape != null:

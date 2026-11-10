@@ -267,12 +267,13 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	bf.play_button.emit_signal("pressed")
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PLAY, "Play button transitions to Play Time")
 	assert_eq(bf.play_button.text, Loc.t("timing_cancel"), "Play button becomes Cancel in Play Time")
-	assert_true(enemy_bars.visible, "Enemy health bars visible during Play Time")
+	assert_false(enemy_bars.visible, "Enemy health bars are hidden during Play Time")
 
 	# Pressing Play button again in Play Time cancels back to Charging Time and disables Play for this slot
 	bf.play_button.emit_signal("pressed")
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_CHARGING, "Cancel returns to Charging Time")
 	assert_true(bf.play_button.disabled, "Play button disabled after using the current slot's Play entry")
+	assert_true(enemy_bars.visible, "Enemy health bars reappear on cancel to Charging Time")
 
 	# Completing the slot re-enables Play button
 	tm.complete_charge_slot()

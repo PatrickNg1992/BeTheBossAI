@@ -120,6 +120,25 @@ func get_cushion_block(cushion_number: int) -> CushionBlock:
 	return get_node_or_null("Cushions/Cushion_%d" % cushion_number) as CushionBlock
 
 
+## Finds the CushionBlock segment along the struck border (`normal` pointing
+## inward into the table) nearest `world_pos`.
+func get_cushion_block_for_normal(world_pos: Vector3, inward_norm: Vector3) -> CushionBlock:
+	var local_pos := to_local(world_pos)
+	var col := clampi(int(floor((local_pos.x + TABLE_HALF_X) / TILE_SIZE)), 0, TILE_COLS - 1)
+	var row := clampi(int(floor((local_pos.z + TABLE_HALF_Z) / TILE_SIZE)), 0, TILE_ROWS - 1)
+	if absf(inward_norm.z) >= absf(inward_norm.x):
+		if inward_norm.z > 0.0:
+			return get_cushion_block(1 + col) # Top rail (1..15)
+		else:
+			return get_cushion_block(16 + col) # Bottom rail (16..30)
+	else:
+		if inward_norm.x > 0.0:
+			return get_cushion_block(31 + row) # Left rail (31..40)
+		else:
+			return get_cushion_block(41 + row) # Right rail (41..50)
+
+
+
 func set_cushion_block_type(cushion_number: int, new_type: CushionBlock.CushionType) -> void:
 	var cushion := get_cushion_block(cushion_number)
 	if cushion != null:

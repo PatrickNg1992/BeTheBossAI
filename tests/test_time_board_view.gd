@@ -158,12 +158,16 @@ func test_view_renders_whatever_it_is_fed() -> void:
 func test_half_slot_energy_renders_accurately_along_serpentine_path() -> void:
 	if _board == null:
 		return
+	# When energy = 11.5 (slots 0..10 full, slot 11 has 0.5 owned) and charge = 0.6:
+	# - First 0.4 of charge fills the second half of slot 11 (from 0.5 to 0.9), so slot 11 has 0.5 owned + 0.4 charging
+	# - Remaining 0.2 of charge spills into slot 12 (from 0.0 to 0.2) without leaving a 0.5 gap!
 	_board.render_state({"energy": 11.5, "charge": 0.6, "tags": {}})
 	assert_eq(_board.slot_fill_ratio(0), 1.0, "Slot 0 filled")
 	assert_eq(_board.slot_fill_ratio(10), 1.0, "Slot 10 filled")
 	assert_eq(_board.slot_fill_ratio(11), 0.5, "Slot 11 shows the 0.5 half-slot owned Energy")
 	assert_eq(_board.slot_fill_kind(11), "energy", "Half-slot owned Energy renders in normal energy kind")
-	assert_true(is_equal_approx(_board.slot_fill_ratio(12), 0.6), "Next full slot (12) shows the fractional Turn charge")
+	assert_true(is_equal_approx(_board.slot_charging_ratio(11), 0.5), "Slot 11 charging fill covers the remaining 0.5 half of slot 11")
+	assert_true(is_equal_approx(_board.slot_charging_ratio(12), 0.1), "Remaining 0.1 of the 0.6 Turn charge continues seamlessly into slot 12")
 	assert_eq(_board.slot_fill_kind(12), "charging", "Slot 12 renders in charging kind")
 	assert_eq(_board.slot_fill_ratio(13), 0.0, "Slot 13 empty")
 
