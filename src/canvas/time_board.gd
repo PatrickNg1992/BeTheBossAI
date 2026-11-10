@@ -279,8 +279,8 @@ func apply_state(state: Dictionary) -> void:
 				glides.append([prev, slot])
 	if new_energy < old_energy - 0.001:
 		kind = "rewind"
-	elif int(floorf(new_energy)) > int(floorf(old_energy)):
-		for slot in range(int(floorf(old_energy)), int(floorf(new_energy))):
+	elif int(floorf(new_energy + 0.001)) > int(floorf(old_energy + 0.001)):
+		for slot in range(int(floorf(old_energy + 0.001)), int(floorf(new_energy + 0.001))):
 			_play_charge_pop(slot)
 	if not teleports.is_empty():
 		kind = "fade_teleport"
@@ -541,18 +541,20 @@ func _play_rewind_sequential(old_energy: float, new_energy: float, charge: float
 		return
 
 	_rewind_tween = create_tween()
-	for slot in range(top_slot, bottom_slot - 1, -1):
-		var old_r := clampf(clamped_old - float(slot), 0.0, 1.0)
-		var new_r := clampf(clamped_new - float(slot), 0.0, 1.0)
-		if old_r <= new_r + 0.0001:
-			continue
+	var cur := snappedf(clamped_old, 0.5)
+	var target := snappedf(clamped_new, 0.5)
+	while cur > target + 0.001:
+		var next_val := maxf(target, snappedf(cur - 0.5, 0.5))
+		var slot := clampi(int(floorf(cur - 0.0001)), 0, SLOT_COUNT - 1)
+		var slot_target_ratio := clampf(next_val - float(slot), 0.0, 1.0)
 		var fill := _fills[slot]
-		var target_w := slot_size.x * new_r
-		var dur := rewind_slot_duration * (old_r - new_r)
+		var target_w := slot_size.x * slot_target_ratio
+		var dur := rewind_slot_duration * (cur - next_val)
 		if fill.anchor_right == 0.0:
 			_rewind_tween.tween_property(fill, "offset_right", target_w, maxf(dur, 0.02))
 		else:
 			_rewind_tween.tween_property(fill, "offset_left", -target_w, maxf(dur, 0.02))
+		cur = next_val
 	_rewind_tween.tween_callback(func() -> void:
 		_rewind_tween = null
 		_render_energy(float(_state.get("energy", 0.0)), float(_state.get("charge", 0.0)), false)

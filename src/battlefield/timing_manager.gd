@@ -240,11 +240,14 @@ func advance_time(delta: float) -> void:
 	if _current_timing == TIMING_CHARGING:
 		var duration := maxf(turn_duration, 0.0001)
 		_charge_progress += scaled_delta / duration
-		while _charge_progress >= 1.0 - 0.00001:
-			_charge_progress = maxf(_charge_progress - 1.0, 0.0)
+		while true:
+			var step_needed := _next_charge_step_needed()
+			if _charge_progress < step_needed - 0.00001:
+				break
+			_charge_progress = maxf(_charge_progress - step_needed, 0.0)
 			if _charge_progress < 0.00001:
 				_charge_progress = 0.0
-			_finish_charge_slot()
+			_finish_charge_step(step_needed)
 		energy_changed.emit(_energy, _charge_progress)
 	elif _current_timing == TIMING_SETTLE and settle_duration > 0.0:
 		_settle_elapsed += scaled_delta
@@ -255,14 +258,22 @@ func advance_time(delta: float) -> void:
 func complete_charge_slot() -> void:
 	if _paused or _current_timing != TIMING_CHARGING:
 		return
+	var step_needed := _next_charge_step_needed()
 	_charge_progress = 0.0
-	_finish_charge_slot()
+	_finish_charge_step(step_needed)
 	energy_changed.emit(_energy, _charge_progress)
 
 
-func _finish_charge_slot() -> void:
+func _next_charge_step_needed() -> float:
+	var frac := fposmod(_energy, 1.0)
+	if frac > 0.25 and frac < 0.75:
+		return 0.5
+	return 1.0
+
+
+func _finish_charge_step(step_amount: float) -> void:
 	if _energy < MAX_ENERGY:
-		_energy = minf(MAX_ENERGY, _energy + 1.0)
+		_energy = minf(MAX_ENERGY, snappedf(_energy + step_amount, 0.5))
 	_play_used_in_current_slot = false
 	charge_slot_completed.emit(_energy)
 

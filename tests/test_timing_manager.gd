@@ -61,6 +61,18 @@ func test_charging_fills_one_slot_per_configurable_turn_and_caps_at_20() -> void
 	assert_eq(_mgr.get_energy(), 20, "Energy caps at 20")
 	assert_eq(completed.back(), 20, "Turns continue ticking at cap")
 
+	# Half-slot completion: when Energy is at 3.5, charging 0.5 of a Turn completes slot 3 (3.5 -> 4.0), then full 1.0 Turns continue (4.0 -> 5.0)
+	_mgr.turn_duration = 1.0
+	_mgr.set_energy(3.5)
+	_mgr.advance_time(0.25)
+	assert_true(is_equal_approx(_mgr.get_energy(), 3.5), "Still at 3.5 Energy after 0.25s")
+	assert_true(is_equal_approx(_mgr.get_charge_progress(), 0.25), "0.25 charge progress toward completing the half-slot")
+	_mgr.advance_time(0.25)
+	assert_true(is_equal_approx(_mgr.get_energy(), 4.0), "Half-slot finishes at 0.5s (3.5 -> 4.0)")
+	assert_true(is_equal_approx(_mgr.get_charge_progress(), 0.0), "Charge progress resets at the 4.0 slot boundary")
+	_mgr.advance_time(1.0)
+	assert_true(is_equal_approx(_mgr.get_energy(), 5.0), "Subsequent full slot completes after 1.0s (4.0 -> 5.0)")
+
 
 func test_play_entry_limited_to_once_per_charged_slot_and_cancel_preserves_progress() -> void:
 	var transitions: Array[String] = []
