@@ -8,7 +8,7 @@ Project Name: Be The Boss
 
 ## Game Concept & Scope
 
-The game is a 3D game with a fixed camera and a medieval theme. The player controls a boss-level Monster to defeat the incoming hero teams. 
+The game is a 3D game with a fixed camera and a medieval theme. The player controls a boss-level Monster to defeat the incoming adventurer teams. 
 
 There are many stages in the game world. The battles combine RPG, snooker, and Card game elements.
 

@@ -9,7 +9,7 @@ src/
 │   └── dragon_player.gd        # Player controller (WASD + auto-attack)
 │
 ├── enemies/
-│   ├── enemy_hero.gd           # Enemy AI (wander/chase/attack, fights all)
+│   ├── enemy_adventurer.gd           # Enemy AI (wander/chase/attack, fights all)
 │   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
 │
 ├── cards/

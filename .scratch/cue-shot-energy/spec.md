@@ -2,11 +2,11 @@
 
 Status: ready-for-agent
 
-The player's core physical action and the tailor-made Puck physics engine in the Battlefield Scene: dragging from the Boss Monster puck to aim with a 3D first-rebound preview and Time Board Energy preview, releasing to apply an Impulse, and resolving motion, ground Friction Forces, and Puck/Cushion collision Impulses during `Puck-puck Time!`. Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Boss Monster, Enemy Hero, Class, Cue Table, Tile, Cushion, Pocket Area, Puck, Cue-Shot, Impulse, Force, Friction, Energy, Time Board, Play Time, Puck-puck Time!).
+The player's core physical action and the tailor-made Puck physics engine in the Battlefield Scene: dragging from the Boss Monster puck to aim with a 3D first-rebound preview and Time Board Energy preview, releasing to apply an Impulse, and resolving motion, ground Friction Forces, and Puck/Cushion collision Impulses during `Puck-puck Time!`. Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Boss Monster, Enemy Adventurer, Class, Cue Table, Tile, Cushion, Pocket Area, Puck, Cue-Shot, Impulse, Force, Friction, Energy, Time Board, Play Time, Puck-puck Time!).
 
 ## Problem Statement
 
-Today on the demo Battlefield, the Boss Monster is driven by placeholder keyboard input and Enemy Heroes run continuous `move_and_slide()` wandering AI. Pucks do not store explicit `radius` and `mass` state for custom physics, there is no central velocity manager separating high-frequency position updates from 20 Hz velocity/collision/friction calculations, floor blocks do not expose an extendable ground-friction function to bring moving Pucks to a stop, and there is no Drag-and-Shot aiming UI, Time Board Energy preview, or first-rebound aiming line. Without these systems, Pucks cannot be launched, bounced, or reliably brought to rest after a Cue-Shot.
+Today on the demo Battlefield, the Boss Monster is driven by placeholder keyboard input and Enemy Adventurers run continuous `move_and_slide()` wandering AI. Pucks do not store explicit `radius` and `mass` state for custom physics, there is no central velocity manager separating high-frequency position updates from 20 Hz velocity/collision/friction calculations, floor blocks do not expose an extendable ground-friction function to bring moving Pucks to a stop, and there is no Drag-and-Shot aiming UI, Time Board Energy preview, or first-rebound aiming line. Without these systems, Pucks cannot be launched, bounced, or reliably brought to rest after a Cue-Shot.
 
 ## Solution
 
@@ -37,7 +37,7 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
 3. As a designer, I want different `TableBlock` types (`GRASS`, `STONE`, `MUD`, `ICE`, and future custom blocks) to modify ground Friction or apply custom Forces via an extendable method on `TableBlock` that receives the Puck as input, so that swapping table blocks creates fun gameplay variations.
 4. As a player, I want each Puck to have a `radius` and a relative `mass` based on the unit it represents (Boss Monster > Knight > Warrior > Ranger > Mage), so that heavier Pucks are harder to knock around and transfer more momentum to lighter Pucks.
 5. As a developer, I want Puck positions updated every frame while velocity changes (collisions and ground Friction) are calculated at ~20 Hz (`0.05s`) by a central `PuckVelocityManager`, so that motion looks smooth at 60+ FPS while physics calculation overhead stays low.
-6. As a player, I want two colliding Pucks to exchange opposite Impulses along their contact normal using classical mechanics ($m_1, m_2, e$), so that chain collisions feel physical and reward hitting lighter Enemy Heroes with a heavy Boss Monster.
+6. As a player, I want two colliding Pucks to exchange opposite Impulses along their contact normal using classical mechanics ($m_1, m_2, e$), so that chain collisions feel physical and reward hitting lighter Enemy Adventurers with a heavy Boss Monster.
 7. As a player, I want a Puck hitting a Cushion to rebound with perpendicular restitution ($e$) and parallel Cushion friction ($f_c$) via an extendable impact method on `CushionBlock`, so that bank shots behave like a cue game and future Special Cushions can override the impact.
 8. As a player, I want any Puck that falls into a hollow Pocket Area during `Puck-puck Time!` to respawn at the nearest unoccupied non-pocket Tile once all Pucks come to rest in the demo sandbox, so that I can keep testing shots without running out of Pucks.
 9. As a player, I want the Time Board to display half-slot (`0.5`) Energy amounts (`0.0..20.0`), so that spending `.5` Energy increments is accurately reflected on the bar.
@@ -51,11 +51,11 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
 17. As a player, I want the aiming line to sweep the Boss Monster's physical radius $R_{\text{boss}}$ and show a ghost contact ring plus the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$) when a Cushion or Puck lies within reach, so that I can aim angled cuts and bank shots accurately.
 18. As a player, I want a second contrasting arrow drawn from a struck Puck's center along its post-impact velocity ($\vec{v}_{2f}$) when the first hit is another Puck, with both post-hit arrow lengths proportional to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$, so that I can predict where both Pucks will go after impact.
 19. As a player, I want all 3D aiming visuals to turn red when I am inside the cancel deadzone or over-dragged, so that I can see on the table when the shot will cancel.
-20. As a designer, I want Enemy Hero wandering AI paused in the demo battlefield and Energy to start at `15.0` and refill to `15.0` every `20` seconds, so that I can test Drag-and-Shot, friction stopping, and rebounds interactively before the full `TimingManager` rotation is wired.
+20. As a designer, I want Enemy Adventurer wandering AI paused in the demo battlefield and Energy to start at `15.0` and refill to `15.0` every `20` seconds, so that I can test Drag-and-Shot, friction stopping, and rebounds interactively before the full `TimingManager` rotation is wired.
 
 ## Implementation Decisions
 
-- **Puck State (`BasePuck`, `DragonPlayer`, `EnemyHero`)**:
+- **Puck State (`BasePuck`, `DragonPlayer`, `EnemyAdventurer`)**:
   - `BasePuck` registers itself in the `"pucks"` group and owns:
     - `@export var mass: float = 1.0`
     - `@export var radius: float = 0.5` (auto-initialized on `_ready()` from its `CollisionShape3D`'s `CylinderShape3D.radius` if present)
@@ -68,7 +68,7 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
     - Warrior: `1.5`
     - Ranger: `1.2`
     - Mage: `1.0`
-  - In the demo sandbox, `BaseEnemy` autonomous wandering/chasing is gated by an `@export var ai_enabled: bool = false` flag so Enemy Heroes stay stationary unless moved by `PuckVelocityManager`.
+  - In the demo sandbox, `BaseEnemy` autonomous wandering/chasing is gated by an `@export var ai_enabled: bool = false` flag so Enemy Adventurers stay stationary unless moved by `PuckVelocityManager`.
 - **`PuckVelocityManager` (60 Hz Position / 20 Hz Velocity & Swept Collision)**:
   - Hosted on the Battlefield (and callable directly in tests via `step_positions(delta: float)` and `step_velocities(tick_dt: float)`):
     - **`_process(delta)` → `step_positions(delta)`**: Advances each moving Puck's horizontal position by `velocity * delta` (and vertical pocket fall via `apply_table_physics(delta)`).

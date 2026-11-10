@@ -8,6 +8,6 @@
 
 - [ ] When a puck–puck or puck–cushion collision occurs on the Host during `Puck-puck Time!`, the Host broadcasts a one-shot `sync_effect_trigger()` (`RELIABLE`) with `kind = "collision"`, `impact_pos`, `puck_ids`, `impulse`, and `staged_damage_by_puck` (delta and running staged damage total).
 - [ ] Receiving a `kind = "collision"` trigger on any Peer spawns the local collision hit effect at `impact_pos` and displays/updates the running staged-damage number on the affected pucks.
-- [ ] When an Enemy Hero or Minion begins its action on the Host during `Action Time`, the Host broadcasts a one-shot `sync_effect_trigger()` (`RELIABLE`) with `kind = "unit_action"`, `actor_puck_id`, `action_type` (`"move"`, `"attack"`, `"skill"`, or `"cue_shot"`), `target_pos`, and `target_puck_id`.
+- [ ] When an Enemy Adventurer or Minion begins its action on the Host during `Action Time`, the Host broadcasts a one-shot `sync_effect_trigger()` (`RELIABLE`) with `kind = "unit_action"`, `actor_puck_id`, `action_type` (`"move"`, `"attack"`, `"skill"`, or `"cue_shot"`), `target_pos`, and `target_puck_id`.
 - [ ] Receiving a `kind = "unit_action"` trigger on any Peer starts the corresponding unit action animation locally on that Peer's Battlefield.
 - [ ] Frame-by-frame particle positions or tween progress are never sent over the transport; all ongoing motion of the effect runs locally on each client after the one-shot start trigger arrives.

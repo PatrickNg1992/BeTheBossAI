@@ -2,7 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://src/battlefield/cue_table.tscn" id="1_q4n8h"]
 [ext_resource type="Script" uid="uid://cu154huk5k76b" path="res://src/player/dragon_player.gd" id="2_q4f6s"]
-[ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_hero.gd" id="3_opwfs"]
+[ext_resource type="Script" uid="uid://juh1urypft8r" path="res://src/enemies/enemy_adventurer.gd" id="3_opwfs"]
 [ext_resource type="Script" uid="uid://dmr5p03e8f4bb" path="res://src/canvas/canvas.gd" id="4_h05ap"]
 [ext_resource type="Script" uid="uid://dgxeeqivbyjgx" path="res://src/canvas/card_canvas.gd" id="5_h0345"]
 [ext_resource type="Script" uid="uid://c5a6gyh3p5cn2" path="res://src/cards/card_manager.gd" id="6_4cvd0"]
@@ -118,7 +118,7 @@ mesh = SubResource("CylinderMesh_lwd14")
 [node name="Enemy2" type="CharacterBody3D" parent="." unique_id=984500535]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.7, 3)
 script = ExtResource("3_opwfs")
-hero_class = 1
+adventurer_class = 1
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy2" unique_id=611858626]
 shape = SubResource("CylinderShape3D_f627u")
@@ -130,7 +130,7 @@ mesh = SubResource("CylinderMesh_ipyvp")
 [node name="Enemy3" type="CharacterBody3D" parent="." unique_id=261509063]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.675, -3)
 script = ExtResource("3_opwfs")
-hero_class = 2
+adventurer_class = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy3" unique_id=2137212163]
 shape = SubResource("CylinderShape3D_71yum")
@@ -142,7 +142,7 @@ mesh = SubResource("CylinderMesh_s4e5k")
 [node name="Enemy4" type="CharacterBody3D" parent="." unique_id=1402716791]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.675, -3)
 script = ExtResource("3_opwfs")
-hero_class = 3
+adventurer_class = 3
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy4" unique_id=872114300]
 shape = SubResource("CylinderShape3D_wxcsg")

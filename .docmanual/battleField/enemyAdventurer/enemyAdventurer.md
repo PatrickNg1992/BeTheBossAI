@@ -1,10 +1,10 @@
-# Enemy Hero
+# Enemy Adventurer
 
-While controlling the boss monster, the player faces incoming heroes as enemies.
+While controlling the boss monster, the player faces incoming adventurers as enemies.
 
-Heroes come in groups in each wave, called Hero teams. The player must defeat all the heroes in a wave to complete it. At most **12 heroes** are allowed in a single wave. (4 - 10 in common)
+Adventurers come in groups in each wave, called Adventurer teams. The player must defeat all the adventurers in a wave to complete it. Each team consists of at most 6 adventurers. 1 or 2 teams are allowed in a single wave. (4 - 12 adventurers in common)
 
-There is a random hero generation logic to be specified in ./heroGeneration.md
+There is a random adventurer generation logic to be specified in ./heroGeneration.md
 
 ## Hero Basic
 

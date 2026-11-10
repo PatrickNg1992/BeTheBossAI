@@ -15,7 +15,7 @@ How cards behave once played. Vocabulary per `CONTEXT.md` (Deck, Hand, Casting A
 | Trigger | Cards |
 |---|---|
 | Preparation Phase (fresh hand) | 5 |
-| Enemy Hero defeated | 1 |
+| Enemy Adventurer defeated | 1 |
 | Boss Monster Health Bar cleared | 1 |
 | Card/skill draw effects | per card (deferred) |
 

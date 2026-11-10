@@ -52,7 +52,7 @@ While it is already moving after clicking the button
 
 ## Pucks
 
-Meanwhile, the units, including Boss Monster, Enemy Heroes and minions, stand like pucks instead of cue balls. The size of the pucks differs based on what they represent. Typically, a large monster will have a large puck, and a small mage enemy will have a small puck.
+Meanwhile, the units, including Boss Monster, Enemy Adventurers and minions, stand like pucks instead of cue balls. The size of the pucks differs based on what they represent. Typically, a large monster will have a large puck, and a small mage enemy will have a small puck.
 
 For the test scene:
 

@@ -7,6 +7,6 @@
 **Status:** ready-for-agent
 
 - [ ] Calling `sync_all()` on the Host invokes `sync_timing()`, `sync_time_board()`, `sync_boss_stats()`, `sync_units()`, `sync_puck_positions()` (`RELIABLE`), `sync_cards()`, and `sync_aiming()` (`RELIABLE`).
-- [ ] When a battle starts (in both Single-Player and Multiplayer), the Host automatically runs `sync_all()` so every Peer's Battlefield initializes with identical Stage/Wave, Timing, Time Board, Boss Monsters, Enemy Heroes, puck positions, and role-filtered Hands.
+- [ ] When a battle starts (in both Single-Player and Multiplayer), the Host automatically runs `sync_all()` so every Peer's Battlefield initializes with identical Stage/Wave, Timing, Time Board, Boss Monsters, Enemy Adventurers, puck positions, and role-filtered Hands.
 - [ ] When `Player A` or `Player B` disconnects mid-battle (triggering the 30-second Rejoin Grace Period per ADR-0004) and rejoins via the Role Selector before the grace period expires, the Host runs `sync_all()` to restore the complete live battle state onto the rejoining Peer's newly instantiated Battlefield before unfreezing the battle on all Peers.
-- [ ] After rejoining and unfreezing, the rejoined player's Battlefield reflects the exact mid-battle Timing, Time Board Energy/Action Tags, Boss Monster HP/Health Bars, Enemy Hero stats/positions, and their own face-up Hand cards, and the player can continue submitting actions normally.
+- [ ] After rejoining and unfreezing, the rejoined player's Battlefield reflects the exact mid-battle Timing, Time Board Energy/Action Tags, Boss Monster HP/Health Bars, Enemy Adventurer stats/positions, and their own face-up Hand cards, and the player can continue submitting actions normally.

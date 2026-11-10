@@ -9,7 +9,7 @@ src/
 │   └── dragon_player.gd        # Player controller (WASD + auto-attack)
 │
 ├── enemies/
-│   ├── enemy_hero.gd           # Enemy hero (class config + hit flash)
+│   ├── enemy_adventurer.gd           # Enemy Adventurer (class config + hit flash)
 │   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
 │
 ├── pucks/

@@ -94,10 +94,10 @@ func position_bar_widget(bar_data: Dictionary, screen_pos: Vector2) -> void:
 
 func _scan_for_new_enemies() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		if enemy is EnemyHero and not enemy in _enemy_bars and not (enemy as EnemyHero).is_dead:
+		if enemy is EnemyAdventurer and not enemy in _enemy_bars and not (enemy as EnemyAdventurer).is_dead:
 			_create_enemy_bar(enemy)
 
-func _create_enemy_bar(enemy: EnemyHero) -> void:
+func _create_enemy_bar(enemy: EnemyAdventurer) -> void:
 	var bar_data := {}
 	_enemy_bars[enemy] = bar_data
 
@@ -125,7 +125,7 @@ func _create_enemy_bar(enemy: EnemyHero) -> void:
 	enemy.health_changed.connect(_on_enemy_health_changed.bind(enemy))
 	enemy.died.connect(_on_enemy_died.bind(enemy))
 
-func _on_enemy_health_changed(current: int, maximum: int, enemy: EnemyHero) -> void:
+func _on_enemy_health_changed(current: int, maximum: int, enemy: EnemyAdventurer) -> void:
 	if not enemy in _enemy_bars:
 		return
 	var bar_data: Dictionary = _enemy_bars[enemy]
@@ -136,10 +136,10 @@ func _on_enemy_health_changed(current: int, maximum: int, enemy: EnemyHero) -> v
 	label.text = "%d/%d" % [current, maximum]
 	_bar_set_color(fill, ratio)
 
-func _on_enemy_died(enemy: EnemyHero) -> void:
+func _on_enemy_died(enemy: EnemyAdventurer) -> void:
 	_remove_enemy_bar(enemy)
 
-func _remove_enemy_bar(enemy: EnemyHero) -> void:
+func _remove_enemy_bar(enemy: EnemyAdventurer) -> void:
 	if not enemy in _enemy_bars:
 		return
 	var bar_data: Dictionary = _enemy_bars[enemy]

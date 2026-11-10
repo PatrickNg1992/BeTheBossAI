@@ -6,7 +6,7 @@ The HUD board at the top of the battlefield canvas that visualizes battle time �
 
 ## Problem Statement
 
-Battle time is governed by six Timings, Energy charging, and per-unit Action Tags — but none of it is visible. Without a board, the player cannot tell how much Energy they have, when the next slot finishes charging, or which turn each Enemy Hero acts on — the "anticipate and plan" core of the auto-battler half of the game. The design also has display-specific rules (two bars, goal at upper-left, tags independent of Energy, membership updates in Settle Time) that need a single home rather than being re-derived inside the HUD.
+Battle time is governed by six Timings, Energy charging, and per-unit Action Tags — but none of it is visible. Without a board, the player cannot tell how much Energy they have, when the next slot finishes charging, or which turn each Enemy Adventurer acts on — the "anticipate and plan" core of the auto-battler half of the game. The design also has display-specific rules (two bars, goal at upper-left, tags independent of Energy, membership updates in Settle Time) that need a single home rather than being re-derived inside the HUD.
 
 ## Solution
 
@@ -61,7 +61,7 @@ A Time Board component on the battlefield canvas, split into a pure **model** (t
 - **Action Time lifecycle.** Firing tags pin at the goal; the unit count decrements as each unit acts; each acting unit's replacement tag fades in when its action completes; firing tags vanish when Action Time ends.
 - **Membership changes apply in Settle Time.** Defeated units decrement their tag; count reaching zero removes the tag. A unit entering the table joins an existing tag on its acting slot or creates a new tag there.
 - **Pocket rule (display half).** A pocketed unit's planned tag is cancelled and replaced by a "return" tag placed 5 slots ahead of the goal (5 Turns — follows the configurable per-slot time, no wall-clock durations). When the return tag fires, the puck re-enters at the nearest free Tile and places its next Action Tag normally. Cancellations/replacements apply in Settle Time per the membership rule.
-- **Prepare Time display.** On Prepare entry the board animates to the coming Wave's opening state — Energy to exactly 10, all old tags removed, the incoming Hero Team's initial tags placed — then freezes for the rest of the phase so the player can plan. (Already corrected in the timing spec.)
+- **Prepare Time display.** On Prepare entry the board animates to the coming Wave's opening state — Energy to exactly 10, all old tags removed, the incoming Adventurer Team's initial tags placed — then freezes for the rest of the phase so the player can plan. (Already corrected in the timing spec.)
 - **Unit-icon integers.** The Turns integer on each unit's canvas icon is driven from the same model (per-unit lookup of its tag's distance-to-goal), following the existing unproject-to-screen pattern used for enemy health bars.
 - **Board state per Timing:** Charging = running; Play / Action / Puck-puck / Settle = frozen except effect-driven moves and the lifecycle updates above; Prepare = animate-once-then-frozen as above.
 - **No text on the board** beyond the two integers per tag — nothing added to `src/multiLang` for this feature; revisit after the demo.

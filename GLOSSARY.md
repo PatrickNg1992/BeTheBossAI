@@ -12,23 +12,23 @@ Simply a game stage that the player can choose to play.
 
 ## Wave
 
-A game stage consists of multiple waves. Each wave will generate a Hero Team. The player needs to defeat the team to pass the wave. A hero team typically consists of 4 - 10 Enemy Heroes, with a hard cap of 12 per wave.
+A game stage consists of multiple waves. Each wave will generate a Adventurer Team. The player needs to defeat the team to pass the wave. A adventurer wave typically consists of 4 - 12 Enemy Adventurers (1-2 Adventurer teams), with a hard cap of 12 per wave.
 
 ## Preparation Phase (Prep Phase)
 
 Before each wave, there is a short rest for the player to do some preparation, including shuffling the deck and redrawing cards.
 
-## Hero Team
+## Adventurer Team
 
-A group of *Enemy Heroes* that come to challenge the player in each wave. A hero team typically consists of 6 - 10 Enemy Heroes.
+A group of *Enemy Adventurers* that come to challenge the player in each wave. An adventurer team typically consists of 4 - 6 Enemy Adventurers.
 
-## Enemy Hero
+## Enemy Adventurer
 
-An enemy unit of the player. Each may have a *Class*, some *Equipment* and some *Hero Skills*.
+An enemy unit of the player. Each may have a *Class*, some *Equipment* and some *Adventurer Skills*.
 
 ## Class
 
-The type (occupation) of an Enemy Hero. Examples are Warrior, Mage, Ranger, Knight, etc.
+The type (occupation) of an Enemy Adventurer. Examples are Warrior, Mage, Ranger, Knight, etc.
 
 ## Battlefield
 
@@ -114,7 +114,7 @@ The units whose Action Tags reached the goal act, one action each, in spawn orde
 
 ## Action Tag
 
-A marker a Hero or Minion places on a slot of the *Time Board*, meaning "this unit acts when the tag reaches the goal (upper-left slot)." Tags are independent of energy. After acting, the unit places its next tag some slots ahead of the goal; faster units use smaller offsets and act more often.
+A marker a Adventurer or Minion places on a slot of the *Time Board*, meaning "this unit acts when the tag reaches the goal (upper-left slot)." Tags are independent of energy. After acting, the unit places its next tag some slots ahead of the goal; faster units use smaller offsets and act more often.
 
 Displayed as a simple arrow pointing into the bar, with two integers — how many units share the tag, and how many *Turns* until the goal. The Turns integer is also shown on each unit's icon in the canvas. During *Action Time* the firing tag stays at the goal, its unit count decreasing as each unit acts; replacement tags fade in one-by-one as each action completes, and the firing tag vanishes when Action Time ends.
 
@@ -150,13 +150,13 @@ The place where a used card is finally placed.
 
 ## Equipment
 
-An Enemy Hero may randomly equip some equipment. Equipment provides stats, and some may provide extra effects. This system adds randomness to differentiate heroes.
+An Enemy Adventurer may randomly equip some equipment. Equipment provides stats, and some may provide extra effects. This system adds randomness to differentiate Adventurers.
 
 (TBC)
 
-## Hero Skill
+## Adventurer Skill
 
-An Enemy Hero may randomly equip some Hero Skills that have special effects. At least one basic attack skill is equipped according to the Hero Class.
+An Enemy Adventurer may randomly equip some Adventurer Skills that have special effects. At least one basic attack skill is equipped according to the Adventurer Class.
 
 (TBC)
 

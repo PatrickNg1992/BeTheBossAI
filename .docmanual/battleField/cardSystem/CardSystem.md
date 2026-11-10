@@ -18,7 +18,7 @@ There are 4 methods to draw cards:
 
 - At the preparation phase before each wave, as stated above,
 - When a health bar of the boss monster is cleared,
-- When an enemy hero is defeated, and
+- When an enemy adventurer is defeated, and
 - When a card drawing effect is triggered by playing cards or skills
 
 ## How to play a card

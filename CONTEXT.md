@@ -1,6 +1,6 @@
 # Be The Boss
 
-A 3D medieval strategy game where the player is a Boss Monster fighting off the incoming hero teams. Battles combine RPG, snooker and card-game elements; side functions include the world map, codex, deck composition and training.
+A 3D medieval strategy game where the player is a Boss Monster fighting off the incoming adventurer teams. Battles combine RPG, snooker and card-game elements; side functions include the world map, codex, deck composition and training.
 
 ## Scenes
 
@@ -20,7 +20,7 @@ The monster the player controls. In battle it is a puck on the Cue Table; if it 
 _Avoid_: player, character
 
 **Stage**:
-A single battle, made of an ordered sequence of Waves. All Hero Team compositions for the whole Stage are rolled when the Stage begins. Selected on the World Map scene.
+A single battle, made of an ordered sequence of Waves. All Adventurer Team compositions for the whole Stage are rolled when the Stage begins. Selected on the World Map scene.
 _Avoid_: level, round
 
 **Deck**:
@@ -31,5 +31,5 @@ _Avoid_: pile
 One of Environment, Monster Skill, Summoner or Minion — the four card families.
 
 **Legendary Hero**:
-A fixed, pre-designed Enemy Hero that appears in specific Stages — tailor-made and free to break Class rules. Stronger than random heroes; defeated Legendary Heroes are recorded in the Codex.
-_Avoid_: named hero, boss (that's the player's own monster)
+A fixed, pre-designed Enemy Adventurer that appears in specific Stages — tailor-made and free to break Class rules. Stronger than random adventurers; defeated Legendary Heroes are recorded in the Codex.
+_Avoid_: named adventurer, boss (that's the player's own monster)

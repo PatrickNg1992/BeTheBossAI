@@ -385,14 +385,14 @@ func test_aiming_line_at_y_1_55_red_on_deadzone_or_overdrag_and_mass_dependent_i
 
 func test_default_relative_masses_and_radii_per_puck_type() -> void:
 	var boss := DragonPlayer.new()
-	var knight := EnemyHero.new()
-	knight.hero_class = EnemyHero.HeroClass.KNIGHT
-	var warrior := EnemyHero.new()
-	warrior.hero_class = EnemyHero.HeroClass.WARRIOR
-	var ranger := EnemyHero.new()
-	ranger.hero_class = EnemyHero.HeroClass.RANGER
-	var mage := EnemyHero.new()
-	mage.hero_class = EnemyHero.HeroClass.MAGE
+	var knight := EnemyAdventurer.new()
+	knight.adventurer_class = EnemyAdventurer.AdventurerClass.KNIGHT
+	var warrior := EnemyAdventurer.new()
+	warrior.adventurer_class = EnemyAdventurer.AdventurerClass.WARRIOR
+	var ranger := EnemyAdventurer.new()
+	ranger.adventurer_class = EnemyAdventurer.AdventurerClass.RANGER
+	var mage := EnemyAdventurer.new()
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
 
 	for p in [boss, knight, warrior, ranger, mage]:
 		_root.add_child(p)
@@ -422,8 +422,8 @@ func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
 	#   v2f = 0.0 + 5.4 / 1.0 = 5.4
 	var boss := DragonPlayer.new()
 	boss.restitution = 0.8
-	var mage := EnemyHero.new()
-	mage.hero_class = EnemyHero.HeroClass.MAGE
+	var mage := EnemyAdventurer.new()
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
 	mage.restitution = 0.8
 	_root.add_child(boss)
 	_root.add_child(mage)
@@ -444,8 +444,8 @@ func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
 	assert_false(pvm.resolve_puck_puck_collision(boss, mage), "Separating pucks do not re-trigger impulse")
 
 	# 3. Swept 20 Hz collision check during step_velocities: fast Boss hits Knight along its path within a 0.05s tick
-	var knight := EnemyHero.new()
-	knight.hero_class = EnemyHero.HeroClass.KNIGHT
+	var knight := EnemyAdventurer.new()
+	knight.adventurer_class = EnemyAdventurer.AdventurerClass.KNIGHT
 	_root.add_child(knight)
 	boss.global_position = Vector3(-5.0, 1.75, 0.0)
 	boss.velocity = Vector3(10.0, 0.0, 0.0)
@@ -458,15 +458,15 @@ func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
 	assert_true(knight.velocity.x > 5.0, "20 Hz swept/overlap check transfers momentum to Knight")
 	assert_true(boss.velocity.x < 10.0, "Boss slows down after transferring momentum to Knight")
 
-	# 4. Verify BaseEnemy._physics_process in Puck-puck Time! does NOT zero out knocked EnemyHero velocity
+	# 4. Verify BaseEnemy._physics_process in Puck-puck Time! does NOT zero out knocked EnemyAdventurer velocity
 	_tm.set_energy(5.0)
 	_tm.request_play()
 	_tm.fire_cue_shot(1.0)
 	assert_eq(_tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "In Puck-puck Time!")
 	knight._physics_process(0.016)
-	assert_true(knight.velocity.x > 5.0, "EnemyHero keeps its collision velocity during Puck-puck Time! physics frames")
+	assert_true(knight.velocity.x > 5.0, "EnemyAdventurer keeps its collision velocity during Puck-puck Time! physics frames")
 	pvm.step_positions(0.05, 1.0)
-	assert_true(knight.global_position.x > -3.5, "Struck EnemyHero is pushed away across the table")
+	assert_true(knight.global_position.x > -3.5, "Struck EnemyAdventurer is pushed away across the table")
 
 	# 5. Simulate full demo_bettlefield.tscn 60 FPS _process loop where Boss Monster shoots into Enemy1 (Warrior at (6, 1.675, 3))
 	var tree := Engine.get_main_loop() as SceneTree
@@ -536,8 +536,8 @@ func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -
 
 	var boss := DragonPlayer.new()
 	boss.mass = 3.0
-	var mage := EnemyHero.new()
-	mage.hero_class = EnemyHero.HeroClass.MAGE
+	var mage := EnemyAdventurer.new()
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
 	mage.mass = 1.0
 	_root.add_child(boss)
 	_root.add_child(mage)

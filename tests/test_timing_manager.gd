@@ -141,19 +141,19 @@ func test_cue_shot_and_card_transitions_from_play_and_settle_skip_vs_apply() -> 
 	_mgr.complete_charge_slot()
 	_mgr.request_play()
 	_mgr.fire_cue_shot()
-	_mgr.stage_damage("hero_1", 25)
-	_mgr.stage_damage("hero_1", 15)
-	_mgr.stage_damage("hero_2", 30)
-	_mgr.record_settle_event({"type": "defeated", "target_id": "hero_1"})
-	assert_eq(_mgr.get_staged_damage_for("hero_1"), 40, "Staged damage accumulates during Puck-puck Time!")
+	_mgr.stage_damage("adventurer_1", 25)
+	_mgr.stage_damage("adventurer_1", 15)
+	_mgr.stage_damage("adventurer_2", 30)
+	_mgr.record_settle_event({"type": "defeated", "target_id": "adventurer_1"})
+	assert_eq(_mgr.get_staged_damage_for("adventurer_1"), 40, "Staged damage accumulates during Puck-puck Time!")
 	assert_eq(applied_batches.size(), 0, "Staged damage is NOT applied during Puck-puck Time!")
 
 	_mgr.notify_all_pucks_at_rest()
 	assert_eq(_mgr.get_current_timing(), TimingManager.TIMING_SETTLE, "Enters Settle Time when damage/events were staged")
 	assert_eq(applied_batches.size(), 1, "Staged damage applied once on entering Settle Time")
-	assert_eq(applied_batches[0].get("hero_1"), 40, "Accumulated damage for hero_1 applied at Settle")
-	assert_eq(applied_batches[0].get("hero_2"), 30, "Accumulated damage for hero_2 applied at Settle")
-	assert_eq(_mgr.get_staged_damage_for("hero_1"), 0, "Accumulator cleared after Settle applies it")
+	assert_eq(applied_batches[0].get("adventurer_1"), 40, "Accumulated damage for adventurer_1 applied at Settle")
+	assert_eq(applied_batches[0].get("adventurer_2"), 30, "Accumulated damage for adventurer_2 applied at Settle")
+	assert_eq(_mgr.get_staged_damage_for("adventurer_1"), 0, "Accumulator cleared after Settle applies it")
 
 	_mgr.notify_settle_finished()
 	assert_eq(_mgr.get_current_timing(), TimingManager.TIMING_CHARGING, "Settle finishes into Charging Time")
@@ -190,7 +190,7 @@ func test_pause_and_resume_at_any_timing_preserves_state_and_fractional_progress
 	assert_true(_mgr.fire_cue_shot(), "Cue-shot works after unpausing")
 	assert_eq(_mgr.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Now in Puck-puck Time!")
 
-	_mgr.stage_damage("hero_1", 10)
+	_mgr.stage_damage("adventurer_1", 10)
 	_mgr.pause()
 	assert_false(_mgr.notify_all_pucks_at_rest(), "At-rest transition blocked while paused")
 	assert_eq(_mgr.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Still in Puck-puck Time! while paused")
@@ -238,7 +238,7 @@ func test_fast_play_scales_time_driven_timings_and_leaves_play_and_prepare_unaff
 	_mgr.request_play()
 	_mgr.fire_cue_shot()
 	assert_eq(_mgr.get_effective_time_scale(), 2.0, "Puck-puck Time! is accelerated by Fast Play")
-	_mgr.stage_damage("hero_1", 10)
+	_mgr.stage_damage("adventurer_1", 10)
 	_mgr.notify_all_pucks_at_rest()
 	assert_eq(_mgr.get_current_timing(), TimingManager.TIMING_SETTLE, "Entered Settle Time")
 	assert_eq(_mgr.get_effective_time_scale(), 2.0, "Settle Time is accelerated by Fast Play")
@@ -343,7 +343,7 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	tree.get_multiplayer().multiplayer_peer = null
 
 
-func test_enemy_heroes_only_move_and_attack_during_action_time() -> void:
+func test_enemy_adventurers_only_move_and_attack_during_action_time() -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	tree.get_multiplayer().multiplayer_peer = OfflineMultiplayerPeer.new()
 	var packed := ResourceLoader.load("res://src/demo_bettlefield.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene

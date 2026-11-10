@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 
-Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Host, Player A / Player B, Spectator, Peer, Single-Player Scene, Multiplayer Scene, Boss Monster, Enemy Hero, Minion, Puck, Cue-Shot, Energy, Time Board, Turn, Action Tag, Prepare Time, Charging Time, Play Time, Playing Right, Action Time, Puck-puck Time!, Settle Time, Deck, Hand, Casting Area, Discard Pile, Rejoin Grace Period). Governing decisions: ADR-0003 (Host-authoritative sync; deck secrecy is visibility-only) and ADR-0004 (grace-period rejoin for mid-battle disconnects). Source manuals: `.docmanual/battleField/battleFieldDataSync.md`, `.docmanual/multiplayer/multiplayerGame.md`, `.docmanual/multiplayer/multiplayerLogic.md`, and `.docmanual/battleField/timingSystem/timeBoardDisplay.md` (do not edit).
+Vocabulary per `CONTEXT.md`, `.docs/contexts/battlefield.md`, and `GLOSSARY.md` (Host, Player A / Player B, Spectator, Peer, Single-Player Scene, Multiplayer Scene, Boss Monster, Enemy Adventurer, Minion, Puck, Cue-Shot, Energy, Time Board, Turn, Action Tag, Prepare Time, Charging Time, Play Time, Playing Right, Action Time, Puck-puck Time!, Settle Time, Deck, Hand, Casting Area, Discard Pile, Rejoin Grace Period). Governing decisions: ADR-0003 (Host-authoritative sync; deck secrecy is visibility-only) and ADR-0004 (grace-period rejoin for mid-battle disconnects). Source manuals: `.docmanual/battleField/battleFieldDataSync.md`, `.docmanual/multiplayer/multiplayerGame.md`, `.docmanual/multiplayer/multiplayerLogic.md`, and `.docmanual/battleField/timingSystem/timeBoardDisplay.md` (do not edit).
 
 ## Problem Statement
 
@@ -46,8 +46,8 @@ A unified, **Host-authoritative Battlefield Data Sync** architecture used identi
 
 14. As a Peer during `Puck-puck Time!` and `Action Time`, I want the Host to calculate all puck physics, rebounds, and scripted glides and sync puck positions to my screen, so that pucks always land in identical positions on every machine.
 15. As a Peer during `Puck-puck Time!`, I want to receive a one-shot effect start trigger whenever a collision occurs (carrying impact position, involved pucks, and staged damage numbers), so that my client plays collision sparks and running staged-damage popups without syncing particle frames.
-16. As a Peer during `Action Time`, I want to receive a one-shot effect start trigger when an Enemy Hero or Minion begins its action (move glide, auto-attack, skill, or Knight cue-shot), so that my client starts the unit's action animation in sync.
-17. As a Peer, I want UI and status animations (the "Puck-puck Time!" banner flash, Energy spend rewind, Boss Monster Health Bar break flash/shake, and Hero Focusing lighting VFX) to trigger automatically on my client when the corresponding synced state changes, so that network traffic stays minimal.
+16. As a Peer during `Action Time`, I want to receive a one-shot effect start trigger when an Enemy Adventurer or Minion begins its action (move glide, auto-attack, skill, or Knight cue-shot), so that my client starts the unit's action animation in sync.
+17. As a Peer, I want UI and status animations (the "Puck-puck Time!" banner flash, Energy spend rewind, Boss Monster Health Bar break flash/shake, and Adventurer Focusing lighting VFX) to trigger automatically on my client when the corresponding synced state changes, so that network traffic stays minimal.
 
 **Cards & Role-Based Hand Visibility**
 
@@ -64,7 +64,7 @@ A unified, **Host-authoritative Battlefield Data Sync** architecture used identi
 
 **Battle Initialization & Rejoin Grace Period Restoration (ADR-0004)**
 
-25. As a Peer entering the Battlefield on Start Game, I want the Host to run `sync_all()` on initialization, so that my screen starts with the exact initial Stage/Wave, Time Board, Boss Monsters, Enemy Heroes, Puck positions, and hands.
+25. As a Peer entering the Battlefield on Start Game, I want the Host to run `sync_all()` on initialization, so that my screen starts with the exact initial Stage/Wave, Time Board, Boss Monsters, Enemy Adventurers, Puck positions, and hands.
 26. As a dropped Player A or Player B rejoining during the 30-second Rejoin Grace Period (ADR-0004), I want the Host to send `sync_all()` upon my rejoin before unfreezing the battle, so that my newly instantiated Battlefield is restored to the exact live state of the match.
 
 ## Implementation Decisions
@@ -91,7 +91,7 @@ Every synced data type and player/system message is assigned a specific sync mec
 | `sync_aiming()` | Host → All Peers | **Continuous State Sync in `Play Time` (`MultiplayerSynchronizer`-style)** | **`UNRELIABLE_ORDERED`** while dragging; **`RELIABLE`** when cleared/cancelled or on `sync_all()` | `{ active: bool, player_seat: "a" \| "b", aim_origin: Vector3, aim_direction: Vector3, energy_cost: float, over_dragged: bool }` (card selection preview in hand is parked as TBC). |
 | `sync_timing()` | Host → All Peers | **Discrete State Sync (`RPC`)** | **`RELIABLE`** (`call_local`) | `{ timing: int/String, active_player: "" \| "a" \| "b", stage_index: int, wave_index: int, ready_players: Array }`. Fired on every Timing transition, Wave change, or `Prepare Time` ready-state update. |
 | `sync_boss_stats()` | Host → All Peers | **Discrete State Sync (`RPC`)** | **`RELIABLE`** (`call_local`) | Per-seat Boss Monster state for `Player A` and (if seated) `Player B`: `{ seat, puck_id, current_hp, bar_max_hp, bars_remaining, max_bars, is_invincible, is_dead }`. Fired on damage applied in `Settle Time`, heal card effects, bar break, or `sync_all()`. |
-| `sync_units()` | Host → All Peers | **Discrete State Sync (`RPC`)** | **`RELIABLE`** (`call_local`) | Full list or delta of Enemy Heroes and Minions: `{ puck_id, unit_kind: "enemy_hero" \| "minion", owner_seat, hero_class, current_hp, max_hp, is_focusing, is_pocketed, pocket_return_turns, is_dead, position }`. Fired on Wave spawn, summon, defeat, pocket fall/return, Focusing change, or `sync_all()`. |
+| `sync_units()` | Host → All Peers | **Discrete State Sync (`RPC`)** | **`RELIABLE`** (`call_local`) | Full list or delta of Enemy Adventurers and Minions: `{ puck_id, unit_kind: "enemy_adventurer" \| "minion", owner_seat, adventurer_class, current_hp, max_hp, is_focusing, is_pocketed, pocket_return_turns, is_dead, position }`. Fired on Wave spawn, summon, defeat, pocket fall/return, Focusing change, or `sync_all()`. |
 | `sync_cards()` | Host → All Peers | **Discrete State Sync (`RPC`)** | **`RELIABLE`** (`call_local`) | Authoritative card state for `Player A` and (if seated) `Player B`: `{ deck_card_ids: Array, hand_card_ids: Array, casting_card_id: Variant, casting_cd_remaining: float, discard_card_ids: Array }`. Synced to all Peers per ADR-0003; UI filters visibility by local role. |
 | `sync_effect_trigger()` | Host → All Peers | **Discrete One-Shot Event (`RPC`)** | **`RELIABLE`** (`call_local`) | One-shot start triggers only: (1) **Collision hit** in `Puck-puck Time!`: `{ kind: "collision", impact_pos: Vector3, puck_ids: Array, impulse: float, staged_damage_by_puck: Dictionary }`; (2) **Unit action start** in `Action Time`: `{ kind: "unit_action", actor_puck_id: int, action_type: "move" \| "attack" \| "skill" \| "cue_shot", target_pos: Vector3, target_puck_id: int }`. |
 | `sync_all()` | Host → All Peers (or single rejoining Peer) | **Composite Full Snapshot (`RPC`)** | **`RELIABLE`** (`call_local`) | Invokes `sync_timing()`, `sync_time_board()`, `sync_boss_stats()`, `sync_units()`, `sync_puck_positions()` (reliable), `sync_cards()`, and `sync_aiming()` (reliable). Used when the battle starts and when a dropped player rejoins during the Rejoin Grace Period (ADR-0004). |
@@ -124,7 +124,7 @@ All player actions flow from the acting Peer to the Host:
   - Clients do **not** receive frame-by-frame animation packets.
   - When `sync_effect_trigger()` arrives with `kind == "collision"`, the client spawns the collision visual effect at `impact_pos` and updates the running staged-damage popup on the affected pucks.
   - When `sync_effect_trigger()` arrives with `kind == "unit_action"`, the client starts the unit's attack/move/skill animation.
-  - When `sync_timing()`, `sync_time_board()`, `sync_boss_stats()`, or `sync_units()` arrives, the client compares previous vs. new state and plays the corresponding UI/status transitions locally (e.g. "Puck-puck Time!" banner on entering `Puck-puck Time!`, Energy bar rewind tween on Energy decrease, Boss Monster Health Bar break flash/shake on bar count decrease, Hero Focusing glow when `is_focusing` becomes true).
+  - When `sync_timing()`, `sync_time_board()`, `sync_boss_stats()`, or `sync_units()` arrives, the client compares previous vs. new state and plays the corresponding UI/status transitions locally (e.g. "Puck-puck Time!" banner on entering `Puck-puck Time!`, Energy bar rewind tween on Energy decrease, Boss Monster Health Bar break flash/shake on bar count decrease, Adventurer Focusing glow when `is_focusing` becomes true).
 - **Strictly Local Self-Owned Data (Never Synced)**:
   - Camera rail side/angle selection (left/right camera rotation buttons).
   - Local UI inspection popups (opening/closing the Discard Pile or debug Deck window) and hovering cards in hand outside `Play Time`.
@@ -149,7 +149,7 @@ All player actions flow from the acting Peer to the Host:
   - **Live Aiming Sync**: `active_player` sending `action_aim_update` updates the aiming line and Energy preview on the opponent's and Spectators' screens via `sync_aiming()`.
   - **Modular Category Syncs**: Each of the 8 `sync_*` functions independently updates only its corresponding domain state and display on Peers, and `sync_effect_trigger()` fires discrete collision/action visual triggers on Peers.
   - **Role-Based Hand Visibility (`ADR-0003`)**: `sync_cards()` replicates both players' card zones to all Peers, while the UI displays face-up Hand cards only to their owner (`Player A` sees Hand A, `Player B` sees Hand B, `Spectator` sees neither face-up hand; everyone sees hand counts, Casting Area, and Discard Pile).
-  - **Mid-Battle Rejoin (`ADR-0004`)**: When `Player B` drops mid-battle and rejoins during the grace period, `sync_all()` restores the live Timing, Time Board, Boss Monster HP/bars, Enemy Heroes, puck positions, and Hands on the rejoined Peer's newly instantiated Battlefield.
+  - **Mid-Battle Rejoin (`ADR-0004`)**: When `Player B` drops mid-battle and rejoins during the grace period, `sync_all()` restores the live Timing, Time Board, Boss Monster HP/bars, Enemy Adventurers, puck positions, and Hands on the rejoined Peer's newly instantiated Battlefield.
   - **Self-Owned Local Data**: Changing camera angle or opening the Discard Pile window on one Peer does not affect any other Peer.
 - **Prior art**: `tests/test_multiplayer_manager.gd` (multi-instance Host + Peers driven deterministically over `FakeTransport`), `tests/test_single_player.gd` (Single-Player loader verification), and `tests/test_time_board_view.gd` (asserting Time Board view state from model syncs).
 

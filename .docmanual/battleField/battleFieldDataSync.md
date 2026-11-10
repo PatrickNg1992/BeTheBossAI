@@ -43,7 +43,7 @@ Synchronization should be split into separate sync functions by category rather 
 1. `sync_timing()` — current Timing (`Prepare`, `Charging`, `Play`, `Action`, `Puck-puck Time!`, `Settle`), who holds the Playing Right (`active_player`), and Wave/Stage index.
 2. `sync_time_board()` — Turn progress, Player A & Player B Energy, and Action Tags.
 3. `sync_boss_stats()` — HP and Health Bars for Player A's Boss Monster (and Player B's if seated).
-4. `sync_units()` — Enemy Hero and Minion spawn/removal and stats (HP, Class, Focusing state, pocketed state).
+4. `sync_units()` — Enemy Adventurer and Minion spawn/removal and stats (HP, Class, Focusing state, pocketed state).
 5. `sync_puck_positions()` — 3D positions (and velocities) of all pucks on the Cue Table.
 6. `sync_cards()` — Deck, Hand, Casting Area, and Discard Pile for Player A (and Player B if seated).
 7. `sync_aiming()` — live drag aiming line + Energy cost preview during `Play Time`.

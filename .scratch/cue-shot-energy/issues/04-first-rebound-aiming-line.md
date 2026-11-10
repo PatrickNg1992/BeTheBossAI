@@ -12,4 +12,4 @@
 - [ ] When the first hit is another Puck, a second arrow in a contrasting colour renders from the struck Puck's center along its outgoing velocity ($\vec{v}_{2f}$)
 - [ ] Post-hit arrow lengths scale proportionally to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$ from the Puck–Puck and Puck–Cushion collision equations
 - [ ] All aiming line segments and the contact ring turn red when inside the cancel deadzone or over-dragged
-- [ ] Automated tests verify swept first-hit contact points and post-hit preview vectors ($\vec{v}_{1f}, \vec{v}_{2f}$) against both a Cushion and an Enemy Hero Puck
+- [ ] Automated tests verify swept first-hit contact points and post-hit preview vectors ($\vec{v}_{1f}, \vec{v}_{2f}$) against both a Cushion and an Enemy Adventurer Puck

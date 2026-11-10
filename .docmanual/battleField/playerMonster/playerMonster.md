@@ -1,10 +1,10 @@
 # Boss Monster
 
-On the battlefield, the player controls a boss-level monster to defeat the enemy heroes. The boss monster should be chosen before the game from a list of player-owned boss monsters. 
+On the battlefield, the player controls a boss-level monster to defeat the enemy adventurers. The boss monster should be chosen before the game from a list of player-owned boss monsters. 
 
 ## Battling
 
-The Boss monster will fight the enemy heroes automatically, and each monster has its own AI and behaviour. 
+The Boss monster will fight the enemy adventurers automatically, and each monster has its own AI and behaviour. 
 
 The player can make two instructions to interact with battle: 
 

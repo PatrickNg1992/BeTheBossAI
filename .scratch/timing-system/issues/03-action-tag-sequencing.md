@@ -1,6 +1,6 @@
 # 03 — Action Tag sequencing and Action Time ordering
 
-**What to build:** per-unit Action Tags on the Time Board — each Enemy Hero (and future Minion) places a tag that advances one slot per Turn; a completed slot landing tags on the goal triggers Action Time. In Action Time only the tagged units act, one action each, ordered: buff/debuff actions first (priority TBC), then normal actions in spawn order, then cue-shot actions last; a cue-shot action diverts to Puck-puck Time! and the queue resumes after. After acting, a unit re-places its next tag a unit-specific slot offset back from the goal (faster units, smaller offsets). A pocketed unit's tag is cancelled and replaced with a return tag at goal−5. "Shot Resolution" naming is retired everywhere.
+**What to build:** per-unit Action Tags on the Time Board — each Enemy Adventurer (and future Minion) places a tag that advances one slot per Turn; a completed slot landing tags on the goal triggers Action Time. In Action Time only the tagged units act, one action each, ordered: buff/debuff actions first (priority TBC), then normal actions in spawn order, then cue-shot actions last; a cue-shot action diverts to Puck-puck Time! and the queue resumes after. After acting, a unit re-places its next tag a unit-specific slot offset back from the goal (faster units, smaller offsets). A pocketed unit's tag is cancelled and replaced with a return tag at goal−5. "Shot Resolution" naming is retired everywhere.
 
 **Blocked by:** 01 — TimingManager core cycle.
 
