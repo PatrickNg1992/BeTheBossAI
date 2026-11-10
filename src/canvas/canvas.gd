@@ -17,14 +17,49 @@ const DEBUG_SHOW_DECK := true
 
 var _enemy_bars: Dictionary = {}
 var _prev_player_hp: int = 100
+var _hide_enemy_bars: bool = false
 
 func _ready() -> void:
 	_setup_player_health_bar()
-	# Init UI from current state
+	_bind_timing_signals()
+
+
+func _bind_timing_signals() -> void:
+	var tm := _find_timing_manager()
+	if tm == null:
+		return
+	if not tm.timing_changed.is_connected(_on_timing_changed):
+		tm.timing_changed.connect(_on_timing_changed)
+	_hide_enemy_bars_by_timing(tm.get_current_timing())
+
+
+func _find_timing_manager() -> TimingManager:
+	var parent := get_parent()
+	if parent != null:
+		var sibling := parent.get_node_or_null("TimingManager") as TimingManager
+		if sibling != null:
+			return sibling
+	if is_inside_tree():
+		return get_tree().get_first_node_in_group("timing_manager") as TimingManager
+	return null
+
+
+func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
+	_hide_enemy_bars_by_timing(new_timing)
+
+
+func _hide_enemy_bars_by_timing(timing: String) -> void:
+	_set_enemy_bars_hidden(timing == TimingManager.TIMING_PUCK_PUCK or timing == TimingManager.TIMING_PLAY)
+
+func _set_enemy_bars_hidden(hidden: bool) -> void:
+	_hide_enemy_bars = hidden
+	if enemy_bars_container != null:
+		enemy_bars_container.visible = not hidden
+
 
 func _process(delta: float) -> void:
 	var camera := get_viewport().get_camera_3d()
-	if not camera:
+	if not camera or _hide_enemy_bars:
 		return
 
 	# Update existing bar positions

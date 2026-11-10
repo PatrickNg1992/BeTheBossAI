@@ -129,7 +129,8 @@ func step_positions(delta: float, fast_play_ratio: float = -1.0) -> void:
 	if delta <= 0.0:
 		return
 	var ratio := get_fast_play_ratio(fast_play_ratio)
-	for puck in _get_pucks():
+	var pucks := _get_pucks()
+	for puck in pucks:
 		if puck.is_dead:
 			continue
 		calculate_puck_position(puck, delta, ratio)
@@ -140,7 +141,16 @@ func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1
 		return
 	_resolve_references()
 	var ratio := get_fast_play_ratio(fast_play_ratio)
-	for puck in _get_pucks():
+	var pucks := _get_pucks()
+
+	# 1. Swept/overlap collision check between all Puck pairs and against Cushions
+	_resolve_all_puck_collisions(pucks, tick_dt * ratio)
+	for puck in pucks:
+		if not puck.is_dead:
+			_clamp_inside_table_bounds(puck)
+
+	# 2. Ground Friction Forces
+	for puck in pucks:
 		if puck.is_dead:
 			continue
 		var horiz := Vector2(puck.velocity.x, puck.velocity.z)
@@ -161,6 +171,98 @@ func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1
 		all_pucks_at_rest.emit()
 		if timing_manager != null and timing_manager.get_current_timing() == TimingManager.TIMING_PUCK_PUCK:
 			timing_manager.notify_all_pucks_at_rest()
+
+
+## Resolves all Puck–Puck collisions over the current 20 Hz tick window using a
+## simple swept/overlap check.
+func _resolve_all_puck_collisions(pucks: Array[BasePuck], eff_dt: float) -> void:
+	var count := pucks.size()
+	for i in range(count):
+		var p1 := pucks[i]
+		if p1 == null or p1.is_dead:
+			continue
+		for j in range(i + 1, count):
+			var p2 := pucks[j]
+			if p2 == null or p2.is_dead:
+				continue
+			if _check_swept_or_overlap_pair(p1, p2, eff_dt):
+				resolve_puck_puck_collision(p1, p2)
+
+
+## Returns true if p1 and p2 are currently overlapping or if their relative
+## motion over `eff_dt` brought them within combined radius `r1 + r2`.
+func _check_swept_or_overlap_pair(p1: BasePuck, p2: BasePuck, eff_dt: float) -> bool:
+	var combined_r := maxf(p1.radius, 0.1) + maxf(p2.radius, 0.1)
+	var d_now := Vector2(p1.global_position.x - p2.global_position.x, p1.global_position.z - p2.global_position.z)
+	var v_rel := Vector2(p1.velocity.x - p2.velocity.x, p1.velocity.z - p2.velocity.z)
+	var v_len_sq := v_rel.length_squared()
+	if eff_dt > 0.0 and v_len_sq > 0.000001:
+		var d_prev := d_now - v_rel * eff_dt
+		var a := v_len_sq
+		var b := 2.0 * d_prev.dot(v_rel)
+		var c := d_prev.length_squared() - combined_r * combined_r
+		# If not already overlapping at the start of the tick, find the exact entry time t_hit in [0, eff_dt]
+		if c > 0.0:
+			var disc := b * b - 4.0 * a * c
+			if disc >= 0.0:
+				var t_hit := (-b - sqrt(disc)) / (2.0 * a)
+				if t_hit >= 0.0 and t_hit <= eff_dt:
+					var rem := eff_dt - t_hit
+					p1.global_position.x -= p1.velocity.x * rem
+					p1.global_position.z -= p1.velocity.z * rem
+					p2.global_position.x -= p2.velocity.x * rem
+					p2.global_position.z -= p2.velocity.z * rem
+					return true
+			return false
+	if d_now.length_squared() <= combined_r * combined_r + 0.0001:
+		return true
+	return false
+
+
+## 4-step classical Puck–Puck impulse exchange along the collision normal:
+##   1. n = normalize(p1 - p2)
+##   2. v_rel = (v1 - v2) . n  (only collide if approaching: v_rel < 0)
+##   3. J = -(1 + e) * v_rel / (1/m1 + 1/m2)
+##   4. v1f = v1 + (J / m1) * n,  v2f = v2 - (J / m2) * n
+## Also separates positional overlap along n so pucks never snag.
+func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
+	if p1 == null or p2 == null or p1.is_dead or p2.is_dead:
+		return false
+	var delta_xz := Vector3(
+		p1.global_position.x - p2.global_position.x,
+		0.0,
+		p1.global_position.z - p2.global_position.z
+	)
+	var dist := delta_xz.length()
+	var combined_r := maxf(p1.radius, 0.1) + maxf(p2.radius, 0.1)
+	if dist > combined_r + 0.05:
+		return false
+	var n := delta_xz / dist if dist > 0.0001 else Vector3(1.0, 0.0, 0.0)
+
+	# Separate any positional overlap inversely proportional to mass
+	var overlap := combined_r - dist
+	if overlap > 0.0:
+		var inv_m1 := 1.0 / maxf(p1.mass, 0.0001)
+		var inv_m2 := 1.0 / maxf(p2.mass, 0.0001)
+		var inv_sum := inv_m1 + inv_m2
+		p1.global_position += n * (overlap * (inv_m1 / inv_sum))
+		p2.global_position -= n * (overlap * (inv_m2 / inv_sum))
+
+	var v1 := Vector3(p1.velocity.x, 0.0, p1.velocity.z)
+	var v2 := Vector3(p2.velocity.x, 0.0, p2.velocity.z)
+	var v_rel := (v1 - v2).dot(n)
+	if v_rel >= -0.0001:
+		return false
+
+	var e := clampf(minf(p1.restitution, p2.restitution), 0.0, 1.0)
+	var inv_m1 := 1.0 / maxf(p1.mass, 0.0001)
+	var inv_m2 := 1.0 / maxf(p2.mass, 0.0001)
+	var j_mag := -(1.0 + e) * v_rel / (inv_m1 + inv_m2)
+	var impulse_vec := n * j_mag
+
+	apply_impulse_to_puck(p1, impulse_vec)
+	apply_impulse_to_puck(p2, -impulse_vec)
+	return true
 
 
 func are_all_pucks_at_rest() -> bool:
@@ -196,14 +298,15 @@ func _clamp_inside_table_bounds(puck: BasePuck) -> void:
 
 func _get_pucks() -> Array[BasePuck]:
 	var list: Array[BasePuck] = []
+	var parent := get_parent()
+	if parent != null:
+		for child in parent.get_children():
+			if child is BasePuck and is_instance_valid(child):
+				list.append(child as BasePuck)
+		if not list.is_empty():
+			return list
 	if is_inside_tree():
 		for node in get_tree().get_nodes_in_group("pucks"):
 			if node is BasePuck and is_instance_valid(node):
 				list.append(node as BasePuck)
-		return list
-	var parent := get_parent()
-	if parent != null:
-		for child in parent.get_children():
-			if child is BasePuck:
-				list.append(child as BasePuck)
 	return list

@@ -260,11 +260,14 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	assert_true(bf.play_button != null and bf.play_button.visible, "Play button exists on battlefield screen")
 	assert_eq(bf.play_button.text, Loc.t("timing_play"), "Play button shows localized Play label in Charging Time")
 	assert_true(bf.fast_play_button != null and bf.fast_play_button.visible, "Fast Play switch button visible in single-player")
+	var enemy_bars: Control = bf.get_node("Canvas/EnemyHealthBars") as Control
+	assert_true(enemy_bars != null and enemy_bars.visible, "Enemy health bars visible during Charging Time")
 
 	# Pressing Play button enters Play Time and updates button to Cancel
 	bf.play_button.emit_signal("pressed")
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PLAY, "Play button transitions to Play Time")
 	assert_eq(bf.play_button.text, Loc.t("timing_cancel"), "Play button becomes Cancel in Play Time")
+	assert_true(enemy_bars.visible, "Enemy health bars visible during Play Time")
 
 	# Pressing Play button again in Play Time cancels back to Charging Time and disables Play for this slot
 	bf.play_button.emit_signal("pressed")
@@ -284,6 +287,7 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	space_event.pressed = true
 	bf._unhandled_input(space_event)
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Space in Play Time transitions to Puck-puck Time!")
+	assert_false(enemy_bars.visible, "Enemy health bars are hidden during Puck-puck Time!")
 
 	# Advance 3s -> still in Puck-puck Time!
 	bf._process(3.0)
@@ -292,6 +296,7 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	# Advance 2s (total 5s) -> ends Puck-puck Time! and returns to Charging Time
 	bf._process(2.0)
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_CHARGING, "Puck-puck Time! ends after 5 seconds")
+	assert_true(enemy_bars.visible, "Enemy health bars reappear after Puck-puck Time! ends")
 
 	# Fast Play button cycles x1 -> x1.5 -> x2 -> x2.5 -> x1 with double-arrow icon
 	assert_true(bf.fast_play_button.icon != null, "Fast Play button has double-arrow icon")

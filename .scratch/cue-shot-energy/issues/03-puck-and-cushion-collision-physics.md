@@ -4,11 +4,11 @@
 
 **Blocked by:** 02 — Drag-and-Shot input, straight 3D aiming arrow, impulse launch, and 20 Hz ground friction
 
-**Status:** ready-for-agent
+**Status:** in-progress (first 3 points implemented — 97/97 tests green)
 
-- [ ] Default relative masses (`mass`) and `radius` are set on each Puck type (Boss Monster `3.0`, Knight `2.0`, Warrior `1.5`, Ranger `1.2`, Mage `1.0`)
-- [ ] At each 20 Hz velocity update, `PuckVelocityManager` performs a simple swept/overlap collision check between Pucks and against Cushions
-- [ ] Colliding Pucks exchange opposite Impulses along the collision normal $\hat{n}$ when approaching ($v_{\text{rel}} < 0$), transferring velocity according to their masses ($\vec{v}_{1f}$ and $\vec{v}_{2f}$)
+- [x] Default relative masses (`mass`) and `radius` are set on each Puck type (Boss Monster `3.0`, Knight `2.0`, Warrior `1.5`, Ranger `1.2`, Mage `1.0`)
+- [x] At each 20 Hz velocity update, `PuckVelocityManager` performs a simple swept/overlap collision check between Pucks and against Cushions
+- [x] Colliding Pucks exchange opposite Impulses along the collision normal $\hat{n}$ when approaching ($v_{\text{rel}} < 0$), transferring velocity according to their masses ($\vec{v}_{1f}$ and $\vec{v}_{2f}$)
 - [ ] `CushionBlock` exposes an extendable impact function taking `(puck: BasePuck, normal: Vector3)` that rebounds the Puck according to $\vec{v}_{1f} = (1 - f_c)(\vec{v}_1 - (\vec{v}_1 \cdot \hat{n})\hat{n}) - e(\vec{v}_1 \cdot \hat{n})\hat{n}$ (mass-independent in the normal case)
 - [ ] All moving Pucks continue colliding and decelerating under ground Friction until every Puck on the Cue Table is at rest
 - [ ] Any Puck that falls into a Pocket Area during `Puck-puck Time!` respawns at the nearest unoccupied non-pocket Tile once all Pucks come to rest

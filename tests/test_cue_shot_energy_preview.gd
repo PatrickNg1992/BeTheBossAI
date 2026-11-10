@@ -380,5 +380,142 @@ func test_aiming_line_at_y_1_55_red_on_deadzone_or_overdrag_and_mass_dependent_i
 	assert_true(is_equal_approx(boss.velocity.x, 3.0), "Heavier Boss (mass 6.0) starts slower at v_0 = 18 / 6 = 3.0 for same Impulse")
 
 
+# ----- Ticket 03 (first 3 points): Default masses/radii per Puck type, 20 Hz swept/overlap check, and Puck-Puck 4-step classical impulse exchange -----
+
+
+func test_default_relative_masses_and_radii_per_puck_type() -> void:
+	var boss := DragonPlayer.new()
+	var knight := EnemyHero.new()
+	knight.hero_class = EnemyHero.HeroClass.KNIGHT
+	var warrior := EnemyHero.new()
+	warrior.hero_class = EnemyHero.HeroClass.WARRIOR
+	var ranger := EnemyHero.new()
+	ranger.hero_class = EnemyHero.HeroClass.RANGER
+	var mage := EnemyHero.new()
+	mage.hero_class = EnemyHero.HeroClass.MAGE
+
+	for p in [boss, knight, warrior, ranger, mage]:
+		_root.add_child(p)
+
+	assert_eq(boss.mass, 3.0, "Boss Monster mass is 3.0")
+	assert_eq(boss.radius, 0.75, "Boss Monster radius is 0.75")
+	assert_eq(knight.mass, 2.0, "Knight mass is 2.0")
+	assert_eq(knight.radius, 0.6, "Knight radius is 0.6")
+	assert_eq(warrior.mass, 1.5, "Warrior mass is 1.5")
+	assert_eq(warrior.radius, 0.55, "Warrior radius is 0.55")
+	assert_eq(ranger.mass, 1.2, "Ranger mass is 1.2")
+	assert_eq(ranger.radius, 0.5, "Ranger radius is 0.5")
+	assert_eq(mage.mass, 1.0, "Mage mass is 1.0")
+	assert_eq(mage.radius, 0.45, "Mage radius is 0.45")
+
+
+func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
+	var pvm := PuckVelocityManager.new()
+	pvm.timing_manager = _tm
+	_root.add_child(pvm)
+
+	# 1. Head-on collision between Boss Monster (m1 = 3.0, v1 = 4.0) and stationary Mage (m2 = 1.0, v2 = 0.0), e = 0.8
+	# Classical 4-step impulse:
+	#   n = (-1, 0, 0) (from Mage at +X to Boss at origin), v_rel = (4 - 0) . (-1) = -4.0 < 0
+	#   J = -(1 + 0.8) * (-4.0) / (1/3 + 1/1) = 7.2 / (4/3) = 5.4
+	#   v1f = 4.0 - 5.4 / 3.0 = 2.2
+	#   v2f = 0.0 + 5.4 / 1.0 = 5.4
+	var boss := DragonPlayer.new()
+	boss.restitution = 0.8
+	var mage := EnemyHero.new()
+	mage.hero_class = EnemyHero.HeroClass.MAGE
+	mage.restitution = 0.8
+	_root.add_child(boss)
+	_root.add_child(mage)
+
+	boss.global_position = Vector3(0.0, 1.75, 0.0)
+	# Combined radius = 0.75 + 0.45 = 1.20. Place Mage at x = 1.15 (slight overlap / contact)
+	mage.global_position = Vector3(1.15, 1.675, 0.0)
+	boss.velocity = Vector3(4.0, 0.0, 0.0)
+	mage.velocity = Vector3.ZERO
+
+	assert_true(pvm.resolve_puck_puck_collision(boss, mage), "Approaching pucks resolve collision")
+	assert_true(is_equal_approx(boss.velocity.x, 2.2), "Heavy Boss retains forward velocity v1f = 2.2")
+	assert_true(is_equal_approx(mage.velocity.x, 5.4), "Light Mage is launched faster at v2f = 5.4")
+	var dist_after := Vector2(boss.global_position.x - mage.global_position.x, boss.global_position.z - mage.global_position.z).length()
+	assert_true(dist_after >= boss.radius + mage.radius - 0.001, "Positional overlap separated along collision normal")
+
+	# 2. Separating pucks (v_rel >= 0) do NOT exchange impulse again
+	assert_false(pvm.resolve_puck_puck_collision(boss, mage), "Separating pucks do not re-trigger impulse")
+
+	# 3. Swept 20 Hz collision check during step_velocities: fast Boss hits Knight along its path within a 0.05s tick
+	var knight := EnemyHero.new()
+	knight.hero_class = EnemyHero.HeroClass.KNIGHT
+	_root.add_child(knight)
+	boss.global_position = Vector3(-5.0, 1.75, 0.0)
+	boss.velocity = Vector3(10.0, 0.0, 0.0)
+	# Combined radius = 0.75 + 0.6 = 1.35. Place Knight at x = -3.70 (within swept 0.05s * 10 = 0.5 reach)
+	knight.global_position = Vector3(-3.70, 1.7, 0.0)
+	knight.velocity = Vector3.ZERO
+
+	pvm.step_positions(0.05, 1.0)
+	pvm.step_velocities(0.05, 1.0)
+	assert_true(knight.velocity.x > 5.0, "20 Hz swept/overlap check transfers momentum to Knight")
+	assert_true(boss.velocity.x < 10.0, "Boss slows down after transferring momentum to Knight")
+
+	# 4. Verify BaseEnemy._physics_process in Puck-puck Time! does NOT zero out knocked EnemyHero velocity
+	_tm.set_energy(5.0)
+	_tm.request_play()
+	_tm.fire_cue_shot(1.0)
+	assert_eq(_tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "In Puck-puck Time!")
+	knight._physics_process(0.016)
+	assert_true(knight.velocity.x > 5.0, "EnemyHero keeps its collision velocity during Puck-puck Time! physics frames")
+	pvm.step_positions(0.05, 1.0)
+	assert_true(knight.global_position.x > -3.5, "Struck EnemyHero is pushed away across the table")
+
+	# 5. Simulate full demo_bettlefield.tscn 60 FPS _process loop where Boss Monster shoots into Enemy1 (Warrior at (6, 1.675, 3))
+	var tree := Engine.get_main_loop() as SceneTree
+	tree.get_multiplayer().multiplayer_peer = OfflineMultiplayerPeer.new()
+	var packed := ResourceLoader.load("res://src/demo_bettlefield.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	var bf := packed.instantiate()
+	tree.root.add_child(bf)
+
+	var bf_tm: TimingManager = bf.timing_manager
+	var bf_csm: CueShotManager = bf.cue_shot_manager
+	var bf_pvm: PuckVelocityManager = bf.puck_velocity_manager
+	var bf_boss: BasePuck = bf.get_node("Player") as BasePuck
+	var bf_enemy1: BasePuck = bf.get_node("Enemy1") as BasePuck
+
+	var enemy1_start_pos := bf_enemy1.global_position
+	bf_tm.set_energy(15.0)
+	bf.play_button.emit_signal("pressed")
+
+	# Aim directly from Boss (0, 0) toward Enemy1 (6, 3) -> drag opposite toward (-4, -2)
+	var to_enemy := Vector3(enemy1_start_pos.x - bf_boss.global_position.x, 0.0, enemy1_start_pos.z - bf_boss.global_position.z).normalized()
+	bf_csm.begin_drag(Vector3(0.0, 1.75, 0.0))
+	bf_csm.update_drag(-to_enemy * 5.0 + Vector3(0.0, 1.5, 0.0))
+	assert_true(bf_csm.release_drag(), "Shot launched toward Enemy1")
+
+	var enemy1_max_speed := 0.0
+	for _frame in range(60):
+		bf_pvm._process(1.0 / 60.0)
+		var spd := Vector2(bf_enemy1.velocity.x, bf_enemy1.velocity.z).length()
+		if spd > enemy1_max_speed:
+			enemy1_max_speed = spd
+
+	var enemy1_moved_dist := Vector2(
+		bf_enemy1.global_position.x - enemy1_start_pos.x,
+		bf_enemy1.global_position.z - enemy1_start_pos.z
+	).length()
+	assert_true(enemy1_max_speed > 3.0, "Enemy1 gained high speed from Boss collision (got %.2f)" % enemy1_max_speed)
+	assert_true(enemy1_moved_dist > 2.0, "Enemy1 was pushed away across the table (moved %.2f units)" % enemy1_moved_dist)
+	var final_sep := Vector2(
+		bf_boss.global_position.x - bf_enemy1.global_position.x,
+		bf_boss.global_position.z - bf_enemy1.global_position.z
+	).length()
+	assert_true(final_sep > bf_boss.radius + bf_enemy1.radius + 0.2, "Boss and Enemy1 do not stick together (sep %.2f)" % final_sep)
+
+	tree.root.remove_child(bf)
+	bf.queue_free()
+	tree.get_multiplayer().multiplayer_peer = null
+
+
+
+
 
 

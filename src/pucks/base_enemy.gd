@@ -50,18 +50,19 @@ func _find_timing_manager() -> TimingManager:
 
 
 func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
+	var was_action := _in_action_time
 	_in_action_time = new_timing == TimingManager.TIMING_ACTION
-	_update_ai_active()
+	_update_ai_active(was_action and not _in_action_time)
 
 
 func _on_pause_changed(paused: bool) -> void:
 	_clock_paused = paused
-	_update_ai_active()
+	_update_ai_active(false)
 
 
-func _update_ai_active() -> void:
+func _update_ai_active(stop_ai_motion: bool = false) -> void:
 	_ai_active = _in_action_time and not _clock_paused
-	if not _ai_active:
+	if stop_ai_motion:
 		velocity.x = 0.0
 		velocity.z = 0.0
 
@@ -77,13 +78,7 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if is_dead:
-		return
-	if not _ai_active:
-		velocity.x = 0.0
-		velocity.z = 0.0
-		apply_table_physics(delta)
-		move_and_slide()
+	if is_dead or not _ai_active:
 		return
 	_wander_timer -= delta
 	if not _target or _target.is_dead:
