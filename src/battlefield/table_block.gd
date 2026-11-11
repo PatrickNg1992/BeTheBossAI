@@ -18,6 +18,46 @@ const BLOCK_SIZE := Vector3(2.0, 3.0, 2.0)
 
 const TEX_GRASS_DARK: Texture2D = preload("res://src/resource/battlefield/grass_dark.png")
 const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass_light.png")
+const TEX_POCKET_SWIRL: Texture2D = preload("res://src/resource/battlefield/pocket_swirl.png")
+
+const POCKET_CAPTURE_RATIO := 0.75
+const POCKET_DECELERATION := 28.0
+const POCKET_PULL_SPEED := 6.0
+const POCKET_Y_DROP := 0.3
+
+const SWIRL_SHADER_CODE := """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+
+varying vec2 v_local_xz;
+
+void vertex() {
+	// BoxMesh size is 2x3x2, so VERTEX.xz is in [-1.0, 1.0]; normalize to [-0.5, 0.5]
+	v_local_xz = VERTEX.xz * 0.5;
+}
+
+void fragment() {
+	vec2 p = v_local_xz;
+	float r = length(p);
+	// Clockwise swirl rotation when viewed from above (+Y looking down -Y)
+	float a = atan(p.y, p.x) + TIME * 3.0 + r * 18.0;
+	float arms = 0.5 + 0.5 * sin(a * 4.0);
+	float ring = smoothstep(0.68, 0.08, r);
+	float core = smoothstep(0.16, 0.0, r);
+	vec3 dark_abyss = vec3(0.02, 0.015, 0.035);
+	vec3 swirl_col = vec3(0.28, 0.18, 0.44);
+	vec3 glow_col = vec3(0.56, 0.38, 0.82);
+	vec3 edge_col = vec3(0.05, 0.05, 0.08);
+	float arm_factor = pow(arms, 2.0) * ring * (1.0 - core);
+	vec3 col = mix(dark_abyss, swirl_col, arm_factor * 0.9);
+	col = mix(col, glow_col, smoothstep(0.50, 0.92, arm_factor));
+	col = mix(edge_col, col, smoothstep(0.72, 0.42, r));
+	col = mix(col, vec3(0.01, 0.01, 0.02), core);
+	ALBEDO = col;
+}
+"""
+
+var _swirl_shader_mat: ShaderMaterial = null
 
 @export var block_number: int = 1
 
@@ -34,9 +74,7 @@ const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass
 func _ready() -> void:
 	collision_layer = 1
 	collision_mask = 0
-	var mesh_inst := get_node_or_null("MeshInstance3D") as MeshInstance3D
-	if mesh_inst != null and mesh_inst.material_override == null and block_type != BlockType.POCKET:
-		_apply_block_type()
+	_apply_block_type()
 
 
 func set_block_type(new_type: BlockType) -> void:
@@ -45,6 +83,42 @@ func set_block_type(new_type: BlockType) -> void:
 
 func is_pocket() -> bool:
 	return block_type == BlockType.POCKET
+
+
+## Returns true when `world_pos` is within the inner 3/4 rectangle length of
+## this block (`|dx| <= 0.75 * half_width` and `|dz| <= 0.75 * half_depth`).
+func is_within_pocket_capture_zone(world_pos: Vector3) -> bool:
+	var local_pos := to_local(world_pos)
+	var half_x := BLOCK_SIZE.x * 0.5 * POCKET_CAPTURE_RATIO
+	var half_z := BLOCK_SIZE.z * 0.5 * POCKET_CAPTURE_RATIO
+	return absf(local_pos.x) <= half_x + 0.0001 and absf(local_pos.z) <= half_z + 0.0001
+
+
+## Special Pocket Area floor effect: when a puck's center reaches the 3/4
+## rectangle capture zone of the pocket block, it dramatically decelerates
+## horizontally, invalidates its collider, and begins falling + rotating into
+## the black swirl.
+func apply_pocket_effect(puck: BasePuck, dt: float, fast_play_ratio: float = 1.0) -> void:
+	if puck == null or puck.is_dead:
+		return
+	var eff_dt := dt * maxf(fast_play_ratio, 0.0)
+	if not puck.is_falling_in_pocket:
+		if not is_within_pocket_capture_zone(puck.global_position):
+			apply_standard_friction(puck, dt, fast_play_ratio, 1.0)
+			return
+		puck.begin_pocket_fall(global_position)
+
+	# Dramatic horizontal deceleration + gentle pull toward swirl center while falling
+	apply_standard_friction(puck, dt, fast_play_ratio, POCKET_DECELERATION / maxf(base_deceleration, 0.001))
+	var to_center := Vector3(
+		global_position.x - puck.global_position.x,
+		0.0,
+		global_position.z - puck.global_position.z
+	)
+	if to_center.length() > 0.05:
+		var pull_step := minf(to_center.length(), POCKET_PULL_SPEED * eff_dt)
+		puck.global_position.x += to_center.normalized().x * pull_step
+		puck.global_position.z += to_center.normalized().z * pull_step
 
 
 ## Extendable ground-effect calculation: returns the horizontal velocity change
@@ -103,9 +177,12 @@ func apply_standard_friction(
 
 
 ## Extendable ground-effect entry point called each 20 Hz velocity tick.
-## By default delegates to `apply_standard_friction()`; special block types can
-## override or branch on `block_type` while reusing `apply_standard_friction()`.
+## By default delegates to `apply_standard_friction()`; Pocket blocks run
+## `apply_pocket_effect()`.
 func apply_ground_effect(puck: BasePuck, dt: float, fast_play_ratio: float = 1.0) -> void:
+	if is_pocket():
+		apply_pocket_effect(puck, dt, fast_play_ratio)
+		return
 	apply_standard_friction(puck, dt, fast_play_ratio)
 
 
@@ -118,6 +195,7 @@ func _apply_block_type() -> void:
 	match block_type:
 		BlockType.GRASS_DARK:
 			friction_factor = 1.0
+			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
 			if mesh_inst != null:
@@ -128,6 +206,7 @@ func _apply_block_type() -> void:
 
 		BlockType.GRASS_LIGHT:
 			friction_factor = 1.0
+			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
 			if mesh_inst != null:
@@ -137,16 +216,19 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.POCKET:
-			friction_factor = 0.0
+			friction_factor = 1.0
+			_set_vertical_offset(col_shape, mesh_inst, -POCKET_Y_DROP)
 			if col_shape != null:
-				col_shape.disabled = true
+				col_shape.disabled = false
 			if mesh_inst != null:
-				mesh_inst.visible = false
+				mesh_inst.visible = true
+				mesh_inst.material_override = _make_swirl_material()
 			if pocket_rim != null:
-				pocket_rim.visible = true
+				pocket_rim.visible = false
 
 		BlockType.STONE:
 			friction_factor = 0.75
+			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
 			if mesh_inst != null:
@@ -157,6 +239,7 @@ func _apply_block_type() -> void:
 
 		BlockType.MUD:
 			friction_factor = 2.0
+			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
 			if mesh_inst != null:
@@ -167,6 +250,7 @@ func _apply_block_type() -> void:
 
 		BlockType.ICE:
 			friction_factor = 0.2
+			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
 			if mesh_inst != null:
@@ -190,4 +274,21 @@ func _make_solid_material(col: Color, rough: float) -> StandardMaterial3D:
 	mat.albedo_color = col
 	mat.roughness = rough
 	return mat
+
+
+func _set_vertical_offset(col_shape: CollisionShape3D, mesh_inst: MeshInstance3D, y_offset: float) -> void:
+	if col_shape != null:
+		col_shape.position.y = y_offset
+	if mesh_inst != null:
+		mesh_inst.position.y = y_offset
+
+
+func _make_swirl_material() -> Material:
+	if _swirl_shader_mat == null:
+		var shader := Shader.new()
+		shader.code = SWIRL_SHADER_CODE
+		_swirl_shader_mat = ShaderMaterial.new()
+		_swirl_shader_mat.shader = shader
+	return _swirl_shader_mat
+
 

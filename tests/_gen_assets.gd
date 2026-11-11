@@ -15,6 +15,7 @@ func _ready() -> void:
 	_make_sword()
 	_make_double_arrow()
 	_make_puck_puck_banner()
+	_make_pocket_swirl()
 	_make_grass_tile("grass_dark.png", Color(0.18, 0.46, 0.19), Color(0.12, 0.33, 0.13), 101)
 	_make_grass_tile("grass_light.png", Color(0.28, 0.58, 0.26), Color(0.20, 0.44, 0.19), 202)
 	_make_wood_cushion("wood_dark.png", Color(0.38, 0.24, 0.12), Color(0.22, 0.14, 0.07), 303)
@@ -204,6 +205,46 @@ func _make_puck_puck_banner() -> void:
 				if md <= 9.0:
 					img.set_pixel(x, y, Color(0.98, 0.84, 0.32, 1.0) if md <= 6.0 else Color(0.35, 0.20, 0.08, 1.0))
 	_save(img, "puck_puck_banner.png")
+
+
+## 64x64 black-hole clockwise swirl tile texture for Pocket Area floor blocks.
+func _make_pocket_swirl() -> void:
+	var s := 64
+	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
+	var cx := (s - 1) / 2.0
+	var cy := (s - 1) / 2.0
+	var max_r := s * 0.48
+	var outer_grass := Color(0.14, 0.32, 0.15, 1.0)
+	var abyss_black := Color(0.02, 0.02, 0.03, 1.0)
+	var swirl_arm := Color(0.24, 0.18, 0.36, 1.0)
+	var swirl_glow := Color(0.45, 0.32, 0.62, 1.0)
+	for y in range(s):
+		for x in range(s):
+			var dx := float(x) - cx
+			var dy := float(y) - cy
+			var r := sqrt(dx * dx + dy * dy)
+			var norm_r := clampf(r / max_r, 0.0, 1.4)
+			if norm_r >= 1.0:
+				var border := outer_grass.darkened(0.25) if (x < 2 or x >= s - 2 or y < 2 or y >= s - 2) else outer_grass
+				img.set_pixel(x, y, border)
+				continue
+			# Clockwise spiral arms: angle + k * ln(r)
+			var angle := atan2(dy, dx)
+			var spiral_phase := angle * 4.0 + (1.0 - norm_r) * 14.0
+			var arm := 0.5 + 0.5 * sin(spiral_phase)
+			var c := abyss_black
+			if norm_r > 0.16:
+				var arm_strength := pow(arm, 2.2) * (1.0 - absf(norm_r - 0.52) * 1.35)
+				arm_strength = clampf(arm_strength, 0.0, 1.0)
+				c = abyss_black.lerp(swirl_arm, arm_strength * 0.85)
+				if arm_strength > 0.65:
+					c = c.lerp(swirl_glow, (arm_strength - 0.65) * 1.8)
+				if norm_r > 0.82:
+					var edge_t := (norm_r - 0.82) / 0.18
+					c = c.lerp(outer_grass.darkened(0.35), edge_t)
+			img.set_pixel(x, y, c)
+	_save(img, "pocket_swirl.png")
+
 
 
 

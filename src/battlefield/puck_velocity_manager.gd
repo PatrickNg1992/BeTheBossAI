@@ -95,13 +95,16 @@ func calculate_puck_position(puck: BasePuck, delta: float, fast_play_ratio: floa
 		var next_pos := puck.calculate_position(delta, ratio)
 		puck.global_position.x = next_pos.x
 		puck.global_position.z = next_pos.z
+	# Check if moving puck just entered a Pocket block's 3/4 capture zone
+	if not puck.is_falling_in_pocket and battlefield != null:
+		var blk := battlefield.get_table_block_at_world(puck.global_position)
+		if blk != null and blk.is_pocket() and blk.is_within_pocket_capture_zone(puck.global_position):
+			blk.apply_pocket_effect(puck, delta, ratio)
 	puck.apply_table_physics(eff_dt)
 	if absf(puck.velocity.y) > 0.0001:
 		puck.global_position.y += puck.velocity.y * eff_dt
-		var table := battlefield
-		var over_pocket := table != null and table.is_pocket_at_world(puck.global_position)
 		var floor_y := _puck_floor_y(puck)
-		if not over_pocket and puck.global_position.y <= floor_y and puck.velocity.y < 0.0:
+		if not puck.is_falling_in_pocket and puck.global_position.y <= floor_y and puck.velocity.y < 0.0:
 			puck.global_position.y = floor_y
 			puck.velocity.y = 0.0
 	return puck.global_position
@@ -148,18 +151,28 @@ func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1
 		if not puck.is_dead and not _is_puck_pocketed(puck):
 			_resolve_puck_cushion_collision(puck)
 
-	# 2. Ground Friction Forces
+	# 2. Ground Friction / Pocket Floor Effects
 	for puck in pucks:
-		if puck.is_dead or _is_puck_pocketed(puck):
+		if puck.is_dead:
+			continue
+		var block: TableBlock = null
+		if battlefield != null:
+			block = battlefield.get_table_block_at_world(puck.global_position)
+		if puck.is_falling_in_pocket:
+			if block != null and block.is_pocket():
+				block.apply_pocket_effect(puck, tick_dt, ratio)
+			else:
+				var drag := -Vector3(puck.velocity.x, 0.0, puck.velocity.z).normalized() * (TableBlock.POCKET_DECELERATION * puck.mass)
+				apply_force_to_puck(puck, drag, tick_dt, ratio)
+			continue
+		if block != null and block.is_pocket():
+			block.apply_ground_effect(puck, tick_dt, ratio)
 			continue
 		var horiz := Vector2(puck.velocity.x, puck.velocity.z)
 		if horiz.length() <= 0.00001:
 			puck.velocity.x = 0.0
 			puck.velocity.z = 0.0
 			continue
-		var block: TableBlock = null
-		if battlefield != null:
-			block = battlefield.get_table_block_at_world(puck.global_position)
 		if block != null:
 			block.apply_ground_effect(puck, tick_dt, ratio)
 		else:
@@ -267,7 +280,14 @@ func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
 
 func are_all_pucks_at_rest() -> bool:
 	for puck in _get_pucks():
-		if puck.is_dead or _is_puck_pocketed(puck):
+		if puck.is_dead:
+			continue
+		if puck.is_falling_in_pocket:
+			# Wait until a falling puck has sunk below the floor (y < 0.4) before declaring all at rest
+			if puck.global_position.y > 0.4:
+				return false
+			continue
+		if _is_puck_pocketed(puck):
 			continue
 		if Vector2(puck.velocity.x, puck.velocity.z).length() > STOP_SPEED_THRESHOLD:
 			return false
@@ -319,9 +339,9 @@ func _apply_cushion_or_fallback(puck: BasePuck, inward_normal: Vector3) -> void:
 func _is_puck_pocketed(puck: BasePuck) -> bool:
 	if puck == null or puck.is_dead:
 		return false
-	if puck.global_position.y < Battlefield.TABLE_TOP_Y - 0.15:
+	if puck.is_falling_in_pocket:
 		return true
-	if battlefield != null and battlefield.is_pocket_at_world(puck.global_position):
+	if puck.global_position.y < Battlefield.TABLE_TOP_Y - 0.15:
 		return true
 	return false
 
@@ -364,9 +384,7 @@ func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 				best_block = blk
 		if best_block != null:
 			var target_world := battlefield.to_global(best_block.position)
-			puck.global_position = Vector3(target_world.x, _puck_floor_y(puck), target_world.z)
-			puck.velocity = Vector3.ZERO
-			puck.collision_mask = 3
+			puck.reset_from_pocket_fall(Vector3(target_world.x, _puck_floor_y(puck), target_world.z))
 
 
 func _is_tile_occupied(tile_world: Vector3, ignore_puck: BasePuck, pucks: Array[BasePuck]) -> bool:

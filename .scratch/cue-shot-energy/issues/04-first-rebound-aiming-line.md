@@ -4,12 +4,12 @@
 
 **Blocked by:** 03 — Puck–Puck and Puck–Cushion collision physics and pocket respawn
 
-**Status:** ready-for-agent
+**Status:** implemented (99/99 tests green)
 
-- [ ] When no Cushion or Puck lies within the Impulse-proportional reach, only the primary 3D aiming arrow is shown
-- [ ] Swept collision detection accounts for the Boss Monster's radius $R_{\text{boss}}$ against both Cushion inner planes and other Pucks' radii
-- [ ] When a Cushion or Puck is hit within reach, a ghost contact ring of radius $R_{\text{boss}}$ renders at the impact point along with the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$)
-- [ ] When the first hit is another Puck, a second arrow in a contrasting colour renders from the struck Puck's center along its outgoing velocity ($\vec{v}_{2f}$)
-- [ ] Post-hit arrow lengths scale proportionally to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$ from the Puck–Puck and Puck–Cushion collision equations
-- [ ] All aiming line segments and the contact ring turn red when inside the cancel deadzone or over-dragged
-- [ ] Automated tests verify swept first-hit contact points and post-hit preview vectors ($\vec{v}_{1f}, \vec{v}_{2f}$) against both a Cushion and an Enemy Adventurer Puck
+- [x] When no Cushion or Puck lies within the Impulse-proportional reach, only the primary 3D aiming arrow is shown
+- [x] Swept collision detection accounts for the Boss Monster's radius $R_{\text{boss}}$ against both Cushion inner planes and other Pucks' radii
+- [x] When a Cushion or Puck is hit within reach, a ghost contact ring of radius $R_{\text{boss}}$ renders at the impact point along with the Boss Monster's first-rebound arrow ($\vec{v}_{1f}$)
+- [x] When the first hit is another Puck, a second arrow in a contrasting colour renders from the struck Puck's center along its outgoing velocity ($\vec{v}_{2f}$)
+- [x] Post-hit arrow lengths scale proportionally to $\|\vec{v}_{1f}\|$ and $\|\vec{v}_{2f}\|$ from the Puck–Puck and Puck–Cushion collision equations
+- [x] All aiming line segments and the contact ring turn red when inside the cancel deadzone or over-dragged
+- [x] Automated tests verify swept first-hit contact points and post-hit preview vectors ($\vec{v}_{1f}, \vec{v}_{2f}$) against both a Cushion and an Enemy Adventurer Puck

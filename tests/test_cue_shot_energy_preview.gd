@@ -595,6 +595,159 @@ func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -
 	assert_true(is_equal_approx(dist_to_corner, 2.0), "Respawned at the nearest non-pocket Tile (distance 2.0 from corner pocket)")
 
 
+# ----- Ticket 04: 3D first-rebound and struck-puck aiming line preview -----
+
+
+func test_first_rebound_aiming_preview_for_open_table_cushion_and_enemy_puck() -> void:
+	var packed_table := ResourceLoader.load("res://src/battlefield/cue_table.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	var table := packed_table.instantiate() as Battlefield
+	_root.add_child(table)
+
+	var boss := DragonPlayer.new()
+	boss.name = "BossAimTest"
+	boss.mass = 3.0
+	boss.radius = 0.75
+	boss.restitution = 0.8
+	_root.add_child(boss)
+	boss.global_position = Vector3(0.0, 1.75, 0.0)
+
+	_cue_mgr.battlefield = table
+	_cue_mgr.boss_puck = boss
+	_cue_mgr.deadzone_radius = 0.6
+	_cue_mgr.drag_distance_per_energy = 1.0
+	_cue_mgr.impulse_per_energy = 6.0
+	_cue_mgr.aim_length_per_impulse = 0.5
+	_cue_mgr.post_hit_length_per_speed = 0.5
+
+	_tm.set_energy(8.0)
+	_tm.request_play()
+
+	# 1. Open table (no Cushion or Puck within reach): E = 1.0 -> J = 6.0 -> reach = 3.0 along +X (Cushion is at 15 - 0.75 = 14.25)
+	_cue_mgr.begin_drag(Vector3(0.0, 1.75, 0.0))
+	_cue_mgr.update_drag(Vector3(-0.7, 1.5, 0.0))
+	var state_open := _cue_mgr.get_aim_line_state()
+	assert_eq(state_open.get("hit_type"), "none", "No hit when target is beyond reach")
+	assert_false(state_open.get("has_contact_ring", true), "No ghost contact ring when nothing hit")
+	assert_true(is_equal_approx(float(state_open.get("primary_length", 0.0)), 3.0), "Primary arrow extends full reach 3.0")
+
+	# 2. Cushion hit within reach: Place Boss at (0, 1.75, -6.25), aim toward top-left at (-3, 0, -4)/5 so it hits top Cushion at z = -10 + 0.75 = -9.25
+	# Distance along Z is 3.0; with dir = (0.6, 0, -0.8), hit distance = 3.0 / 0.8 = 3.75 (contact at (2.25, 1.55, -9.25))
+	_cue_mgr.cancel_drag(false)
+	boss.global_position = Vector3(0.0, 1.75, -6.25)
+	var dir_cush := Vector3(0.6, 0.0, -0.8) # normalized (0.6^2 + 0.8^2 = 1)
+	_cue_mgr.begin_drag(boss.global_position)
+	# Drag for E = 3.0 -> J = 18.0 -> reach = 9.0 (> 3.75), v0 = 18 / 3 = 6.0 -> v_in = (3.6, 0, -4.8)
+	_cue_mgr.update_drag(boss.global_position - dir_cush * 2.6)
+	var state_cush := _cue_mgr.get_aim_line_state()
+	assert_eq(state_cush.get("hit_type"), "cushion", "Detects Cushion hit within reach")
+	assert_true(state_cush.get("has_contact_ring", false), "Renders ghost contact ring on Cushion hit")
+	assert_true(is_equal_approx(float(state_cush.get("contact_ring_radius", 0.0)), 0.75), "Contact ring radius matches R_boss (0.75)")
+	var c_pt: Vector3 = state_cush.get("contact_center", Vector3.ZERO)
+	assert_true(is_equal_approx(c_pt.x, 2.25) and is_equal_approx(c_pt.z, -9.25), "Swept contact center accounts for R_boss against top Cushion")
+	var v1f_cush: Vector3 = state_cush.get("v1f", Vector3.ZERO)
+	assert_true(v1f_cush.x > 0.0 and v1f_cush.z > 0.0, "Boss first-rebound vector v1f reflects inward (+X, +Z)")
+	assert_true(is_equal_approx(float(state_cush.get("rebound_length", 0.0)), v1f_cush.length() * 0.5),
+		"Boss rebound arrow length scales proportionally to ||v1f||")
+	assert_false(state_cush.get("has_struck_puck_arrow", true), "No second arrow when hitting a Cushion")
+
+	# 3. Enemy Adventurer Puck hit within reach: Place Boss at (0, 1.75, 0) and Mage (m2 = 1.0, r2 = 0.45, e = 0.8) at (3.2, 1.675, 0.0)
+	# Combined radius = 0.75 + 0.45 = 1.20 -> head-on contact center at x = 3.2 - 1.2 = 2.0 (primary_length = 2.0)
+	_cue_mgr.cancel_drag(false)
+	boss.global_position = Vector3(0.0, 1.75, 0.0)
+	var mage := EnemyAdventurer.new()
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
+	mage.mass = 1.0
+	mage.radius = 0.45
+	mage.restitution = 0.8
+	_root.add_child(mage)
+	mage.global_position = Vector3(3.2, 1.675, 0.0)
+
+	_cue_mgr.begin_drag(Vector3(0.0, 1.75, 0.0))
+	# Drag for E = 2.0 -> J = 12.0 -> reach = 6.0 (> 2.0), v0 = 12 / 3 = 4.0 along +X
+	# From ticket 03 equations: v1f = 2.2 along +X, v2f = 5.4 along +X
+	_cue_mgr.update_drag(Vector3(-1.6, 1.5, 0.0))
+	var state_puck := _cue_mgr.get_aim_line_state()
+	assert_eq(state_puck.get("hit_type"), "puck", "Detects Enemy Hero Puck hit within reach")
+	assert_true(state_puck.get("has_contact_ring", false), "Renders ghost contact ring at Puck impact point")
+	assert_true(is_equal_approx(float(state_puck.get("primary_length", 0.0)), 2.0),
+		"Primary aiming line stops at swept contact center x = 2.0 (3.2 - (0.75 + 0.45))")
+	var v1f_puck: Vector3 = state_puck.get("v1f", Vector3.ZERO)
+	var v2f_puck: Vector3 = state_puck.get("v2f", Vector3.ZERO)
+	assert_true(is_equal_approx(v1f_puck.x, 2.2), "Boss post-hit velocity v1f matches collision equation (2.2)")
+	assert_true(is_equal_approx(v2f_puck.x, 5.4), "Struck Puck outgoing velocity v2f matches collision equation (5.4)")
+	assert_true(state_puck.get("has_struck_puck_arrow", false), "Draws second contrasting arrow from struck Puck center")
+	assert_true(is_equal_approx(float(state_puck.get("rebound_length", 0.0)), 2.2 * 0.5),
+		"Boss post-hit arrow length proportional to ||v1f||")
+	assert_true(is_equal_approx(float(state_puck.get("struck_puck_length", 0.0)), 5.4 * 0.5),
+		"Struck Puck arrow length proportional to ||v2f||")
+	assert_true(state_puck.get("struck_puck_color") != state_puck.get("primary_color"),
+		"Struck Puck arrow uses a contrasting colour when valid")
+
+	# 4. Over-drag turns ALL aiming visuals (primary, contact ring, v1f, and v2f) red
+	_tm.set_energy(1.5) # Now E = 2.0 is over-dragged!
+	_cue_mgr.update_drag(Vector3(-1.6, 1.5, 0.0))
+	var state_red := _cue_mgr.get_aim_line_state()
+	assert_true(state_red.get("is_invalid_red", false), "Over-drag marks aiming state invalid red")
+	assert_eq(state_red.get("primary_color"), _cue_mgr.aim_invalid_color, "Primary and rebound arrows turn red")
+	assert_eq(state_red.get("struck_puck_color"), _cue_mgr.aim_invalid_color, "Struck Puck arrow also turns red when over-dragged")
+
+
+func test_pocket_swirl_block_captures_fast_puck_within_three_quarter_zone_disables_collider_and_rotates() -> void:
+	var packed_table := ResourceLoader.load("res://src/battlefield/cue_table.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	var table := packed_table.instantiate() as Battlefield
+	_root.add_child(table)
+
+	var pvm := PuckVelocityManager.new()
+	pvm.battlefield = table
+	pvm.timing_manager = _tm
+	_root.add_child(pvm)
+
+	var fast_puck := EnemyAdventurer.new()
+	fast_puck.adventurer_class = EnemyAdventurer.AdventurerClass.RANGER
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var cyl := CylinderShape3D.new()
+	cyl.radius = 0.5
+	cyl.height = 0.35
+	col.shape = cyl
+	fast_puck.add_child(col)
+	_root.add_child(fast_puck)
+
+	# Add a moving non-pocketed puck so the falling animation plays out before all-at-rest respawn triggers
+	var active_puck := DragonPlayer.new()
+	_root.add_child(active_puck)
+	active_puck.global_position = Vector3(0.0, 1.75, 0.0)
+	active_puck.velocity = Vector3(4.0, 0.0, 0.0)
+
+	# Place fast_puck entering the 3/4 capture zone of Pocket Block 1 (centered at (-14.0, 0, -9.0))
+	# At (-13.4, 1.675, -9.0), |dx| = 0.6 <= 0.75 (3/4 of half-width 1.0)
+	fast_puck.global_position = Vector3(-13.4, 1.675, -9.0)
+	fast_puck.velocity = Vector3(-12.0, 0.0, 0.0) # Very fast horizontal velocity
+
+	var pocket_blk := table.get_table_block(1)
+	assert_true(pocket_blk.is_within_pocket_capture_zone(fast_puck.global_position), "Puck at (-13.4, -9.0) is inside the 3/4 capture zone")
+
+	# Step 1 tick of 0.05s: pocket ground effect triggers capture, disables collider, decelerates horizontal speed dramatically, and starts vertical fall + rotation
+	pvm.step_velocities(0.05, 1.0)
+	pvm.step_positions(0.05, 1.0)
+
+	assert_true(fast_puck.is_falling_in_pocket, "Fast puck is captured by the pocket swirl")
+	assert_true(col.disabled, "Puck collider is disabled so it passes through the floor")
+	assert_eq(fast_puck.collision_layer, 0, "Puck collision_layer set to 0 while falling")
+	assert_eq(fast_puck.collision_mask, 0, "Puck collision_mask set to 0 while falling")
+	assert_true(absf(fast_puck.velocity.x) < 6.0, "Horizontal velocity decelerated dramatically inside pocket capture zone")
+	assert_true(fast_puck.velocity.y < 0.0, "Puck started falling vertically through the floor")
+
+	# Step a few more frames: verify vertical tilt (side near center falls first) followed by orthogonal clockwise rotation
+	for _i in range(8):
+		pvm.step_velocities(0.05, 1.0)
+		pvm.step_positions(0.05, 1.0)
+	assert_true(fast_puck.global_position.y < 1.3, "Puck passed through the floor vertically")
+	assert_true(fast_puck.rotation.length() > 0.2, "Puck rotated vertically toward pocket center and spun clockwise")
+
+
+
+
 
 
 

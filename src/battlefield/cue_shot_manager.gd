@@ -3,7 +3,8 @@ extends Node
 
 ## Manages Drag-and-Shot input, 0.5-slot Energy quantization (1.0..9.0),
 ## live TimeBoard Energy consume/over-drag preview, 3D arrowed aiming line at
-## Y = 1.55, cancellation sound, and mass-dependent Impulse launch (J = k * E).
+## Y = 1.55 with swept Boss-radius first-rebound and struck-puck arrows,
+## cancellation sound, and mass-dependent Impulse launch (J = k * E).
 ## Strictly gated to Play Time (and all pucks at rest) via TimingManager signals.
 
 signal drag_updated(required_energy: float, shot_direction: Vector3, in_deadzone: bool, overdragged: bool)
@@ -21,9 +22,12 @@ const AIM_LINE_Y := 1.55
 @export var boss_click_radius: float = 1.25
 @export var impulse_per_energy: float = 6.0
 @export var aim_length_per_impulse: float = 0.45
+@export var post_hit_length_per_speed: float = 0.50
 @export var aim_valid_color: Color = Color(1.0, 0.88, 0.28, 0.95)
+@export var aim_struck_puck_color: Color = Color(0.28, 0.88, 1.0, 0.95)
 @export var aim_invalid_color: Color = Color(0.95, 0.20, 0.18, 0.95)
 
+var battlefield: Battlefield = null
 var timing_manager: TimingManager = null
 var velocity_manager: PuckVelocityManager = null
 var time_board: TimeBoard = null
@@ -36,14 +40,7 @@ var _dragging: bool = false
 var _in_deadzone: bool = true
 var _required_energy: float = 0.0
 var _shot_direction: Vector3 = Vector3.ZERO
-var _aim_line_state: Dictionary = {
-	"visible": false,
-	"y": AIM_LINE_Y,
-	"length": 0.0,
-	"impulse": 0.0,
-	"direction": Vector3.ZERO,
-	"is_invalid_red": false,
-}
+var _aim_line_state: Dictionary = {}
 
 var _aim_mesh_instance: MeshInstance3D = null
 var _aim_immediate_mesh: ImmediateMesh = null
@@ -52,6 +49,7 @@ var _cancel_audio: AudioStreamPlayer = null
 
 
 func _ready() -> void:
+	_reset_aim_line_state()
 	_resolve_references()
 	_bind_timing_signals()
 	_setup_aim_visuals()
@@ -66,6 +64,10 @@ func _exit_tree() -> void:
 
 func _resolve_references() -> void:
 	var parent := get_parent()
+	if battlefield == null and parent != null:
+		battlefield = parent.get_node_or_null("Battlefield") as Battlefield
+	if battlefield == null and is_inside_tree():
+		battlefield = get_tree().get_first_node_in_group("cue_table") as Battlefield
 	if timing_manager == null and parent != null:
 		timing_manager = parent.get_node_or_null("TimingManager") as TimingManager
 	if timing_manager == null and is_inside_tree():
@@ -290,6 +292,24 @@ func _boss_origin() -> Vector3:
 	return Vector3.ZERO
 
 
+func _boss_radius() -> float:
+	if boss_puck is BasePuck:
+		return maxf((boss_puck as BasePuck).radius, 0.2)
+	return 0.75
+
+
+func _boss_mass() -> float:
+	if boss_puck is BasePuck:
+		return maxf((boss_puck as BasePuck).mass, 0.1)
+	return 3.0
+
+
+func _boss_restitution() -> float:
+	if boss_puck is BasePuck:
+		return clampf((boss_puck as BasePuck).restitution, 0.0, 1.0)
+	return 0.85
+
+
 func _update_board_preview(cost: float) -> void:
 	if time_board != null and is_instance_valid(time_board):
 		time_board.set_preview_cost(cost)
@@ -316,45 +336,276 @@ func _setup_aim_visuals() -> void:
 		add_child(_aim_mesh_instance)
 
 
+## Sweeps the Boss Monster's radius R_boss along `dir` up to `max_reach` and
+## finds the earliest Cushion or Puck hit, computing v1f and v2f using the
+## ticket-03 collision equations.
+func _predict_first_hit(origin: Vector3, dir: Vector3, max_reach: float, impulse_val: float) -> Dictionary:
+	var r_boss := _boss_radius()
+	var m_boss := _boss_mass()
+	var e_boss := _boss_restitution()
+	var v0 := dir * (impulse_val / m_boss)
+	var start_xz := Vector2(origin.x, origin.z)
+	var dir_xz := Vector2(dir.x, dir.z).normalized()
+
+	var best_dist := max_reach
+	var hit_type := "none"
+	var hit_puck: BasePuck = null
+	var hit_cushion_normal := Vector3.ZERO
+
+	# 1. Check swept circle against all other Pucks
+	for puck in _get_other_pucks():
+		var r_other := maxf(puck.radius, 0.2)
+		var combined_r := r_boss + r_other
+		var to_other := Vector2(puck.global_position.x, puck.global_position.z) - start_xz
+		var proj := to_other.dot(dir_xz)
+		if proj <= 0.0:
+			continue
+		var perp_sq := to_other.length_squared() - proj * proj
+		var r_sq := combined_r * combined_r
+		if perp_sq >= r_sq:
+			continue
+		var thc := sqrt(maxf(0.0, r_sq - perp_sq))
+		var t_hit := proj - thc
+		if t_hit >= 0.0 and t_hit <= best_dist + 0.0001:
+			best_dist = t_hit
+			hit_type = "puck"
+			hit_puck = puck
+			hit_cushion_normal = Vector3.ZERO
+
+	# 2. Check swept circle against Cushion inner planes (x = +- (15 - R_boss), z = +- (10 - R_boss))
+	var max_x := Battlefield.TABLE_HALF_X - r_boss
+	var max_z := Battlefield.TABLE_HALF_Z - r_boss
+	if dir_xz.x > 0.0001:
+		var tx := (max_x - start_xz.x) / dir_xz.x
+		if tx >= 0.0 and tx < best_dist - 0.0001:
+			best_dist = tx
+			hit_type = "cushion"
+			hit_puck = null
+			hit_cushion_normal = Vector3(-1.0, 0.0, 0.0)
+	elif dir_xz.x < -0.0001:
+		var tx := (-max_x - start_xz.x) / dir_xz.x
+		if tx >= 0.0 and tx < best_dist - 0.0001:
+			best_dist = tx
+			hit_type = "cushion"
+			hit_puck = null
+			hit_cushion_normal = Vector3(1.0, 0.0, 0.0)
+
+	if dir_xz.y > 0.0001:
+		var tz := (max_z - start_xz.y) / dir_xz.y
+		if tz >= 0.0 and tz < best_dist - 0.0001:
+			best_dist = tz
+			hit_type = "cushion"
+			hit_puck = null
+			hit_cushion_normal = Vector3(0.0, 0.0, -1.0)
+	elif dir_xz.y < -0.0001:
+		var tz := (-max_z - start_xz.y) / dir_xz.y
+		if tz >= 0.0 and tz < best_dist - 0.0001:
+			best_dist = tz
+			hit_type = "cushion"
+			hit_puck = null
+			hit_cushion_normal = Vector3(0.0, 0.0, 1.0)
+
+	var contact_center := Vector3(
+		origin.x + dir.x * best_dist,
+		AIM_LINE_Y,
+		origin.z + dir.z * best_dist
+	)
+
+	if hit_type == "puck" and hit_puck != null:
+		var p2_pos := Vector3(hit_puck.global_position.x, AIM_LINE_Y, hit_puck.global_position.z)
+		var n := (contact_center - p2_pos)
+		n.y = 0.0
+		n = n.normalized() if n.length_squared() > 0.0001 else -dir
+		var v_rel := v0.dot(n)
+		var e := clampf(minf(e_boss, hit_puck.restitution), 0.0, 1.0)
+		var inv_m1 := 1.0 / m_boss
+		var inv_m2 := 1.0 / maxf(hit_puck.mass, 0.1)
+		var j_mag := -(1.0 + e) * v_rel / (inv_m1 + inv_m2)
+		var v1f := v0 + n * (j_mag * inv_m1)
+		var v2f := -n * (j_mag * inv_m2)
+		return {
+			"hit_type": "puck",
+			"primary_length": best_dist,
+			"has_contact_ring": true,
+			"contact_center": contact_center,
+			"contact_ring_radius": r_boss,
+			"v1f": v1f,
+			"v2f": v2f,
+			"rebound_length": v1f.length() * post_hit_length_per_speed,
+			"has_struck_puck_arrow": v2f.length() > 0.001,
+			"struck_puck_center": p2_pos,
+			"struck_puck_length": v2f.length() * post_hit_length_per_speed,
+		}
+	elif hit_type == "cushion":
+		var v1f := Vector3.ZERO
+		if battlefield != null:
+			var cush := battlefield.get_cushion_block_for_normal(contact_center, hit_cushion_normal)
+			if cush != null:
+				v1f = cush.compute_rebound_velocity(v0, hit_cushion_normal)
+		if v1f.length_squared() <= 0.0001:
+			var v_dot_n := v0.dot(hit_cushion_normal)
+			var v_perp := v_dot_n * hit_cushion_normal
+			var v_par := v0 - v_perp
+			v1f = 0.9 * v_par - e_boss * v_perp
+		return {
+			"hit_type": "cushion",
+			"primary_length": best_dist,
+			"has_contact_ring": true,
+			"contact_center": contact_center,
+			"contact_ring_radius": r_boss,
+			"v1f": v1f,
+			"v2f": Vector3.ZERO,
+			"rebound_length": v1f.length() * post_hit_length_per_speed,
+			"has_struck_puck_arrow": false,
+			"struck_puck_center": Vector3.ZERO,
+			"struck_puck_length": 0.0,
+		}
+
+	return {
+		"hit_type": "none",
+		"primary_length": max_reach,
+		"has_contact_ring": false,
+		"contact_center": contact_center,
+		"contact_ring_radius": r_boss,
+		"v1f": Vector3.ZERO,
+		"v2f": Vector3.ZERO,
+		"rebound_length": 0.0,
+		"has_struck_puck_arrow": false,
+		"struck_puck_center": Vector3.ZERO,
+		"struck_puck_length": 0.0,
+	}
+
+
+func _get_other_pucks() -> Array[BasePuck]:
+	var list: Array[BasePuck] = []
+	var parent := get_parent()
+	if parent != null:
+		for child in parent.get_children():
+			if child is BasePuck and child != boss_puck and is_instance_valid(child) and not (child as BasePuck).is_dead:
+				list.append(child as BasePuck)
+		if not list.is_empty():
+			return list
+	if is_inside_tree():
+		for node in get_tree().get_nodes_in_group("pucks"):
+			if node is BasePuck and node != boss_puck and is_instance_valid(node) and not (node as BasePuck).is_dead:
+				list.append(node as BasePuck)
+	return list
+
+
 func _update_aim_line_visuals() -> void:
+	_resolve_references()
 	var is_red := _in_deadzone or is_overdragged()
 	var impulse_val := get_selected_impulse()
-	var line_len := impulse_val * aim_length_per_impulse if not _in_deadzone else deadzone_radius * 1.35
+	var max_reach := impulse_val * aim_length_per_impulse if not _in_deadzone else deadzone_radius * 1.35
 	var dir := _shot_direction if _shot_direction.length_squared() > 0.0001 else Vector3(0.0, 0.0, -1.0)
+	var origin := _boss_origin()
+
+	var pred: Dictionary
+	if _in_deadzone or impulse_val <= 0.0001:
+		pred = {
+			"hit_type": "none",
+			"primary_length": max_reach,
+			"has_contact_ring": false,
+			"contact_center": Vector3(origin.x, AIM_LINE_Y, origin.z) + dir * max_reach,
+			"contact_ring_radius": _boss_radius(),
+			"v1f": Vector3.ZERO,
+			"v2f": Vector3.ZERO,
+			"rebound_length": 0.0,
+			"has_struck_puck_arrow": false,
+			"struck_puck_center": Vector3.ZERO,
+			"struck_puck_length": 0.0,
+		}
+	else:
+		pred = _predict_first_hit(origin, dir, max_reach, impulse_val)
+
+	var primary_col := aim_invalid_color if is_red else aim_valid_color
+	var struck_col := aim_invalid_color if is_red else aim_struck_puck_color
+
 	_aim_line_state = {
 		"visible": _dragging,
 		"y": AIM_LINE_Y,
-		"length": line_len,
+		"length": max_reach,
+		"primary_length": pred["primary_length"],
 		"impulse": impulse_val,
 		"direction": dir,
 		"is_invalid_red": is_red,
+		"hit_type": pred["hit_type"],
+		"has_contact_ring": pred["has_contact_ring"],
+		"contact_center": pred["contact_center"],
+		"contact_ring_radius": pred["contact_ring_radius"],
+		"v1f": pred["v1f"],
+		"v2f": pred["v2f"],
+		"rebound_length": pred["rebound_length"],
+		"has_struck_puck_arrow": pred["has_struck_puck_arrow"],
+		"struck_puck_center": pred["struck_puck_center"],
+		"struck_puck_length": pred["struck_puck_length"],
+		"primary_color": primary_col,
+		"struck_puck_color": struck_col,
 	}
+
 	if _aim_immediate_mesh == null or _aim_mesh_instance == null:
 		return
 	_aim_immediate_mesh.clear_surfaces()
-	if not _dragging or line_len <= 0.01:
+	if not _dragging or max_reach <= 0.01:
 		_aim_mesh_instance.visible = false
 		return
 	_aim_mesh_instance.visible = true
-	var col := aim_invalid_color if is_red else aim_valid_color
-	var origin := _boss_origin()
-	var start := Vector3(origin.x, AIM_LINE_Y, origin.z)
-	var end := start + dir * line_len
-	var right := Vector3(-dir.z, 0.0, dir.x).normalized()
 
-	var shaft_half_w := 0.09
-	var head_len := minf(0.55, line_len * 0.38)
-	var head_half_w := 0.26
-	var shaft_end := end - dir * head_len
+	var start := Vector3(origin.x, AIM_LINE_Y, origin.z)
+	var primary_len: float = pred["primary_length"]
 
 	_aim_immediate_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	_aim_immediate_mesh.surface_set_color(col)
 
-	# Shaft quad (2 triangles)
-	var s_tl := shaft_end - right * shaft_half_w
-	var s_tr := shaft_end + right * shaft_half_w
-	var s_bl := start - right * shaft_half_w
-	var s_br := start + right * shaft_half_w
+	# 1. Primary aiming arrow (or line to contact center)
+	if pred["has_contact_ring"]:
+		_draw_segment_3d(start, start + dir * primary_len, 0.08, primary_col)
+		_draw_ring_3d(pred["contact_center"], pred["contact_ring_radius"], 0.06, primary_col)
+		var v1f: Vector3 = pred["v1f"]
+		var reb_len: float = pred["rebound_length"]
+		if v1f.length_squared() > 0.0001 and reb_len > 0.05:
+			_draw_arrow_3d(pred["contact_center"], v1f.normalized(), reb_len, 0.075, primary_col)
+		if pred["has_struck_puck_arrow"]:
+			var v2f: Vector3 = pred["v2f"]
+			var sp_len: float = pred["struck_puck_length"]
+			if v2f.length_squared() > 0.0001 and sp_len > 0.05:
+				_draw_arrow_3d(pred["struck_puck_center"], v2f.normalized(), sp_len, 0.075, struck_col)
+	else:
+		_draw_arrow_3d(start, dir, primary_len, 0.09, primary_col)
+
+	_aim_immediate_mesh.surface_end()
+
+
+func _draw_arrow_3d(start: Vector3, dir: Vector3, length: float, shaft_half_w: float, col: Color) -> void:
+	if length <= 0.02:
+		return
+	var end := start + dir * length
+	var right := Vector3(-dir.z, 0.0, dir.x).normalized()
+	var head_len := minf(0.50, length * 0.38)
+	var head_half_w := shaft_half_w * 2.8
+	var shaft_end := end - dir * head_len
+
+	_draw_segment_3d(start, shaft_end, shaft_half_w, col)
+
+	_aim_immediate_mesh.surface_set_color(col)
+	var h_left := shaft_end - right * head_half_w
+	var h_right := shaft_end + right * head_half_w
+	_aim_immediate_mesh.surface_add_vertex(h_left)
+	_aim_immediate_mesh.surface_add_vertex(end)
+	_aim_immediate_mesh.surface_add_vertex(h_right)
+
+
+func _draw_segment_3d(start: Vector3, end: Vector3, half_w: float, col: Color) -> void:
+	var seg := end - start
+	seg.y = 0.0
+	if seg.length_squared() <= 0.0001:
+		return
+	var dir := seg.normalized()
+	var right := Vector3(-dir.z, 0.0, dir.x)
+	_aim_immediate_mesh.surface_set_color(col)
+	var s_tl := end - right * half_w
+	var s_tr := end + right * half_w
+	var s_bl := start - right * half_w
+	var s_br := start + right * half_w
 	_aim_immediate_mesh.surface_add_vertex(s_bl)
 	_aim_immediate_mesh.surface_add_vertex(s_tl)
 	_aim_immediate_mesh.surface_add_vertex(s_tr)
@@ -362,25 +613,54 @@ func _update_aim_line_visuals() -> void:
 	_aim_immediate_mesh.surface_add_vertex(s_tr)
 	_aim_immediate_mesh.surface_add_vertex(s_br)
 
-	# Arrowhead triangle
-	var h_left := shaft_end - right * head_half_w
-	var h_right := shaft_end + right * head_half_w
-	_aim_immediate_mesh.surface_add_vertex(h_left)
-	_aim_immediate_mesh.surface_add_vertex(end)
-	_aim_immediate_mesh.surface_add_vertex(h_right)
 
-	_aim_immediate_mesh.surface_end()
+func _draw_ring_3d(center: Vector3, radius: float, thickness: float, col: Color, segments: int = 24) -> void:
+	var inner_r := maxf(0.05, radius - thickness * 0.5)
+	var outer_r := radius + thickness * 0.5
+	_aim_immediate_mesh.surface_set_color(col)
+	for i in range(segments):
+		var a0 := TAU * float(i) / float(segments)
+		var a1 := TAU * float(i + 1) / float(segments)
+		var d0 := Vector3(cos(a0), 0.0, sin(a0))
+		var d1 := Vector3(cos(a1), 0.0, sin(a1))
+		var p0_in := center + d0 * inner_r
+		var p0_out := center + d0 * outer_r
+		var p1_in := center + d1 * inner_r
+		var p1_out := center + d1 * outer_r
+		_aim_immediate_mesh.surface_add_vertex(p0_in)
+		_aim_immediate_mesh.surface_add_vertex(p0_out)
+		_aim_immediate_mesh.surface_add_vertex(p1_out)
+		_aim_immediate_mesh.surface_add_vertex(p0_in)
+		_aim_immediate_mesh.surface_add_vertex(p1_out)
+		_aim_immediate_mesh.surface_add_vertex(p1_in)
 
 
-func _hide_aim_line_visuals() -> void:
+func _reset_aim_line_state() -> void:
 	_aim_line_state = {
 		"visible": false,
 		"y": AIM_LINE_Y,
 		"length": 0.0,
+		"primary_length": 0.0,
 		"impulse": 0.0,
 		"direction": Vector3.ZERO,
 		"is_invalid_red": false,
+		"hit_type": "none",
+		"has_contact_ring": false,
+		"contact_center": Vector3.ZERO,
+		"contact_ring_radius": 0.0,
+		"v1f": Vector3.ZERO,
+		"v2f": Vector3.ZERO,
+		"rebound_length": 0.0,
+		"has_struck_puck_arrow": false,
+		"struck_puck_center": Vector3.ZERO,
+		"struck_puck_length": 0.0,
+		"primary_color": aim_valid_color,
+		"struck_puck_color": aim_struck_puck_color,
 	}
+
+
+func _hide_aim_line_visuals() -> void:
+	_reset_aim_line_state()
 	if _aim_immediate_mesh != null:
 		_aim_immediate_mesh.clear_surfaces()
 	if _aim_mesh_instance != null:

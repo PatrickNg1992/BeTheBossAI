@@ -96,14 +96,12 @@ func test_table_and_pocket_collision_shapes() -> void:
 
 	assert_true(solid_col != null and not solid_col.disabled,
 		"Solid table blocks have active CollisionShape3D to prevent pucks from falling")
-	assert_true(pocket_col != null and pocket_col.disabled,
-		"Pocket blocks disable floor CollisionShape3D so pucks can fall in")
-
-	# Swapping a normal block to POCKET disables its floor collider
-	_table.set_table_block_type(2, TableBlock.BlockType.POCKET)
-	assert_true(solid_col.disabled, "Swapping block to POCKET disables floor collision")
-	_table.set_table_block_type(2, TableBlock.BlockType.GRASS_LIGHT)
-	assert_true(not solid_col.disabled, "Swapping block back to GRASS re-enables floor collision")
+	assert_true(pocket_col != null and not pocket_col.disabled,
+		"Pocket blocks are treated as special floor blocks with active CollisionShape3D until a puck is captured")
+	assert_true(pocket_block.is_within_pocket_capture_zone(Vector3(-14.0, 1.5, -9.0)),
+		"Center of pocket block is within the 3/4 rectangle capture zone")
+	assert_false(pocket_block.is_within_pocket_capture_zone(Vector3(-13.1, 1.5, -9.0)),
+		"Outer edge (dx = 0.9 > 0.75) is outside the 3/4 rectangle capture zone")
 
 
 func test_cushions_have_collision_and_rebound_equation() -> void:

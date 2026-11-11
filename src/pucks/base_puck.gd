@@ -17,6 +17,10 @@ const TABLE_GRAVITY: float = 25.0
 
 var current_hp: int
 var is_dead: bool = false
+var is_falling_in_pocket: bool = false
+var _pocket_center: Vector3 = Vector3.ZERO
+var _pocket_fall_elapsed: float = 0.0
+var _pocket_tilt_axis: Vector3 = Vector3(1.0, 0.0, 0.0)
 var _attack_timer: float = 0.0
 
 
@@ -66,18 +70,76 @@ func calculate_position(dt: float, fast_play_ratio: float = 1.0) -> Vector3:
 
 
 func apply_table_physics(delta: float) -> void:
-	var table := get_tree().get_first_node_in_group("cue_table") as Battlefield
-	var over_pocket := false
-	if table != null:
-		over_pocket = table.is_pocket_at_world(global_position)
-	if over_pocket:
-		collision_mask = 2
-	else:
-		collision_mask = 3
-	if over_pocket or not is_on_floor():
+	if is_falling_in_pocket:
+		velocity.y -= TABLE_GRAVITY * delta
+		_update_pocket_fall_rotation(delta)
+		return
+	collision_layer = 1
+	collision_mask = 3
+	if not is_on_floor():
 		velocity.y -= TABLE_GRAVITY * delta
 	elif velocity.y < 0.0:
 		velocity.y = 0.0
+
+
+## Begins falling into a Pocket Area swirl: invalidates the puck's collider so
+## it passes through the solid floor block, dramatically decelerates horizontal
+## velocity, initiates downward fall, and sets up the tilt axis so the side
+## nearest the pocket center dips first before spinning clockwise.
+func begin_pocket_fall(pocket_world_center: Vector3) -> void:
+	if is_falling_in_pocket or is_dead:
+		return
+	is_falling_in_pocket = true
+	_pocket_center = pocket_world_center
+	_pocket_fall_elapsed = 0.0
+	var to_center := Vector3(
+		pocket_world_center.x - global_position.x,
+		0.0,
+		pocket_world_center.z - global_position.z
+	)
+	if to_center.length_squared() <= 0.0001:
+		var vel_xz := Vector3(velocity.x, 0.0, velocity.z)
+		to_center = vel_xz.normalized() if vel_xz.length_squared() > 0.0001 else Vector3(1.0, 0.0, 0.0)
+	else:
+		to_center = to_center.normalized()
+	# Horizontal axis perpendicular to `to_center` such that a positive rotation
+	# around `_pocket_tilt_axis` tips the side facing `to_center` downward (-Y):
+	#   axis = UP x to_center = (to_center.z, 0, -to_center.x)
+	_pocket_tilt_axis = Vector3(to_center.z, 0.0, -to_center.x).normalized()
+
+	# Disable collider so the puck falls straight through the floor block
+	collision_layer = 0
+	collision_mask = 0
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null:
+		col_shape.disabled = true
+
+	# Immediate dramatic horizontal speed drop + initial downward velocity
+	velocity.x *= 0.25
+	velocity.z *= 0.25
+	if velocity.y > -3.5:
+		velocity.y = -3.5
+
+
+## Resets pocket fall state and re-enables the puck's collider and upright transform.
+func reset_from_pocket_fall(spawn_pos: Vector3) -> void:
+	is_falling_in_pocket = false
+	_pocket_fall_elapsed = 0.0
+	global_position = spawn_pos
+	velocity = Vector3.ZERO
+	rotation = Vector3.ZERO
+	collision_layer = 1
+	collision_mask = 3
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null:
+		col_shape.disabled = false
+
+
+func _update_pocket_fall_rotation(delta: float) -> void:
+	_pocket_fall_elapsed += delta
+	# Vertical tilt only: the side nearest the pocket center dips first as the puck falls
+	var tilt_angle := minf(_pocket_fall_elapsed * 6.5, deg_to_rad(75.0))
+	basis = Basis(_pocket_tilt_axis, tilt_angle)
 
 
 func take_damage(amount: int) -> void:

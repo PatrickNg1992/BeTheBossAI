@@ -71,7 +71,7 @@ src/
 │
 ├── resource/
 │   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, double_arrow, goal_flag, sword,
-│                               # puck_puck_banner PNGs (regenerate via tests/_gen_assets.tscn)
+│                               # puck_puck_banner, pocket_swirl PNGs (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
     └── localization.gd         # EN/ZH localization (autoload)

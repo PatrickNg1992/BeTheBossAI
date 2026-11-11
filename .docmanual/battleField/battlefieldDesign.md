@@ -26,7 +26,7 @@ When a puck falls into a Pocket Area, it will take damage and be removed from th
 
 Each Pocket Area is 2 × 2 in size.
 
-
+A Pocket Area is a special kind of table floor block. Instead of a hole, make it look like a black swirl or a black hole. When a puck gets close to the centre of the pocket area (i.e. the puck's centre reaches the 3/4 rectangle length), its horizontal velocity decelerates dramatically, and it starts to fall vertically. When start to fall, make the puck collider no longer valid so that it will pass through the floor. Also, the puck will rotate vertically first, so the side near the centre falls.
 
 ## Syle
 
