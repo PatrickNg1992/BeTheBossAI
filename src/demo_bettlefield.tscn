@@ -88,8 +88,9 @@ unique_name_in_owner = true
 script = ExtResource("14_csm")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
-transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 32, 7)
+transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 48, 10)
 current = true
+fov = 50.0
 
 [node name="Battlefield" parent="." unique_id=1712109379 instance=ExtResource("1_q4n8h")]
 
@@ -162,26 +163,37 @@ layer = 10
 script = ExtResource("4_h05ap")
 
 [node name="MarginContainer" type="MarginContainer" parent="Canvas" unique_id=1257233920]
-offset_left = 6.0
-offset_right = 206.0
-offset_bottom = 65.0
+anchors_preset = -1
+anchor_left = 0.008
+anchor_top = 0.008
+anchor_right = 0.206
+anchor_bottom = 0.155
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
 
 [node name="PlayerHealthPanel" type="PanelContainer" parent="Canvas/MarginContainer" unique_id=2049874185]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Canvas/MarginContainer/PlayerHealthPanel" unique_id=1796462769]
 layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
 
 [node name="PlayerHealthLabel" type="Label" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1643095060]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 20
 text = "HP: 100/100"
+horizontal_alignment = 1
 
 [node name="PlayerHealthBar" type="ProgressBar" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1832891613]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(0, 20)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 value = 100.0
 show_percentage = false
@@ -189,44 +201,82 @@ show_percentage = false
 [node name="PlayerBarCountLabel" type="Label" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1057592772]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 17
 text = "x15"
 horizontal_alignment = 1
 
 [node name="PlayerDamageFlash" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=1794328127]
 visible = false
-custom_minimum_size = Vector2(0, 18)
+custom_minimum_size = Vector2(0, 25)
 layout_mode = 2
 color = Color(0.9, 0.15, 0.15, 0.7)
 
 [node name="HealthBarContainer" type="Control" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer" unique_id=397128184]
 unique_name_in_owner = true
 clip_contents = true
-custom_minimum_size = Vector2(200, 20)
+custom_minimum_size = Vector2(230, 28)
 layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 
 [node name="PlayerHealthBg" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=2104055662]
 clip_contents = true
-layout_mode = 0
-offset_right = 200.0
-offset_bottom = 20.0
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
 color = Color(0.05, 0.05, 0.05, 1)
 
 [node name="PlayerHealthDamage" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=176813564]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
 offset_right = 200.0
-offset_bottom = 20.0
+grow_vertical = 2
 mouse_filter = 2
 color = Color(0.95, 0.2, 0.15, 1)
 
 [node name="PlayerHealthFill" type="ColorRect" parent="Canvas/MarginContainer/PlayerHealthPanel/VBoxContainer/HealthBarContainer" unique_id=748484387]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
 offset_right = 200.0
-offset_bottom = 20.0
+grow_vertical = 2
 mouse_filter = 2
 color = Color(0.15, 0.85, 0.2, 1)
+
+[node name="LeftUnitPanel" type="PanelContainer" parent="Canvas" unique_id=664790690]
+unique_name_in_owner = true
+anchors_preset = -1
+anchor_left = -0.024
+anchor_top = 0.24
+anchor_right = 0.135
+anchor_bottom = 0.76
+mouse_filter = 2
+
+[node name="LeftUnitList" type="VBoxContainer" parent="Canvas/LeftUnitPanel" unique_id=664790691]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="RightUnitPanel" type="PanelContainer" parent="Canvas" unique_id=664790692]
+unique_name_in_owner = true
+anchors_preset = -1
+anchor_left = 0.865
+anchor_top = 0.24
+anchor_right = 1.024
+anchor_bottom = 0.76
+mouse_filter = 2
+
+[node name="RightUnitList" type="VBoxContainer" parent="Canvas/RightUnitPanel" unique_id=664790693]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
 
 [node name="EnemyHealthBars" type="Control" parent="Canvas" unique_id=1650086343]
 unique_name_in_owner = true
@@ -243,17 +293,20 @@ mouse_filter = 2
 [node name="TimeBoard" parent="Canvas" unique_id=664790673 instance=ExtResource("8_tb")]
 unique_name_in_owner = true
 layout_mode = 3
+anchors_preset = -1
+anchor_left = 0.3
+anchor_top = 0.008
+anchor_right = 0.7
+anchor_bottom = 0.14
 
 [node name="PlayButton" type="Button" parent="Canvas" unique_id=664790675]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(148, 42)
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -56.0
-offset_top = 98.0
-offset_right = 92.0
-offset_bottom = 140.0
+custom_minimum_size = Vector2(136, 38)
+anchors_preset = -1
+anchor_left = 0.465
+anchor_top = 0.118
+anchor_right = 0.555
+anchor_bottom = 0.156
 grow_horizontal = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 18
@@ -262,13 +315,11 @@ icon = ExtResource("11_sword")
 
 [node name="TopRightControls" type="VBoxContainer" parent="Canvas" unique_id=664790674]
 unique_name_in_owner = true
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -216.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = 98.0
+anchors_preset = -1
+anchor_left = 0.82
+anchor_top = 0.008
+anchor_right = 0.992
+anchor_bottom = 0.14
 grow_horizontal = 0
 theme_override_constants/separation = 8
 
@@ -352,73 +403,84 @@ vertical_alignment = 1
 unique_name_in_owner = true
 script = ExtResource("6_4cvd0")
 
-[node name="HandContainer" type="HBoxContainer" parent="Canvas/CardSystem" unique_id=1164296470]
+[node name="HandZone" type="CenterContainer" parent="Canvas/CardSystem" unique_id=664790694]
 unique_name_in_owner = true
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 109.0
-offset_top = -165.0
-offset_right = 109.0
-offset_bottom = 35.0
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.84
+anchor_right = 0.8
+anchor_bottom = 0.992
 grow_horizontal = 2
 grow_vertical = 0
-scale = Vector2(0.8, 0.8)
+mouse_filter = 2
+
+[node name="HandContainer" type="HBoxContainer" parent="Canvas/CardSystem/HandZone" unique_id=1164296470]
+unique_name_in_owner = true
+layout_mode = 2
 theme_override_constants/separation = 10
+alignment = 1
 
 [node name="RightBottomContainer" type="MarginContainer" parent="Canvas/CardSystem" unique_id=1853549399]
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -110.0
-offset_top = -184.0
+anchors_preset = -1
+anchor_left = 0.888
+anchor_top = 0.785
+anchor_right = 0.992
+anchor_bottom = 0.992
 grow_horizontal = 0
 grow_vertical = 0
 
 [node name="CardPileContainer" type="VBoxContainer" parent="Canvas/CardSystem/RightBottomContainer" unique_id=1282885757]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 2
+size_flags_horizontal = 8
+theme_override_constants/separation = 3
 alignment = 2
 
 [node name="CastingArea" type="Panel" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1363067123]
-custom_minimum_size = Vector2(88, 120)
+custom_minimum_size = Vector2(77, 115)
 layout_mode = 2
+size_flags_horizontal = 4
 
 [node name="DisplayContainer" type="PanelContainer" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer/CastingArea" unique_id=813809860]
 z_index = -1
 layout_mode = 0
-offset_left = 11.0
-offset_right = 121.0
-offset_bottom = 150.0
-scale = Vector2(0.8, 0.8)
+offset_left = 5.0
+offset_top = 5.0
+offset_right = 115.0
+offset_bottom = 155.0
+scale = Vector2(0.6, 0.6)
 
 [node name="CastingCD" type="Label" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer/CastingArea" unique_id=1695712038]
 layout_mode = 0
-offset_left = 6.0
-offset_top = 48.0
-offset_right = 108.0
-offset_bottom = 71.0
+offset_left = 2.0
+offset_top = 46.0
+offset_right = 75.0
+offset_bottom = 69.0
 theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
 theme_override_font_sizes/font_size = 14
 text = "0.0s"
 horizontal_alignment = 1
 
 [node name="DeckButton" type="Button" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1758757134]
-custom_minimum_size = Vector2(110, 30)
+custom_minimum_size = Vector2(115, 28)
 layout_mode = 2
-size_flags_horizontal = 0
-theme_override_font_sizes/font_size = 11
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 12
 text = "■ Deck:   52"
 flat = true
 
 [node name="DiscardButton" type="Button" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=1984785554]
-custom_minimum_size = Vector2(110, 30)
+custom_minimum_size = Vector2(115, 28)
 layout_mode = 2
-size_flags_horizontal = 0
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 12
+text = "□ Discard:   0"
+flat = true
+
+[node name="DiscardButton2" type="Button" parent="Canvas/CardSystem/RightBottomContainer/CardPileContainer" unique_id=842616248]
+custom_minimum_size = Vector2(96, 26)
+layout_mode = 2
+size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 11
 text = "□ Discard:   0"
 flat = true

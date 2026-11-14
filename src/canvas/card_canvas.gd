@@ -70,6 +70,14 @@ func _on_hand_updated(cards: Array[BaseCardInfo]) -> void:
 	_card_nodes.clear()
 	_deselect_all()
 
+	var count := cards.size()
+	# Scale card separation dynamically so up to 10 cards fit cleanly inside the 900x180 middle-bottom HandZone
+	if hand_container != null:
+		var sep := 10
+		if count > 7:
+			sep = int(floorf((900.0 - float(count) * 110.0) / float(maxi(count - 1, 1))))
+		hand_container.add_theme_constant_override("separation", sep)
+
 	# Rebuild from hand array
 	for card_data in cards:
 		var card := CARD_SCENE.instantiate()

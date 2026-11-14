@@ -26,7 +26,7 @@ const SLOT_COUNT := 20
 const BAR_SIZE := 10
 const GOAL_SLOT := 19
 
-@export var slot_size := Vector2(32, 12)
+@export var slot_size := Vector2(44, 15)
 @export var slot_gap := 3.0
 ## Turn duration — the single configurable time knob (default 1s). Tag
 ## glides run this long so indicators slide continuously.

@@ -338,6 +338,26 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	bf._process(2.0)
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_CHARGING, "Action Time ends after 5s and transitions to next timing phase")
 
+	# Verify PC 3:2 (1500x1000) scalable ratio layout zones on Canvas without overlapping the middle 900x600 Cue Table area
+	var left_unit_panel := bf.get_node_or_null("Canvas/LeftUnitPanel") as Control
+	var right_unit_panel := bf.get_node_or_null("Canvas/RightUnitPanel") as Control
+	var top_left_status := bf.get_node_or_null("Canvas/MarginContainer") as Control
+	var top_right_controls := bf.get_node_or_null("Canvas/TopRightControls") as Control
+	var hand_zone := bf.get_node_or_null("Canvas/CardSystem/HandZone") as Control
+	var right_bottom := bf.get_node_or_null("Canvas/CardSystem/RightBottomContainer") as Control
+	assert_true(left_unit_panel != null, "Left unit info panel (250x550 ratio zone) exists")
+	assert_true(right_unit_panel != null, "Right unit info panel (250x550 ratio zone) exists")
+	assert_true(hand_zone != null, "Middle-bottom HandZone (max 900x180 ratio zone) exists")
+	# Check anchor ratios: middle Cue Table is X in [0.20, 0.80] (900/1500), Y in [0.20, 0.80] (600/1000)
+	assert_true(left_unit_panel.anchor_right <= 0.2001, "Left unit panel stays left of the 900x600 Cue Table zone")
+	assert_true(right_unit_panel.anchor_left >= 0.7999, "Right unit panel stays right of the 900x600 Cue Table zone")
+	assert_true(top_left_status.anchor_bottom <= 0.2001, "Upper-left boss status stays above the Cue Table zone")
+	assert_true(top_right_controls.anchor_left >= 0.7499 and top_right_controls.anchor_bottom <= 0.2001, "Upper-right controls stay in top-right zone")
+	assert_true(hand_zone.anchor_left >= 0.1999 and hand_zone.anchor_right <= 0.8001 and hand_zone.anchor_top >= 0.7999,
+		"Hand zone occupies middle-bottom (at most 900x180 ratio) below the Cue Table")
+	assert_true(right_bottom.anchor_left >= 0.7999 and right_bottom.anchor_top >= 0.7499,
+		"Deck/discard/casting pile occupies bottom-right zone slightly higher than hands")
+
 	tree.root.remove_child(bf)
 	bf.queue_free()
 	tree.get_multiplayer().multiplayer_peer = null
