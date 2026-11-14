@@ -10,6 +10,8 @@ On each side, the board looks like a table with 2 columns and multiple rows. The
 
 For flexibility, the board has 8 rows and can display up to 16 Units on each side.
 
+The unit information board work closely with the unit manager (see ./unitInformationManager.md) to show the unit information to the players.
+
 ### Unit Display
 
 Each cell shows the unit's image. Below the cell is the unit's HP bar. In the upper-left corner of the cell, a *Reference Mark* lets players match the unit and its corresponding pucks. 
@@ -19,6 +21,10 @@ The Unit Display for boss monsters spans 2 horizontal cells, which looks great. 
 If the unit is an enemy adventurer, a *Class Mark* appears in the upper-right corner to tell what class the unit is.
 
 When a player hovers the mouse over a Unit Display, the corresponding puck on the table will be highlighted so they can spot the puck easily. When a player clicks on the Unit Display, a small pop-up window named *Unit Detail Display* will appear to the side.
+
+Defeated units will have a grey Unit Display, and their HP bar will disappear. 
+
+The Unit Display should show the Ghost HP bar according to the Damage Stack. (Check the Unit Information Manager document) The Damage Stack count (how many time of damage taken) should be displayed on the right of the unit image. 
 
 ### Unit Detail Display
 
@@ -39,6 +45,8 @@ The Unit Detail Display shows more detail about a unit. It appears when the play
 - Attack power of the unit
 
 - Mass and radius of the puck
+
+- Unit's status: buff, debuff, conditional status
 
 ### Skill and Damage effects
 
