@@ -10,7 +10,7 @@ On each side, the board looks like a table with 2 columns and multiple rows. The
 
 For flexibility, the board has 8 rows and can display up to 16 Units on each side.
 
-The unit information board work closely with the unit manager (see ./unitInformationManager.md) to show the unit information to the players.
+The unit information board works closely with the unit manager (see ./unitInformationManager.md) to show the unit information to the players. The board listens to events from the manager.
 
 ### Unit Display
 
@@ -24,7 +24,7 @@ When a player hovers the mouse over a Unit Display, the corresponding puck on th
 
 Defeated units will have a grey Unit Display, and their HP bar will disappear. 
 
-The Unit Display should show the Ghost HP bar according to the Damage Stack. (Check the Unit Information Manager document) The Damage Stack count (how many time of damage taken) should be displayed on the right of the unit image. 
+The Unit Display should show the Ghost HP bar according to the Damage Stack. (Check the Unit Information Manager document) The Damage Stack count (how many times damage has been taken) should be displayed on the right of the unit image. 
 
 ### Unit Detail Display
 
@@ -56,7 +56,7 @@ In "Puck-puck time!", when the unit puck collides with other pucks on the table,
 
 In Settle timing, when a unit has taken damage or is defeated, animations will play on the unit display.
 
-When the skills of a unit are triggered, the skill icon will pop up shortly.
+When the unit skills are triggered, the skill icon will pop up shortly.
 
 ## Single-player game
 

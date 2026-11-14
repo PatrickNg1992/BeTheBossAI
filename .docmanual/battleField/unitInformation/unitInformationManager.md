@@ -9,3 +9,5 @@ Store a unit's puck-related physics information in the puck script, such as puck
 When a unit takes damage in "Puck-puck time!" or Action Time, the damage is temporarily stored in the Unit Information as *Damage Stack*. The damage calculation and defeat checking should be delayed to Settle Timing. The Damage Stack should be displayed as hit count and a Ghost bar in the HP bar (HP trailing) before it is settled.
 
 The Unit Information Manager works closely with the Unit Information board to display useful information to players. (Check ./unitInformationBoard.md)
+
+
