@@ -56,13 +56,13 @@ Meanwhile, the units, including Boss Monster, Enemy Adventurers and minions, sta
 
 For the test scene:
 
-Make the puck with (radius, height):
+Make the puck with (radius, height, mass):
 
-- Boss Monster: 1.5, 1
-- Knight: 1.2, 0.8
-- Warrior: 1.1, 0.7
-- Ranger: 1.0, 0.7
-- Mage: 0.9, 0.7
+- Boss Monster: radius `0.8`, height `0.6` (`0.5 * 1.2`), mass `3.2` (`1.5 * (0.8 / 0.6)^2 * 1.2`)
+- Knight: radius `0.65`, height `0.4`, mass `1.7604` (`1.5 * (0.65 / 0.6)^2`)
+- Warrior: radius `0.6`, height `0.35`, mass `1.5` (reference mass)
+- Ranger (Archer): radius `0.57`, height `0.35`, mass `1.35375` (`1.5 * (0.57 / 0.6)^2`)
+- Mage: radius `0.55`, height `0.35`, mass `1.2604` (`1.5 * (0.55 / 0.6)^2`)
 
 ## Timing
 

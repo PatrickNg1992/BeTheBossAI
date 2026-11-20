@@ -25,6 +25,7 @@ const ROLE_SPECTATOR := "spectator"
 @onready var timing_manager: TimingManager = %TimingManager
 @onready var puck_velocity_manager: PuckVelocityManager = %PuckVelocityManager
 @onready var cue_shot_manager: CueShotManager = %CueShotManager
+@onready var unit_information_manager: UnitInformationManager = get_node_or_null("%UnitInformationManager") as UnitInformationManager
 @onready var time_board: TimeBoard = %TimeBoard
 @onready var play_button: Button = %PlayButton
 @onready var fast_play_button: Button = %FastPlayButton
@@ -142,6 +143,7 @@ func _ready() -> void:
 		)
 
 	_apply_role_and_authority_mode()
+	_setup_demo_unit_information()
 	timing_manager.set_energy(DEMO_INITIAL_ENERGY)
 	timing_manager.set_energy_b(DEMO_INITIAL_ENERGY if has_player_b() else 0.0)
 
@@ -186,6 +188,9 @@ func _apply_role_and_authority_mode() -> void:
 		puck_velocity_manager.set_process(is_host)
 	if time_board != null:
 		time_board.set_perspective_role(get_local_role())
+	var canvas_node := get_node_or_null("Canvas")
+	if canvas_node != null and canvas_node.has_method("set_local_role"):
+		canvas_node.call("set_local_role", get_local_role())
 	for child in get_children():
 		if child is BaseEnemy:
 			child.set_physics_process(is_host)
@@ -370,7 +375,7 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 				timing_manager.consume_player_energy(sender_role, cost)
 			var boss := _get_boss_puck_for_seat(sender_role)
 			if boss != null and cost > 0.0 and dir.length_squared() > 0.0001:
-				var imp_per_e := cue_shot_manager.impulse_per_energy if cue_shot_manager != null else 6.0
+				var imp_per_e := cue_shot_manager.impulse_per_energy if cue_shot_manager != null else 7.2
 				boss.apply_impulse(dir.normalized() * (imp_per_e * cost))
 			if timing_manager.fire_cue_shot(0.0):
 				active_player = ""
@@ -601,6 +606,102 @@ func _get_boss_puck_for_seat(seat: String) -> BasePuck:
 		if pb != null:
 			return pb
 	return _player as BasePuck
+
+
+func _setup_demo_unit_information() -> void:
+	if unit_information_manager == null:
+		unit_information_manager = get_node_or_null("UnitInformationManager") as UnitInformationManager
+	if unit_information_manager == null:
+		return
+	unit_information_manager.clear_all()
+	var mode := UnitInformationManager.MODE_TWO_PLAYER_COOP if has_player_b() else UnitInformationManager.MODE_SINGLE_PLAYER
+	unit_information_manager.configure_mode(mode)
+
+	# 1. Register Player A Boss Monster (and Player B Boss Monster if present)
+	if _player is BaseBossMonster:
+		var boss_a := _player as BaseBossMonster
+		unit_information_manager.register_boss("boss_a", "a", {
+			"max_hp": boss_a.bar_max_hp,
+			"current_hp": boss_a.current_hp,
+			"bars_remaining": boss_a.bars_remaining,
+			"max_bars": boss_a.max_bars,
+			"mass": boss_a.mass,
+			"radius": boss_a.radius,
+			"puck": boss_a,
+		})
+	var player_b := get_node_or_null("PlayerB") as BaseBossMonster
+	if player_b != null:
+		unit_information_manager.register_boss("boss_b", "b", {
+			"max_hp": player_b.bar_max_hp,
+			"current_hp": player_b.current_hp,
+			"bars_remaining": player_b.bars_remaining,
+			"max_bars": player_b.max_bars,
+			"mass": player_b.mass,
+			"radius": player_b.radius,
+			"puck": player_b,
+		})
+
+	# 2. Register Adventurer Team 1 (6 members: Enemy1..Enemy6, with ?5 and ?6 assigned random distinct classes)
+	var all_classes: Array[int] = [
+		EnemyAdventurer.AdventurerClass.WARRIOR,
+		EnemyAdventurer.AdventurerClass.KNIGHT,
+		EnemyAdventurer.AdventurerClass.MAGE,
+		EnemyAdventurer.AdventurerClass.RANGER,
+	]
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var dup_class_5: int = all_classes[rng.randi_range(0, all_classes.size() - 1)]
+	var remaining_classes: Array[int] = []
+	for c in all_classes:
+		if c != dup_class_5:
+			remaining_classes.append(c)
+	var dup_class_6: int = remaining_classes[rng.randi_range(0, remaining_classes.size() - 1)]
+
+	var e5 := get_node_or_null("Enemy5") as EnemyAdventurer
+	var e6 := get_node_or_null("Enemy6") as EnemyAdventurer
+	if e5 != null:
+		e5.adventurer_class = dup_class_5 as EnemyAdventurer.AdventurerClass
+	if e6 != null:
+		e6.adventurer_class = dup_class_6 as EnemyAdventurer.AdventurerClass
+
+	var team1_members: Array = []
+	for idx in range(1, 7):
+		var en := get_node_or_null("Enemy%d" % idx) as EnemyAdventurer
+		if en != null:
+			team1_members.append({
+				"unit_id": "enemy_%d" % idx,
+				"adventurer_class": int(en.adventurer_class),
+				"max_hp": en.max_hp,
+				"current_hp": en.current_hp,
+				"power": en.attack_damage,
+				"mass": en.mass,
+				"radius": en.radius,
+				"puck": en,
+			})
+	if not team1_members.is_empty():
+		unit_information_manager.register_adventurer_team(1, team1_members)
+
+	# 3. Register Adventurer Team 2 (4 members: Enemy7..Enemy10 -> Knight, Warrior, Ranger, Mage)
+	var team2_members: Array = []
+	for idx in range(7, 11):
+		var en := get_node_or_null("Enemy%d" % idx) as EnemyAdventurer
+		if en != null:
+			team2_members.append({
+				"unit_id": "enemy_%d" % idx,
+				"adventurer_class": int(en.adventurer_class),
+				"max_hp": en.max_hp,
+				"current_hp": en.current_hp,
+				"power": en.attack_damage,
+				"mass": en.mass,
+				"radius": en.radius,
+				"puck": en,
+			})
+	if not team2_members.is_empty():
+		unit_information_manager.register_adventurer_team(2, team2_members)
+
+	var canvas_node := get_node_or_null("Canvas")
+	if canvas_node != null and canvas_node.has_method("set_local_role"):
+		canvas_node.call("set_local_role", get_local_role())
 
 
 func _on_all_pucks_at_rest() -> void:

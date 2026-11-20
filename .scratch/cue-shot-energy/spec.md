@@ -13,7 +13,7 @@ Today on the demo Battlefield, the Boss Monster is driven by placeholder keyboar
 Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck scripts, Cue Table blocks, Time Board view, and a central `PuckVelocityManager` on the Battlefield:
 
 1. **Puck State & `PuckVelocityManager` (60 Hz Position / 20 Hz Velocity)**:
-   - Every Puck (`BasePuck` and subclasses) belongs to the `"pucks"` group and stores `radius`, `mass`, and `velocity` (default masses: Boss Monster `3.0`, Knight `2.0`, Warrior `1.5`, Ranger `1.2`, Mage `1.0`; `radius` read from its cylinder collider or exported property).
+   - Every Puck (`BasePuck` and subclasses) belongs to the `"pucks"` group and stores `radius`, `mass`, and `velocity` (default radii & squared-radius-ratio masses with Warrior `radius = 0.6, mass = 1.5` as reference and Boss Monster height & mass `x1.2`: Boss Monster `radius = 0.8, height = 0.6, mass = 3.2`; Knight `radius = 0.65, height = 0.4, mass ≈ 1.7604`; Warrior `radius = 0.6, height = 0.35, mass = 1.5`; Ranger `radius = 0.57, height = 0.35, mass = 1.35375`; Mage `radius = 0.55, height = 0.35, mass ≈ 1.2604`).
    - A Battlefield-level `PuckVelocityManager` advances moving Puck positions every frame ($\Delta \vec{p} = \vec{v} \cdot \Delta t$, host-authoritative for `MultiplayerSynchronizer`) and runs velocity updates at **20 Hz (`0.05s` interval)** to resolve collisions and ground Friction Forces with minimal CPU overhead.
 2. **Extendable Ground Friction on `TableBlock` (`-1.0 unit/sec²`)**:
    - Each `TableBlock` exposes an extendable method taking `puck: BasePuck` that computes the continuous ground effect on velocity.

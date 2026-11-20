@@ -22,6 +22,85 @@ var _pocket_center: Vector3 = Vector3.ZERO
 var _pocket_fall_elapsed: float = 0.0
 var _pocket_tilt_axis: Vector3 = Vector3(1.0, 0.0, 0.0)
 var _attack_timer: float = 0.0
+var _unit_id: String = ""
+var _reference_mark: String = ""
+var _reference_mark_color: Color = Color(0.95, 0.85, 0.35, 1.0)
+var _slot_color: Color = Color(0.5, 0.5, 0.5, 1.0)
+var _ref_mark_label_3d: Label3D = null
+
+
+func set_unit_id(uid: String) -> void:
+	_unit_id = uid
+
+
+func get_unit_id() -> String:
+	return _unit_id
+
+
+func set_reference_mark(mark: String, mark_color: Color = _reference_mark_color) -> void:
+	_reference_mark = mark
+	_reference_mark_color = mark_color
+	_update_reference_mark_3d()
+
+
+func get_reference_mark() -> String:
+	return _reference_mark
+
+
+func get_reference_mark_color() -> Color:
+	return _reference_mark_color
+
+
+func set_slot_color(col: Color) -> void:
+	_slot_color = col
+	_apply_slot_color_to_mesh()
+
+
+func get_slot_color() -> Color:
+	return _slot_color
+
+
+func _apply_slot_color_to_mesh() -> void:
+	var mesh_node := get_node_or_null("MeshInstance3D") as MeshInstance3D
+	if mesh_node == null:
+		mesh_node = get_node_or_null("PuckMesh") as MeshInstance3D
+	if mesh_node == null:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _slot_color
+	mat.roughness = 0.55
+	mat.metallic = 0.15
+	mesh_node.material_override = mat
+
+
+func _update_reference_mark_3d() -> void:
+	if _reference_mark.is_empty():
+		if _ref_mark_label_3d != null and is_instance_valid(_ref_mark_label_3d):
+			_ref_mark_label_3d.visible = false
+		return
+	if _ref_mark_label_3d == null or not is_instance_valid(_ref_mark_label_3d):
+		_ref_mark_label_3d = get_node_or_null("ReferenceMark3D") as Label3D
+		if _ref_mark_label_3d == null:
+			_ref_mark_label_3d = Label3D.new()
+			_ref_mark_label_3d.name = "ReferenceMark3D"
+			_ref_mark_label_3d.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			_ref_mark_label_3d.no_depth_test = false
+			_ref_mark_label_3d.shaded = false
+			_ref_mark_label_3d.double_sided = true
+			_ref_mark_label_3d.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+			add_child(_ref_mark_label_3d)
+	var half_h := 0.22
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null and col_shape.shape is CylinderShape3D:
+		half_h = (col_shape.shape as CylinderShape3D).height * 0.5 + 0.03
+	var is_boss_mark := (_reference_mark == "Ω" or _reference_mark == "Ψ" or self is BaseBossMonster)
+	_ref_mark_label_3d.font_size = 112 if is_boss_mark else 74
+	_ref_mark_label_3d.pixel_size = 0.0095 if is_boss_mark else 0.0085
+	_ref_mark_label_3d.outline_size = 0
+	_ref_mark_label_3d.position = Vector3(0.0, half_h, 0.0)
+	_ref_mark_label_3d.text = _reference_mark
+	_ref_mark_label_3d.modulate = _reference_mark_color
+	_ref_mark_label_3d.visible = true
 
 
 func _ready() -> void:
@@ -31,6 +110,10 @@ func _ready() -> void:
 	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape != null and col_shape.shape is CylinderShape3D:
 		radius = (col_shape.shape as CylinderShape3D).radius
+	if not _reference_mark.is_empty():
+		_update_reference_mark_3d()
+	if _slot_color != Color(0.5, 0.5, 0.5, 1.0):
+		_apply_slot_color_to_mesh()
 
 
 func apply_impulse(impulse: Vector3) -> void:

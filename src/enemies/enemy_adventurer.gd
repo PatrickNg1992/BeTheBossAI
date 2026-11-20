@@ -6,10 +6,10 @@ enum AdventurerClass { WARRIOR, KNIGHT, MAGE, RANGER }
 @export var adventurer_class: AdventurerClass = AdventurerClass.WARRIOR
 
 const CLASS_CONFIG := {
-	AdventurerClass.WARRIOR: {"hp": 80, "damage": 12, "speed": 2.5, "mass": 1.5, "radius": 0.55, "color": Color(0.8, 0.2, 0.2)},
-	AdventurerClass.KNIGHT: {"hp": 100, "damage": 8, "speed": 2.0, "mass": 2.0, "radius": 0.6, "color": Color(0.2, 0.2, 0.8)},
-	AdventurerClass.MAGE: {"hp": 50, "damage": 15, "speed": 2.0, "mass": 1.0, "radius": 0.45, "color": Color(0.6, 0.2, 0.8)},
-	AdventurerClass.RANGER: {"hp": 60, "damage": 10, "speed": 3.0, "mass": 1.2, "radius": 0.5, "color": Color(0.2, 0.7, 0.3)},
+	AdventurerClass.WARRIOR: {"hp": 80, "damage": 12, "speed": 2.5, "mass": 1.5, "radius": 0.6, "color": Color(0.8, 0.2, 0.2)},
+	AdventurerClass.KNIGHT: {"hp": 100, "damage": 8, "speed": 2.0, "mass": 1.75, "radius": 0.65, "color": Color(0.2, 0.2, 0.8)},
+	AdventurerClass.MAGE: {"hp": 50, "damage": 15, "speed": 2.0, "mass": 1.25, "radius": 0.55, "color": Color(0.6, 0.2, 0.8)},
+	AdventurerClass.RANGER: {"hp": 60, "damage": 10, "speed": 3.0, "mass": 1.35, "radius": 0.57, "color": Color(0.2, 0.7, 0.3)},
 }
 
 

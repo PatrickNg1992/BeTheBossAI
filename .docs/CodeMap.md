@@ -57,6 +57,8 @@ src/
 │   ├── timing_manager.gd        # TimingManager: 6-Timing state machine, Energy charging, staged damage, Pause & Fast Play
 │   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz ground friction & at-rest detection
 │   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot, 0.5-slot Energy preview, 3D aiming arrow & launch
+│   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, stats, Damage Stack & 0..N pucks
+│   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout & puck binding
 │   └── demo_battlefield.gd      # Demo battlefield root: wires TimingManager + Play/Fast Play/Pause UI + surfaces `battle_finished`
 │
 ├── cards/
@@ -66,13 +68,16 @@ src/
 │   └── card_manager.gd         # Deck / hand / casting area / discard logic + signals
 │
 ├── canvas/
-│   ├── canvas.gd               # HUD: boss multi-bar HP, enemy health bars, warnings
+│   ├── canvas.gd               # HUD: boss multi-bar HP, UnitInformationBoard mount, warnings
+│   ├── unit_display.gd         # UnitDisplay: medieval 1- or 2-cell unit card (portrait, Reference Mark, Class Mark, Frenzy Power, HP bar)
+│   ├── unit_information_board.gd # UnitInformationBoard: left & right 2×8 grids ({L|R}{1..8}{1..2}) driven by UnitInformationManager
 │   ├── card_canvas.gd          # Card UI: hand, selection, casting area + CD, deck/discard windows
 │   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, tag arrows (dumb view)
 │
 ├── resource/
 │   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, double_arrow, goal_flag, sword,
-│                               # puck_puck_banner, pocket_swirl PNGs (regenerate via tests/_gen_assets.tscn)
+│                               # puck_puck_banner, pocket_swirl, cartoon avatars (boss_dragon, knight, warrior, ranger, mage, minion),
+│                               # and class_mark PNGs (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
     └── localization.gd         # EN/ZH localization (autoload)

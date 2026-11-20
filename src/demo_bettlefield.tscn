@@ -14,62 +14,66 @@
 [ext_resource type="Texture2D" uid="uid://pxflfm5g886i" path="res://src/resource/battlefield/puck_puck_banner.png" id="13_ppbanner"]
 [ext_resource type="Script" uid="uid://b8yrrnrbv2h0t" path="res://src/battlefield/cue_shot_manager.gd" id="14_csm"]
 [ext_resource type="Script" uid="uid://2aalm6f12725" path="res://src/battlefield/puck_velocity_manager.gd" id="15_pvm"]
+[ext_resource type="Script" path="res://src/battlefield/unit_information_manager.gd" id="16_uim"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wtt4b"]
-height = 0.5
-radius = 0.75
+height = 0.6
+radius = 0.8
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dragon"]
 albedo_color = Color(0.5, 0.1, 0.1, 1)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_pdsn1"]
-top_radius = 0.75
-bottom_radius = 0.75
-height = 0.5
+top_radius = 0.8
+bottom_radius = 0.8
+height = 0.6
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_57l5a"]
 height = 0.35
-radius = 0.55
+radius = 0.6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_warrior"]
 albedo_color = Color(0.8, 0.2, 0.2, 1)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_lwd14"]
-top_radius = 0.55
-bottom_radius = 0.55
+top_radius = 0.6
+bottom_radius = 0.6
 height = 0.35
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_f627u"]
 height = 0.4
-radius = 0.6
+radius = 0.65
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_knight"]
 albedo_color = Color(0.2, 0.2, 0.8, 1)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_ipyvp"]
-top_radius = 0.6
-bottom_radius = 0.6
+top_radius = 0.65
+bottom_radius = 0.65
 height = 0.4
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_71yum"]
 height = 0.35
-radius = 0.45
+radius = 0.55
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mage"]
 albedo_color = Color(0.6, 0.2, 0.8, 1)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_s4e5k"]
-top_radius = 0.45
-bottom_radius = 0.45
+top_radius = 0.55
+bottom_radius = 0.55
 height = 0.35
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_wxcsg"]
 height = 0.35
+radius = 0.57
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ranger"]
 albedo_color = Color(0.2, 0.7, 0.3, 1)
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_xawwq"]
+top_radius = 0.57
+bottom_radius = 0.57
 height = 0.35
 
 [node name="Node3D" type="Node3D" unique_id=741025768]
@@ -87,6 +91,10 @@ script = ExtResource("15_pvm")
 unique_name_in_owner = true
 script = ExtResource("14_csm")
 
+[node name="UnitInformationManager" type="Node" parent="." unique_id=881025772]
+unique_name_in_owner = true
+script = ExtResource("16_uim")
+
 [node name="Camera3D" type="Camera3D" parent="." unique_id=979589707]
 transform = Transform3D(1, 0, 0, 0, 0.20791166, 0.9781476, 0, -0.9781476, 0.20791166, 0, 48, 10)
 current = true
@@ -95,7 +103,7 @@ fov = 50.0
 [node name="Battlefield" parent="." unique_id=1712109379 instance=ExtResource("1_q4n8h")]
 
 [node name="Player" type="CharacterBody3D" parent="." unique_id=475017923]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.75, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 script = ExtResource("2_q4f6s")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Player" unique_id=2018927931]
@@ -151,6 +159,78 @@ shape = SubResource("CylinderShape3D_wxcsg")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy4" unique_id=1600206608]
 material_override = SubResource("StandardMaterial3D_ranger")
 mesh = SubResource("CylinderMesh_xawwq")
+
+[node name="Enemy5" type="CharacterBody3D" parent="." unique_id=1402716792]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.675, 5)
+script = ExtResource("3_opwfs")
+adventurer_class = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy5" unique_id=872114301]
+shape = SubResource("CylinderShape3D_57l5a")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy5" unique_id=1600206609]
+material_override = SubResource("StandardMaterial3D_warrior")
+mesh = SubResource("CylinderMesh_lwd14")
+
+[node name="Enemy6" type="CharacterBody3D" parent="." unique_id=1402716793]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.675, 5)
+script = ExtResource("3_opwfs")
+adventurer_class = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy6" unique_id=872114302]
+shape = SubResource("CylinderShape3D_wxcsg")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy6" unique_id=1600206610]
+material_override = SubResource("StandardMaterial3D_ranger")
+mesh = SubResource("CylinderMesh_xawwq")
+
+[node name="Enemy7" type="CharacterBody3D" parent="." unique_id=1402716794]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 1.7, -5)
+script = ExtResource("3_opwfs")
+adventurer_class = 1
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy7" unique_id=872114303]
+shape = SubResource("CylinderShape3D_f627u")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy7" unique_id=1600206611]
+material_override = SubResource("StandardMaterial3D_knight")
+mesh = SubResource("CylinderMesh_ipyvp")
+
+[node name="Enemy8" type="CharacterBody3D" parent="." unique_id=1402716795]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.675, -5)
+script = ExtResource("3_opwfs")
+adventurer_class = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy8" unique_id=872114304]
+shape = SubResource("CylinderShape3D_57l5a")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy8" unique_id=1600206612]
+material_override = SubResource("StandardMaterial3D_warrior")
+mesh = SubResource("CylinderMesh_lwd14")
+
+[node name="Enemy9" type="CharacterBody3D" parent="." unique_id=1402716796]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.675, 6)
+script = ExtResource("3_opwfs")
+adventurer_class = 3
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy9" unique_id=872114305]
+shape = SubResource("CylinderShape3D_wxcsg")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy9" unique_id=1600206613]
+material_override = SubResource("StandardMaterial3D_ranger")
+mesh = SubResource("CylinderMesh_xawwq")
+
+[node name="Enemy10" type="CharacterBody3D" parent="." unique_id=1402716797]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.675, -6)
+script = ExtResource("3_opwfs")
+adventurer_class = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Enemy10" unique_id=872114306]
+shape = SubResource("CylinderShape3D_71yum")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Enemy10" unique_id=1600206614]
+material_override = SubResource("StandardMaterial3D_mage")
+mesh = SubResource("CylinderMesh_s4e5k")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=477215388]
 transform = Transform3D(1, 0, 0, 0, 0.17364822, 0.9848077, 0, -0.9848077, 0.17364822, 0, 8, 0)
@@ -251,32 +331,32 @@ color = Color(0.15, 0.85, 0.2, 1)
 [node name="LeftUnitPanel" type="PanelContainer" parent="Canvas" unique_id=664790690]
 unique_name_in_owner = true
 anchors_preset = -1
-anchor_left = -0.024
-anchor_top = 0.24
-anchor_right = 0.135
-anchor_bottom = 0.76
+anchor_left = 0.008
+anchor_top = 0.21
+anchor_right = 0.168
+anchor_bottom = 0.785
 mouse_filter = 2
 
 [node name="LeftUnitList" type="VBoxContainer" parent="Canvas/LeftUnitPanel" unique_id=664790691]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="RightUnitPanel" type="PanelContainer" parent="Canvas" unique_id=664790692]
 unique_name_in_owner = true
 anchors_preset = -1
-anchor_left = 0.865
-anchor_top = 0.24
-anchor_right = 1.024
-anchor_bottom = 0.76
+anchor_left = 0.832
+anchor_top = 0.21
+anchor_right = 0.992
+anchor_bottom = 0.785
 mouse_filter = 2
 
 [node name="RightUnitList" type="VBoxContainer" parent="Canvas/RightUnitPanel" unique_id=664790693]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 4
 
 [node name="EnemyHealthBars" type="Control" parent="Canvas" unique_id=1650086343]
 unique_name_in_owner = true

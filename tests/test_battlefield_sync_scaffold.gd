@@ -710,11 +710,12 @@ func test_authoritative_cue_shot_launch_and_puck_positions_sync_across_all_peers
 			assert_eq(rec.get("transfer_mode"), MpTransport.RELIABLE, "action_cue_shot is sent with RELIABLE")
 	assert_true(sent_cue_shot, "release_drag sent action_cue_shot to Host")
 
-	# Verify Host deducted 3.5 from Player B (5.0 -> 1.5), cleared aiming, applied Impulse v0 = J / m = (6*3.5)/3 = 7.0,
+	# Verify Host deducted 3.5 from Player B (5.0 -> 1.5), cleared aiming, applied Impulse v0 = J / m = (7.2*3.5)/3.2 = 7.875,
 	# and transitioned all Peers to Puck-puck Time! with rewind animation and banner
 	assert_eq(host_bf.get_player_energy("b"), 1.5, "Host deducted 3.5 Energy from Player B (5.0 -> 1.5)")
-	assert_true(is_equal_approx(host_boss.velocity.length(), 7.0),
-		"Host applied launch Impulse J = 6 * 3.5 = 21 -> v0 = 21 / 3 = 7.0 to Boss Monster")
+	var expected_j: float = float(host_bf.cue_shot_manager.impulse_per_energy) * 3.5
+	assert_true(is_equal_approx(host_boss.velocity.length(), expected_j / host_boss.mass),
+		"Host applied launch Impulse J = 7.2 * 3.5 = 25.2 -> v0 = J / m to Boss Monster")
 
 	for peer_bf in [host_bf, bob_bf, carol_bf]:
 		assert_eq(peer_bf.timing_manager.get_current_timing(), TimingManager.TIMING_PUCK_PUCK,

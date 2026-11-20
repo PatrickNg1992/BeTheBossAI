@@ -207,7 +207,7 @@ func test_demo_battlefield_mounts_cue_shot_manager_and_wires_play_time_energy_pr
 	assert_true(csm.release_drag(), "Release launches Cue-Shot")
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Entered Puck-puck Time!")
 	assert_eq(tm.get_energy(), 1.0, "Remaining Energy is 1.0")
-	assert_true(boss.velocity.x < -5.9, "Boss Monster launched with impulse velocity along -X")
+	assert_true(boss.velocity.x < -5.5, "Boss Monster launched with impulse velocity along -X")
 
 	# Step PuckVelocityManager until Boss Monster decelerates to rest -> returns to Charging Time
 	for _i in range(130):
@@ -226,7 +226,7 @@ func test_demo_battlefield_mounts_cue_shot_manager_and_wires_play_time_energy_pr
 	assert_eq(csm.get_required_energy(), 1.5, "2nd drag selects 1.5 Energy")
 	assert_true(csm.release_drag(), "2nd shot launches")
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PUCK_PUCK, "Entered Puck-puck Time! for 2nd shot")
-	assert_true(boss.velocity.x > 2.9, "Boss Monster launched along +X on 2nd shot")
+	assert_true(boss.velocity.x > 2.7, "Boss Monster launched along +X on 2nd shot")
 
 	tree.root.remove_child(bf)
 	bf.queue_free()
@@ -240,18 +240,18 @@ func test_puck_mass_radius_and_table_block_ground_friction_deceleration() -> voi
 	var puck := DragonPlayer.new()
 	var col := CollisionShape3D.new()
 	var cyl := CylinderShape3D.new()
-	cyl.radius = 0.75
+	cyl.radius = 0.8
 	col.shape = cyl
 	puck.add_child(col)
 	_root.add_child(puck)
 
 	assert_true(puck.is_in_group("pucks"), "BasePuck registers in the 'pucks' group")
-	assert_eq(puck.mass, 3.0, "Boss Monster default mass is 3.0")
-	assert_eq(puck.radius, 0.75, "Puck auto-detects radius from CylinderShape3D")
+	assert_true(is_equal_approx(puck.mass, 3.2), "Boss Monster default mass is 3.2")
+	assert_true(is_equal_approx(puck.radius, 0.8), "Puck auto-detects radius from CylinderShape3D")
 
-	# Mass-dependent impulse: J = 15 -> v_0 = 15 / 3 = 5.0 units/sec
-	puck.apply_impulse(Vector3(15.0, 0.0, 0.0))
-	assert_true(is_equal_approx(puck.velocity.x, 5.0), "apply_impulse divides impulse by mass (15 / 3 = 5.0)")
+	# Mass-dependent impulse: J = 16 -> v_0 = 16 / 3.2 = 5.0 units/sec
+	puck.apply_impulse(Vector3(16.0, 0.0, 0.0))
+	assert_true(is_equal_approx(puck.velocity.x, 5.0), "apply_impulse divides impulse by mass (16 / 3.2 = 5.0)")
 
 	# Standard grass TableBlock decelerates at -1.2 unit/sec^2 (5.0 -> 3.8 after 1.0s of 20 Hz ticks)
 	var grass_block := TableBlock.new()
@@ -324,8 +324,8 @@ func test_puck_velocity_manager_steps_positions_and_20hz_ground_friction_to_rest
 	# Verify apply_force and calculate_position adopt fast_play_ratio (e.g. x2.0)
 	puck.global_position = Vector3(0.0, 1.75, 0.0)
 	puck.velocity = Vector3.ZERO
-	pvm.apply_impulse_to_puck(puck, Vector3(7.2, 0.0, 0.0))
-	assert_true(is_equal_approx(puck.velocity.x, 2.4), "apply_impulse_to_puck sets v = 7.2 / 3.0 = 2.4")
+	pvm.apply_impulse_to_puck(puck, Vector3(2.4 * puck.mass, 0.0, 0.0))
+	assert_true(is_equal_approx(puck.velocity.x, 2.4), "apply_impulse_to_puck sets v = J / m = 2.4")
 
 	# At fast_play_ratio = 2.0: 0.5s of wall time (10 ticks of 0.05s) advances the same distance and deceleration as 1.0s at x1.0
 	for _i in range(10):
@@ -411,16 +411,16 @@ func test_default_relative_masses_and_radii_per_puck_type() -> void:
 	for p in [boss, knight, warrior, ranger, mage]:
 		_root.add_child(p)
 
-	assert_eq(boss.mass, 3.0, "Boss Monster mass is 3.0")
-	assert_eq(boss.radius, 0.75, "Boss Monster radius is 0.75")
-	assert_eq(knight.mass, 2.0, "Knight mass is 2.0")
-	assert_eq(knight.radius, 0.6, "Knight radius is 0.6")
-	assert_eq(warrior.mass, 1.5, "Warrior mass is 1.5")
-	assert_eq(warrior.radius, 0.55, "Warrior radius is 0.55")
-	assert_eq(ranger.mass, 1.2, "Ranger mass is 1.2")
-	assert_eq(ranger.radius, 0.5, "Ranger radius is 0.5")
-	assert_eq(mage.mass, 1.0, "Mage mass is 1.0")
-	assert_eq(mage.radius, 0.45, "Mage radius is 0.45")
+	assert_true(absf(boss.mass - 3.2) < 0.02, "Boss Monster mass is 3.2 (1.5 * (0.8/0.6)^2 * 1.2)")
+	assert_true(absf(boss.radius - 0.8) < 0.001, "Boss Monster radius is 0.8")
+	assert_true(absf(knight.mass - 1.5 * (0.65 * 0.65) / (0.6 * 0.6)) < 0.02, "Knight mass is ~1.75 (1.5 * (0.65/0.6)^2)")
+	assert_true(absf(knight.radius - 0.65) < 0.001, "Knight radius is 0.65")
+	assert_true(absf(warrior.mass - 1.5) < 0.02, "Warrior mass is 1.5")
+	assert_true(absf(warrior.radius - 0.6) < 0.001, "Warrior radius is 0.6")
+	assert_true(absf(ranger.mass - 1.5 * (0.57 * 0.57) / (0.6 * 0.6)) < 0.02, "Ranger mass is ~1.35 (1.5 * (0.57/0.6)^2)")
+	assert_true(absf(ranger.radius - 0.57) < 0.001, "Ranger radius is 0.57")
+	assert_true(absf(mage.mass - 1.5 * (0.55 * 0.55) / (0.6 * 0.6)) < 0.02, "Mage mass is ~1.25 (1.5 * (0.55/0.6)^2)")
+	assert_true(absf(mage.radius - 0.55) < 0.001, "Mage radius is 0.55")
 
 
 func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
@@ -441,6 +441,10 @@ func test_puck_puck_collision_impulse_transfer_and_swept_20hz_check() -> void:
 	mage.restitution = 0.8
 	_root.add_child(boss)
 	_root.add_child(mage)
+	boss.mass = 3.0
+	boss.radius = 0.75
+	mage.mass = 1.0
+	mage.radius = 0.45
 
 	boss.global_position = Vector3(0.0, 1.75, 0.0)
 	# Combined radius = 0.75 + 0.45 = 1.20. Place Mage at x = 1.15 (slight overlap / contact)
@@ -619,10 +623,10 @@ func test_first_rebound_aiming_preview_for_open_table_cushion_and_enemy_puck() -
 
 	var boss := DragonPlayer.new()
 	boss.name = "BossAimTest"
-	boss.mass = 3.0
-	boss.radius = 0.75
 	boss.restitution = 0.8
 	_root.add_child(boss)
+	boss.mass = 3.0
+	boss.radius = 0.75
 	boss.global_position = Vector3(0.0, 1.75, 0.0)
 
 	_cue_mgr.battlefield = table
@@ -670,10 +674,10 @@ func test_first_rebound_aiming_preview_for_open_table_cushion_and_enemy_puck() -
 	boss.global_position = Vector3(0.0, 1.75, 0.0)
 	var mage := EnemyAdventurer.new()
 	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
-	mage.mass = 1.0
-	mage.radius = 0.45
 	mage.restitution = 0.8
 	_root.add_child(mage)
+	mage.mass = 1.0
+	mage.radius = 0.45
 	mage.global_position = Vector3(3.2, 1.675, 0.0)
 
 	_cue_mgr.begin_drag(Vector3(0.0, 1.75, 0.0))

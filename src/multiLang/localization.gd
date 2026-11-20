@@ -76,6 +76,17 @@ const EN := {
 	timing_resume = "Resume",
 	timing_action = "Action",
 	timing_puck_puck_time = "Puck-puck Time!",
+	uib_team_1 = "Adventurer Team I",
+	uib_team_2 = "Adventurer Team II",
+	uib_frenzy_label = "Frenzy",
+	uib_frenzy_format = "{pct}%",
+	uib_boss_dragon = "Fire Dragon",
+	uib_class_knight = "Knight",
+	uib_class_warrior = "Warrior",
+	uib_class_ranger = "Ranger",
+	uib_class_mage = "Mage",
+	uib_minion = "Minion",
+	uib_target_puck = "Target",
 }
 
 const ZH := {
@@ -141,6 +152,17 @@ const ZH := {
 	timing_resume = "继续",
 	timing_action = "敌方行动",
 	timing_puck_puck_time = "弹珠时间！",
+	uib_team_1 = "冒险者小队 I",
+	uib_team_2 = "冒险者小队 II",
+	uib_frenzy_label = "狂热",
+	uib_frenzy_format = "{pct}%",
+	uib_boss_dragon = "炎龙魔王",
+	uib_class_knight = "骑士",
+	uib_class_warrior = "战士",
+	uib_class_ranger = "游侠",
+	uib_class_mage = "法师",
+	uib_minion = "仆从",
+	uib_target_puck = "目标",
 }
 
 

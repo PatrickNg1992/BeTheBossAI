@@ -94,7 +94,7 @@ For easy visual matching, both the **puck** and the **Unit Display grid border**
 - `?3`: **Yellow** (fits Ranger)
 - `?4`: **Purple** (fits Mage)
 - `?5`: **Green** (free position)
-- `?6`: **Cyan** (free position)
+- `?6`: **Orange** (free position)
 - **Boss Monster**: **Black**
 
 To distinguish between the two Enemy Adventurer Teams when both use the same `?1..?6` position colours, the **Reference Mark colour** itself differs by team:
@@ -103,4 +103,4 @@ To distinguish between the two Enemy Adventurer Teams when both use the same `?1
 
 (This logic affects the enemy random algorithm)
 
-On the player side, the boss monster of player A (or the player of a single-player game) is marked as Ω and the minions are marked as ω1, ω2, ω3... (using **Gold** for the Ω / ω Reference Mark colour). The boss monster of player B is marked as Ψ and the minions are marked as ψ1, ψ2, ψ3... (using **Silver** for the Ψ / ψ Reference Mark colour). For minion puck and grid border colours (`1..6`), use a deeper shade of the corresponding `1..6` position colours (Blue, Red, Yellow, Purple, Green, Cyan; exact shades TBC).
+On the player side, the boss monster of player A (or the player of a single-player game) is marked as Ω and the minions are marked as ω1, ω2, ω3... (using **Gold** for the Ω / ω Reference Mark colour). The boss monster of player B is marked as Ψ and the minions are marked as ψ1, ψ2, ψ3... (using **Silver** for the Ψ / ψ Reference Mark colour). For minion puck and grid border colours (`1..6`), use a deeper shade of the corresponding `1..6` position colours (Blue, Red, Yellow, Purple, Green, Orange; exact shades TBC).
