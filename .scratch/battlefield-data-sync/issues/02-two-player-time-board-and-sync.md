@@ -12,4 +12,4 @@
 - [x] Calling `sync_time_board()` on the Host broadcasts the Time Board state (`turn_progress`, `energy_a`, `energy_b`, `has_player_b`, `action_tags`, `unit_tag_turns`) to all Peers and updates the local Host display.
 - [x] Continuous fractional Turn charge progress during `Charging Time` is sent via `sync_time_board()` using `UNRELIABLE_ORDERED`, whereas discrete changes (Turn slot completion, Energy spend/gain, Action Tag updates) are sent using `RELIABLE`.
 - [x] When `sync_time_board()` lowers a player's Energy, each client automatically plays the Energy spend rewind animation locally from the state change.
-- [ ] Pause and request human UI review once the 2-player Time Board visual layout is ready.
+- [x] Pause and request human UI review once the 2-player Time Board visual layout is ready.

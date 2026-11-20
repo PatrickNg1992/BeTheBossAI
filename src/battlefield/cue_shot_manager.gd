@@ -37,6 +37,10 @@ var cancel_sound_play_count: int = 0
 var _in_play_time: bool = false
 var _clock_paused: bool = false
 var _dragging: bool = false
+var _remote_aiming: bool = false
+var _remote_aim_origin: Vector3 = Vector3.ZERO
+var _remote_overdragged: bool = false
+var _remote_player_seat: String = ""
 var _in_deadzone: bool = true
 var _required_energy: float = 0.0
 var _shot_direction: Vector3 = Vector3.ZERO
@@ -99,8 +103,11 @@ func _bind_timing_signals() -> void:
 
 func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	_in_play_time = new_timing == TimingManager.TIMING_PLAY
-	if not _in_play_time and _dragging:
-		cancel_drag(false)
+	if not _in_play_time:
+		if _dragging:
+			cancel_drag(false)
+		elif _remote_aiming:
+			apply_synced_aiming({"active": false})
 
 
 func _on_pause_changed(paused: bool) -> void:
@@ -116,6 +123,14 @@ func can_aim() -> bool:
 		_clock_paused = timing_manager.is_paused()
 	if not _in_play_time or _clock_paused:
 		return false
+	var parent := get_parent()
+	if parent != null and parent.has_method("get_local_role") and "active_player" in parent:
+		var my_role := str(parent.call("get_local_role"))
+		var act := str(parent.get("active_player"))
+		if my_role != "a" and my_role != "b":
+			return false
+		if not act.is_empty() and act != my_role:
+			return false
 	if velocity_manager != null and not velocity_manager.are_all_pucks_at_rest():
 		return false
 	return true
@@ -181,11 +196,13 @@ func begin_drag(world_point: Vector3) -> bool:
 	if flat_offset.length() > boss_click_radius:
 		return false
 	_dragging = true
+	_remote_aiming = false
 	_in_deadzone = true
 	_required_energy = 0.0
 	_shot_direction = Vector3(0.0, 0.0, -1.0)
 	_update_board_preview(0.0)
 	_update_aim_line_visuals()
+	_notify_host_aim_update(true, MpTransport.UNRELIABLE_ORDERED)
 	return true
 
 
@@ -202,8 +219,9 @@ func update_drag(world_point: Vector3) -> void:
 	if dist <= deadzone_radius or dist <= 0.0001:
 		_in_deadzone = true
 		_required_energy = 0.0
-		_update_board_preview(0.0)
+		_update_board_preview(0.0, "", true)
 		_update_aim_line_visuals()
+		_notify_host_aim_update(true, MpTransport.UNRELIABLE_ORDERED)
 		drag_updated.emit(0.0, Vector3.ZERO, true, false)
 		return
 	_in_deadzone = false
@@ -212,6 +230,7 @@ func update_drag(world_point: Vector3) -> void:
 	_required_energy = clampf(snappedf(quantized, ENERGY_STEP), MIN_SHOT_ENERGY, MAX_SHOT_ENERGY)
 	_update_board_preview(_required_energy)
 	_update_aim_line_visuals()
+	_notify_host_aim_update(true, MpTransport.UNRELIABLE_ORDERED)
 	drag_updated.emit(_required_energy, _shot_direction, false, is_overdragged())
 
 
@@ -225,20 +244,26 @@ func release_drag() -> bool:
 	var dir := _shot_direction
 	var impulse_mag := impulse_per_energy * spent
 	_dragging = false
+	_remote_aiming = false
 	_in_deadzone = true
 	_required_energy = 0.0
 	_shot_direction = Vector3.ZERO
 	_update_board_preview(0.0)
 	_hide_aim_line_visuals()
-	if boss_puck is BasePuck:
-		(boss_puck as BasePuck).apply_impulse(dir * impulse_mag)
-	if timing_manager != null:
-		var seat := _get_aiming_seat()
-		if seat == "b":
-			timing_manager.consume_player_energy("b", spent)
-			timing_manager.fire_cue_shot(0.0)
-		else:
-			timing_manager.fire_cue_shot(spent)
+	var parent := get_parent()
+	if parent != null and parent.has_method("action_cue_shot"):
+		parent.call("action_cue_shot", dir, spent)
+	else:
+		_notify_host_aim_update(false, MpTransport.RELIABLE)
+		if boss_puck is BasePuck:
+			(boss_puck as BasePuck).apply_impulse(dir * impulse_mag)
+		if timing_manager != null:
+			var seat := _get_aiming_seat()
+			if seat == "b":
+				timing_manager.consume_player_energy("b", spent)
+				timing_manager.fire_cue_shot(0.0)
+			else:
+				timing_manager.fire_cue_shot(spent)
 	shot_launched.emit(spent, dir)
 	return true
 
@@ -246,15 +271,60 @@ func release_drag() -> bool:
 func cancel_drag(play_sound: bool = true) -> void:
 	var was_dragging := _dragging
 	_dragging = false
+	_remote_aiming = false
 	_in_deadzone = true
 	_required_energy = 0.0
 	_shot_direction = Vector3.ZERO
 	_update_board_preview(0.0)
 	_hide_aim_line_visuals()
 	if was_dragging:
+		_notify_host_aim_update(false, MpTransport.RELIABLE)
 		if play_sound:
 			_play_cancel_sound()
 		shot_cancelled.emit()
+
+
+func _notify_host_aim_update(active: bool, transfer_mode: int) -> void:
+	var parent := get_parent()
+	if parent == null or not parent.has_method("action_aim_update"):
+		return
+	var payload := {
+		"active": active,
+		"player_seat": _get_aiming_seat(),
+		"aim_origin": _boss_origin(),
+		"aim_direction": _shot_direction,
+		"energy_cost": _required_energy if active else 0.0,
+		"in_deadzone": _in_deadzone if active else false,
+		"over_dragged": is_overdragged() if active else false,
+	}
+	parent.call("action_aim_update", payload, transfer_mode)
+
+
+## Renders or clears the live 3D aiming line and Time Board Energy cost preview
+## received from the Host's `sync_aiming()` broadcast.
+func apply_synced_aiming(payload: Dictionary) -> void:
+	var active := bool(payload.get("active", false))
+	if not active:
+		if not _dragging:
+			_remote_aiming = false
+			_in_deadzone = true
+			_required_energy = 0.0
+			_shot_direction = Vector3.ZERO
+			_update_board_preview(0.0)
+			_hide_aim_line_visuals()
+		return
+	if _dragging:
+		# Local active_player is already rendering their own drag in real time.
+		return
+	_remote_aiming = true
+	_remote_player_seat = str(payload.get("player_seat", "a"))
+	_remote_aim_origin = payload.get("aim_origin", _boss_origin()) as Vector3
+	_shot_direction = payload.get("aim_direction", Vector3(0.0, 0.0, -1.0)) as Vector3
+	_required_energy = float(payload.get("energy_cost", 0.0))
+	_in_deadzone = bool(payload.get("in_deadzone", _required_energy < MIN_SHOT_ENERGY))
+	_remote_overdragged = bool(payload.get("over_dragged", false))
+	_update_board_preview(_required_energy, _remote_player_seat, _in_deadzone)
+	_update_aim_line_visuals()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -335,9 +405,10 @@ func _boss_restitution() -> float:
 	return 0.85
 
 
-func _update_board_preview(cost: float) -> void:
+func _update_board_preview(cost: float, player_seat: String = "", in_deadzone: bool = false) -> void:
 	if time_board != null and is_instance_valid(time_board):
-		time_board.set_preview_cost(cost)
+		var seat := player_seat if not player_seat.is_empty() else _get_aiming_seat()
+		time_board.set_preview_cost(cost, seat, in_deadzone)
 
 
 func _setup_aim_visuals() -> void:
@@ -519,11 +590,13 @@ func _get_other_pucks() -> Array[BasePuck]:
 
 func _update_aim_line_visuals() -> void:
 	_resolve_references()
-	var is_red := _in_deadzone or is_overdragged()
+	var is_active_aim := _dragging or _remote_aiming
+	var is_over := _remote_overdragged if _remote_aiming else is_overdragged()
+	var is_red := _in_deadzone or is_over
 	var impulse_val := get_selected_impulse()
 	var max_reach := impulse_val * aim_length_per_impulse if not _in_deadzone else deadzone_radius * 1.35
 	var dir := _shot_direction if _shot_direction.length_squared() > 0.0001 else Vector3(0.0, 0.0, -1.0)
-	var origin := _boss_origin()
+	var origin := _remote_aim_origin if _remote_aiming else _boss_origin()
 
 	var pred: Dictionary
 	if _in_deadzone or impulse_val <= 0.0001:
@@ -547,7 +620,7 @@ func _update_aim_line_visuals() -> void:
 	var struck_col := aim_invalid_color if is_red else aim_struck_puck_color
 
 	_aim_line_state = {
-		"visible": _dragging,
+		"visible": is_active_aim,
 		"y": AIM_LINE_Y,
 		"length": max_reach,
 		"primary_length": pred["primary_length"],
@@ -571,7 +644,7 @@ func _update_aim_line_visuals() -> void:
 	if _aim_immediate_mesh == null or _aim_mesh_instance == null:
 		return
 	_aim_immediate_mesh.clear_surfaces()
-	if not _dragging or max_reach <= 0.01:
+	if not is_active_aim or max_reach <= 0.01:
 		_aim_mesh_instance.visible = false
 		return
 	_aim_mesh_instance.visible = true

@@ -36,7 +36,27 @@ A future player-side puck, summoned by cards or the Boss Monster. Follows Enemy 
 _Avoid_: summon
 
 **Health Bar**:
-One segment of a unit's HP. The Boss Monster has several; losing one grants brief invincibility and a card draw. Enemy Adventurers have one.
+One segment of a unit's HP. The Boss Monster has several; losing one grants brief invincibility and a card draw. Every Boss Monster's damage taken in a single `Settle Time` is capped at clearing at most one Health Bar (its Ghost HP trail clamps at `0` of the current bar and excess damage never spills into the next bar). Enemy Adventurers have one Health Bar.
+
+**Unit Information Board**:
+The HUD board on the left and right edges of the battlefield canvas, arranged as two 2-column × 8-row grids (`{L|R}{Row 1..8}{Col 1..2}`) that display the status of all units in the battle. Replaces floating health bars on the 3D Cue Table.
+_Avoid_: Adventurer Team Profile, Hero Team Profile, side panel
+
+**Unit Display**:
+One cell on the Unit Information Board (or a 2-column horizontal span for a Boss Monster) showing a single unit's portrait, Reference Mark, Class Mark (for Enemy Adventurers), HP bar with Ghost HP trail, Damage Stack count, and Action Tag turn countdowns. Fixed to the grid position matching the unit's Reference Mark index (unoccupied class slots remain empty rather than compacting).
+_Avoid_: unit card, profile box
+
+**Unit Detail Display**:
+A popup window alongside the Unit Information Board that shows full stats, skills, status effects, and puck properties for an inspected unit.
+
+**Reference Mark**:
+The short identifier shown on both the upper-left corner of a unit's Unit Display and the center of its Puck(s) on the Cue Table so the player can match HUD cells to pucks. Player A's Boss Monster uses `Ω` and minions `ω1..ω6` (Gold Reference Mark colour); Player B's uses `Ψ` and minions `ψ1..ψ6` (Silver Reference Mark colour); Enemy Adventurer Team 1 uses `A1..A6` (Deep Grey Reference Mark colour) and Team 2 uses `B1..B6` (Deep Brown Reference Mark colour). In normal random Adventurer Team generation, `?1` = Knight, `?2` = Warrior, `?3` = Ranger, `?4` = Mage, and `?5..6` are free positions for duplicate classes (missing classes leave their numbers and grid cells unused); customized stage compositions may override this class-to-slot assignment. Both the puck colour and the Unit Display border colour follow the slot index (`?1` Blue, `?2` Red, `?3` Yellow, `?4` Purple, `?5` Green, `?6` Cyan; Minions use a deeper shade of `1..6` TBC; Boss Monster is Black).
+
+**Unit Information Manager**:
+The battle-scoped manager node inside the Battlefield Scene that owns the authoritative `Unit Information` data objects (stats, `current_hp`, `max_hp`, `bars_remaining`, `Damage Stack`, `Hit Level`, `Frenzy Power`, buffs/debuffs, and active Puck references) for every unit in the battle, whether alive or defeated, and drives the Unit Information Board via events. Puck scripts hold only physics state (radius, mass, rotation, position, velocity); combat stats and HP live in the Unit Information DO.
+
+**Frenzy Power**:
+A percentage damage multiplier (baseline `100%`, minimum floor `50%`) held by each Boss Monster and displayed on the right side of its 2-cell Unit Display. Increases when the Boss Monster collides with a non-Knight Enemy Adventurer puck (default `+10%`) and decreases when colliding with a Knight puck (default `-20%`, or via special blocks/effects). Multiplies damage dealt to opposing Adventurers at `Settle Time` per `Damage DO`'s source Boss Monster: $\left(\sum_{i} \text{Damage}_i \times \text{Frenzy}(\text{Source}_i)\right) \times 1.1^{\text{Hit Level}}$ (excluded from the pre-settle Ghost HP trail, then visually spread to enemies when settlement begins). After each `Settle Time` settlement, decays via `new_frenzy = current_frenzy / 2 + 50%`.
 
 ### The Battlefield
 
@@ -129,6 +149,12 @@ The resource spent on Cue-Shots, shown as the energy fill on the Time Board. Cap
 
 **Collision Damage**:
 Damage dealt by puck impacts above a small speed threshold. Enemy Adventurers suffer it from any impact — except impacts with a Knight, which protects its allies. Only a Knight's impacts damage the Boss Monster, whoever initiated the collision.
+
+**Damage Stack**:
+The time-ordered list of pending damage records (`Damage DO`: source, value, damage type) accumulated on a unit during `Puck-puck Time!` or `Action Time` before resolving in `Settle Time`. Displayed on the Unit Display as a hit-count badge on the left of the HP bar (invisible at 0, shaking on impact) and a Ghost HP trail on the HP bar. Cleared after Damage Settlement in `Settle Time`.
+
+**Hit Level**:
+A per-unit integer (default `0`, held by all units: Boss Monsters, Minions, and Enemy Adventurers) adjusted by conditional effects (such as hitting a Focusing puck, special cushions, or type effectiveness) that scales final damage exponentially by $1.1^{\text{Hit Level}}$. Included in the Ghost HP trail and resets to `0` after `Settle Time` settlement.
 
 **Interrupt**:
 Cancelling or revising a adventurer's pending attack. Hard interrupts (a collision with the Focusing puck) force a cancel; soft interrupts (the target moving out of range, card effects) let the adventurer re-decide at the next Settle Time. Class texture: a Warrior takes bonus collision damage; a Ranger places a Recovery action tag — an action whose firing ends the stun; a Mage suffers a plain cancel; a Knight still deals damage and takes reduced damage on collision, but its Focusing is cancelled like any other.

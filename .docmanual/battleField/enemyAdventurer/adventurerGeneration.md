@@ -20,13 +20,13 @@ These properties combined to determine the Max HP, action speed and attack power
 
 ## Stage generation Logic
 
-At the beginning of a stage, all the enemies of all waves will be randomly generated. However, the player only knows the hero teams of the incoming wave. 
+At the beginning of a stage, all the enemies of all waves will be randomly generated. However, the player only knows the adventurer teams of the incoming wave. 
 
 The generation logic should use a seed (maybe by date) so the hero combination of a stage over a period of time (maybe daily) is always the same, including classes, skills, LV, etc. 
 
-However, the generation seed does not control the positions the heroes appear in a wave. It also does not affect the card order. Players should experience some degree of difference even though they play a stage with exactly the same hero team combination.
+However, the generation seed does not control the positions the heroes appear in a wave. It also does not affect the card order. Players should experience some degree of difference even though they play a stage with exactly the same adventurer team combination.
 
-To balance the difficulty of stages, the combat power of each hero is calculated to adjust the strength of the hero teams. The combat power of hero is calculated by class, skills, and level. 
+To balance the difficulty of stages, the combat power of each hero is calculated to adjust the strength of the adventurer teams. The combat power of hero is calculated by class, skills, and level. 
 
 For the seeded generation logic, it should determine the following steps in order:
 

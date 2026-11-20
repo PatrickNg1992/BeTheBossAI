@@ -1,10 +1,10 @@
 # Unit Information Manager
 
-The unit manager handles the units' status on the battlefield. It should be an autoloaded object. 
+The unit manager handles the units' status on the battlefield. It should be a battle-scoped manager node inside the Battlefield scene (discoverable via group `"unit_information_manager"`, like `TimingManager` and `CardManager`, so multiple battlefield instances and resets remain isolated). 
 
-For each unit on the battlefield, whether defeated or not, it holds a *Unit Information* DO to manage the status, including name, class, HP, Power, buffs, etc. The Unit Information DO also points to the corresponding puck objects. A unit does not need to have exactly 1 puck. Some unit skills may create or hide pucks later. Creating and removing pucks should notify the manager.
+For each unit on the battlefield, whether defeated or not, it holds a single *Unit Information* DO (corresponding to one *Unit Display* cell on the Unit Information Board) to manage the status, including name, class, HP, Power, buffs, etc. The Unit Information DO also points to an array of `0..N` active puck objects. A unit does not need to have exactly 1 puck (e.g. 0 when pocketed/hidden, or multiple when split/cloned by a skill). Creating and removing pucks should notify the manager. All active pucks belonging to the same unit carry the unit's same *Reference Mark*, highlight together when the player hovers the unit's Unit Display, and route any collision damage into that unit's single shared *Damage Stack*.
 
-Store a unit's puck-related physics information in the puck script, such as puck radius, mass, rotation, position and velocity. Other information should be stored in Unit Information DOs. Details to be specified. 
+Store a unit's puck-related physics information in the puck script, such as puck radius, mass, rotation, position and velocity. Other combat/unit information — including `current_hp`, `max_hp`, `bars_remaining` (for Boss Monsters), `power`, `adventurer_class`, `damage_stack`, `hit_level`, `frenzy_power`, buffs/debuffs, and defeated state — should be moved out of the puck scripts (`BasePuck`, `BaseBossMonster`, `EnemyAdventurer`) and stored authoritatively in the *Unit Information* DOs managed by `UnitInformationManager`. For Enemy Adventurers, default demo max HP values are scaled to the thousands level: **Knight = 3000**, **Warrior = 2200**, **Ranger = 2200**, **Mage = 1500**. 
 
 When a unit takes damage in "Puck-puck time!" or Action Time, the damage is temporarily stored in the Unit Information as *Damage Stack*. The damage calculation and defeat checking should be delayed to Settle Timing. The Damage Stack should be displayed as hit count and a Ghost bar in the HP bar (HP trailing) before it is settled.
 

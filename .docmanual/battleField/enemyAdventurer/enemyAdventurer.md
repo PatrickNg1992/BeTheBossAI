@@ -36,7 +36,7 @@ The class system is desbribed in ./heroClasses.md
 
 ## Visualization
 
-On the right side of the canvas in the battlefield scene, an area shows the basic information of the members of the hero team, called the *Hero Team Profile*.
+On the right side of the canvas in the battlefield scene, an area shows the basic information of the members of the adventurer team, called the *Unit Information Board*.
 
 The Profile shows a box for each hero in that wave. It displays the following info:
 

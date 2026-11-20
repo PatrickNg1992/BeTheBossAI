@@ -150,6 +150,8 @@ func _ready() -> void:
 	timing_manager.energy_changed.connect(_on_energy_changed)
 	timing_manager.pause_changed.connect(_on_pause_changed)
 	timing_manager.fast_play_changed.connect(_on_fast_play_changed)
+	if puck_velocity_manager != null and not puck_velocity_manager.all_pucks_at_rest.is_connected(_on_all_pucks_at_rest):
+		puck_velocity_manager.all_pucks_at_rest.connect(_on_all_pucks_at_rest)
 
 	play_button.pressed.connect(_on_play_button_pressed)
 	fast_play_button.pressed.connect(_on_fast_play_pressed)
@@ -187,6 +189,10 @@ func _apply_role_and_authority_mode() -> void:
 	for child in get_children():
 		if child is BaseEnemy:
 			child.set_physics_process(is_host)
+			child.set_process(is_host)
+		elif child is BasePuck and not is_host:
+			child.set_physics_process(false)
+			child.set_process(false)
 	_refresh_controls()
 
 
@@ -204,10 +210,13 @@ func _process(delta: float) -> void:
 				timing_manager.notify_all_pucks_at_rest()
 				sync_timing()
 	elif current == TimingManager.TIMING_ACTION:
+		if is_host:
+			sync_puck_positions({}, MpTransport.UNRELIABLE_ORDERED)
 		_action_elapsed += delta * timing_manager.get_effective_time_scale()
 		if _action_elapsed >= ACTION_PLACEHOLDER_SECONDS - 0.00001:
 			_action_elapsed = 0.0
 			timing_manager.notify_actions_finished()
+			sync_puck_positions({}, MpTransport.RELIABLE)
 			sync_timing()
 
 
@@ -314,7 +323,9 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 		"action_request_play":
 			if timing_manager.get_current_timing() != TimingManager.TIMING_CHARGING:
 				return
-			if timing_manager.request_play():
+			if puck_velocity_manager != null and not puck_velocity_manager.are_all_pucks_at_rest():
+				return
+			if timing_manager.request_player_play(sender_role):
 				active_player = sender_role
 				sync_timing()
 				sync_time_board({}, MpTransport.RELIABLE)
@@ -326,7 +337,7 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 			if timing_manager.cancel_play():
 				active_player = ""
 				if has_player_b():
-					timing_manager._play_used_in_current_slot = false
+					timing_manager.reset_play_used()
 				sync_aiming({"active": false}, MpTransport.RELIABLE)
 				sync_timing()
 				sync_time_board({}, MpTransport.RELIABLE)
@@ -345,14 +356,29 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 			if active_player != "" and active_player != sender_role:
 				return
 			var cost := float(payload.get("energy_cost", 0.0))
+			var dir := payload.get("shot_direction", Vector3.ZERO) as Vector3
+			var is_debug_zero_shot := is_equal_approx(cost, 0.0) and dir.is_zero_approx()
+			if not is_debug_zero_shot:
+				if cost < CueShotManager.MIN_SHOT_ENERGY - 0.0001 or cost > CueShotManager.MAX_SHOT_ENERGY + 0.0001:
+					return
+				if not is_equal_approx(cost, snappedf(cost, CueShotManager.ENERGY_STEP)):
+					return
+				if cost > get_player_energy(sender_role) + 0.0001:
+					return
 			_puck_puck_elapsed = 0.0
 			if cost > 0.0:
 				timing_manager.consume_player_energy(sender_role, cost)
+			var boss := _get_boss_puck_for_seat(sender_role)
+			if boss != null and cost > 0.0 and dir.length_squared() > 0.0001:
+				var imp_per_e := cue_shot_manager.impulse_per_energy if cue_shot_manager != null else 6.0
+				boss.apply_impulse(dir.normalized() * (imp_per_e * cost))
 			if timing_manager.fire_cue_shot(0.0):
 				active_player = ""
 				sync_aiming({"active": false}, MpTransport.RELIABLE)
+				if cost <= 0.0:
+					sync_time_board({}, MpTransport.RELIABLE)
 				sync_timing()
-				sync_time_board({}, MpTransport.RELIABLE)
+				sync_puck_positions({}, MpTransport.UNRELIABLE_ORDERED)
 		"action_play_card":
 			if timing_manager.get_current_timing() != TimingManager.TIMING_PLAY:
 				return
@@ -380,6 +406,10 @@ func sync_timing(payload: Dictionary = {}) -> void:
 		data["ready_players"] = ready_players.duplicate()
 	if not data.has("can_enter_play") and timing_manager != null:
 		data["can_enter_play"] = timing_manager.can_enter_play()
+	if not data.has("can_enter_play_a") and timing_manager != null:
+		data["can_enter_play_a"] = timing_manager.can_player_enter_play(ROLE_A)
+	if not data.has("can_enter_play_b") and timing_manager != null:
+		data["can_enter_play_b"] = timing_manager.can_player_enter_play(ROLE_B)
 	_dispatch_sync("timing", data, MpTransport.RELIABLE)
 
 
@@ -420,6 +450,19 @@ func sync_puck_positions(payload: Dictionary = {}, transfer_mode: int = MpTransp
 	if not is_host:
 		return
 	var data := payload.duplicate(true)
+	if not data.has("pucks"):
+		var puck_list: Array[Dictionary] = []
+		for child in get_children():
+			if child is BasePuck and is_instance_valid(child):
+				var p := child as BasePuck
+				puck_list.append({
+					"puck_id": str(p.name),
+					"position": p.global_position,
+					"velocity": p.velocity,
+					"rotation": p.rotation,
+					"is_falling_in_pocket": p.is_falling_in_pocket,
+				})
+		data["pucks"] = puck_list
 	_dispatch_sync("puck_positions", data, transfer_mode)
 
 
@@ -496,8 +539,17 @@ func _apply_sync(category: String, payload: Dictionary) -> void:
 			if not is_host and timing_manager != null and not target_timing.is_empty():
 				if payload.has("can_enter_play"):
 					timing_manager._play_used_in_current_slot = not bool(payload["can_enter_play"])
+				if payload.has("can_enter_play_a"):
+					timing_manager._play_used_by_seat[ROLE_A] = not bool(payload["can_enter_play_a"])
+				if payload.has("can_enter_play_b"):
+					timing_manager._play_used_by_seat[ROLE_B] = not bool(payload["can_enter_play_b"])
 				if timing_manager.get_current_timing() != target_timing:
 					timing_manager._transition_to(target_timing)
+				for child in get_children():
+					if child is BaseEnemy:
+						(child as BaseEnemy)._ai_active = false
+						child.set_physics_process(false)
+						child.set_process(false)
 			_refresh_controls()
 		"time_board":
 			var energy_a := float(payload.get("energy_a", timing_manager.get_energy() if timing_manager != null else 0.0))
@@ -522,7 +574,38 @@ func _apply_sync(category: String, payload: Dictionary) -> void:
 					"charge": progress,
 					"action_tags": payload.get("action_tags", []),
 				})
+		"aiming":
+			if cue_shot_manager != null and cue_shot_manager.has_method("apply_synced_aiming"):
+				cue_shot_manager.apply_synced_aiming(payload)
+		"puck_positions":
+			if not is_host:
+				for item in payload.get("pucks", []):
+					if item is Dictionary:
+						var pid := str(item.get("puck_id", ""))
+						var node := get_node_or_null(pid) as BasePuck
+						if node != null and is_instance_valid(node):
+							if item.has("position"):
+								node.global_position = item["position"] as Vector3
+							if item.has("velocity"):
+								node.velocity = item["velocity"] as Vector3
+							if item.has("rotation"):
+								node.rotation = item["rotation"] as Vector3
+							if item.has("is_falling_in_pocket"):
+								node.is_falling_in_pocket = bool(item["is_falling_in_pocket"])
 	sync_applied.emit(category, payload.duplicate(true))
+
+
+func _get_boss_puck_for_seat(seat: String) -> BasePuck:
+	if seat == ROLE_B:
+		var pb := get_node_or_null("PlayerB") as BasePuck
+		if pb != null:
+			return pb
+	return _player as BasePuck
+
+
+func _on_all_pucks_at_rest() -> void:
+	if is_host:
+		sync_puck_positions({}, MpTransport.RELIABLE)
 
 
 func _on_fast_play_pressed() -> void:
@@ -550,8 +633,10 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 		_flash_puck_puck_banner()
 	elif new_timing == TimingManager.TIMING_ACTION:
 		_action_elapsed = 0.0
+	if is_host and (new_timing == TimingManager.TIMING_SETTLE or new_timing == TimingManager.TIMING_PREPARE):
+		sync_puck_positions({}, MpTransport.RELIABLE)
 	if is_host and new_timing == TimingManager.TIMING_CHARGING and _old_timing != TimingManager.TIMING_PLAY:
-		timing_manager._play_used_in_current_slot = false
+		timing_manager.reset_play_used()
 		active_player = ""
 	_refresh_controls()
 	if is_host:
@@ -628,7 +713,8 @@ func _refresh_controls() -> void:
 		elif current == TimingManager.TIMING_CHARGING:
 			play_button.text = Loc.t("timing_play")
 			play_button.icon = SWORD_ICON_TEX
-			var is_disabled := paused or not timing_manager.can_enter_play() or my_role == ROLE_SPECTATOR
+			var can_my_seat_play := timing_manager.can_player_enter_play(my_role) if has_player_b() else timing_manager.can_enter_play()
+			var is_disabled := paused or not can_my_seat_play or my_role == ROLE_SPECTATOR
 			play_button.disabled = is_disabled
 			_apply_play_button_mode(false, is_disabled)
 		else:

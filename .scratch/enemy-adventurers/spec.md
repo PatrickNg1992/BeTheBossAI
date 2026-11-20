@@ -14,7 +14,7 @@ Every Enemy Adventurer lives on the Time Board. A adventurer owns one base-actio
 
 ## User Stories
 
-1. As a player, I want to see each Adventurer's icon, Class, HP bar, team number and colour in the Adventurer Team Profile, so that I can read the enemy team at a glance.
+1. As a player, I want to see each Adventurer's icon, Class, HP bar, team number and colour in the Unit Information Board, so that I can read the enemy team at a glance.
 2. As a player, I want each adventurer's box to show the turns until its next basic attack and active skill, so that I know who is dangerous soonest.
 3. As a player, I want adventurers acting on the same turn to share one Action Tag with a count, so that the board stays readable with many adventurers.
 4. As a player, I want a defeated adventurer's icon greyed with a red cross and its bars hidden, so that I instantly know it is out.
@@ -68,7 +68,7 @@ Every Enemy Adventurer lives on the Time Board. A adventurer owns one base-actio
 - **Generation module.** `generate(seed, stage config) → the full Stage's Adventurer Teams`, rolled once when the Stage begins (per the Stage rule). Follows the documented step order: wave budget → legendary placement → per-wave counts → classes (constraint: every Class present in every team; 4–10 common, hard cap 12) → skills (0–1 active, any passives, from a shared pre-defined pool) → equipment (no-op hook) → LV tuned last to fit budget. The seed pins composition only — never spawn positions (random free Tiles per attempt) nor card order. Demo: seed is a code variable and wave sizes are fixed by the demo Stage config; budget-driven difficulty is real-game work, configured per stage as a plain number.
 - **Collision matrix (carried forward, unchanged).** Above a small speed threshold: Enemy Adventurers suffer Collision Damage from any impact — except impacts with a Knight, which protects its allies; only Knight impacts damage the Boss Monster, whoever initiated; Cushion impacts deal no damage. Two damage channels stay total and separate: Auto-Attack (scripted, Action Time) vs Collision Damage (physics, Puck-puck Time!) — ADR-0002.
 - **At most one Settle Time per Turn.** Everything settle-worthy in a Turn settles together — a refinement of the timing-system spec's Settle rules.
-- **Profile visualization state.** Each adventurer exposes the state the Adventurer Team Profile renders: icon, HP, Class, team number/colour, per-action turns-remaining, defeated (grey + red cross, bars hidden), pocketed (grey + return countdown). The UI itself is a separate consumer.
+- **Profile visualization state.** Each adventurer exposes the state the Unit Information Board renders: icon, HP, Class, team number/colour, per-action turns-remaining, defeated (grey + red cross, bars hidden), pocketed (grey + return countdown). The UI itself is a separate consumer.
 - **Terminology.** The adventurer attack-preparation state is **Focusing** (the Mage's flavour: Chant) — never "charging", which belongs to Energy/Charging Time.
 
 ## Testing Decisions
@@ -85,7 +85,7 @@ Every Enemy Adventurer lives on the Time Board. A adventurer owns one base-actio
 - The combat-power budget formula, difficulty growth curve, LV formula, and all ratio→absolute mapping values — decided with the growth system / balancing.
 - Skill pool contents (samples to be designed later); the equipment system (generation hook only).
 - Target-selection refinement beyond nearest-puck.
-- Adventurer Team Profile rendering, lighting VFX, attack animations, damage numbers, and localization strings — visual/manual concerns.
+- Unit Information Board rendering, lighting VFX, attack animations, damage numbers, and localization strings — visual/manual concerns.
 - Minions (future system), card effect payloads (card-effects spec), the Codex scene, and the wave/stage flow itself (stage-wave-loop spec).
 - The physics simulation; Pocket Area damage/return mechanics (cue-table spec).
 

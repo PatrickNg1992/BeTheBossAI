@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] Releasing a valid drag in `Play Time` sends `action_cue_shot` (`RELIABLE`) with the shot direction and quantized Energy cost (`1.0..9.0` in `0.5` steps) to the Host instead of launching the local Boss Monster directly.
-- [ ] The Host validates that the game is in `Play Time`, the sender is the current `active_player`, the Energy cost is within `[1.0, 9.0]` in `0.5`-slot increments, and the `active_player` owns enough Energy (`energy_cost <= owned_energy`); invalid requests or requests from the non-active player / Spectators are rejected.
-- [ ] On a valid `action_cue_shot`, the Host deducts `energy_cost` from `active_player`'s Energy, clears the active aiming state via `sync_aiming()` (`RELIABLE`), applies the Impulse $\vec{J} \propto E$ ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$) to `active_player`'s Boss Monster on the Host, and transitions the battle to `Puck-puck Time!`.
-- [ ] The Host broadcasts the updated Energy via `sync_time_board()` (`RELIABLE`, triggering the Energy spend rewind animation on all Peers) and the transition to `Puck-puck Time!` via `sync_timing()` (`RELIABLE`, triggering the "Puck-puck Time!" banner on all Peers).
+- [x] Releasing a valid drag in `Play Time` sends `action_cue_shot` (`RELIABLE`) with the shot direction and quantized Energy cost (`1.0..9.0` in `0.5` steps) to the Host instead of launching the local Boss Monster directly.
+- [x] The Host validates that the game is in `Play Time`, the sender is the current `active_player`, the Energy cost is within `[1.0, 9.0]` in `0.5`-slot increments, and the `active_player` owns enough Energy (`energy_cost <= owned_energy`); invalid requests or requests from the non-active player / Spectators are rejected.
+- [x] On a valid `action_cue_shot`, the Host deducts `energy_cost` from `active_player`'s Energy, clears the active aiming state via `sync_aiming()` (`RELIABLE`), applies the Impulse $\vec{J} \propto E$ ($\vec{v}_0 = \vec{J} / m_{\text{boss}}$) to `active_player`'s Boss Monster on the Host, and transitions the battle to `Puck-puck Time!`.
+- [x] The Host broadcasts the updated Energy via `sync_time_board()` (`RELIABLE`, triggering the Energy spend rewind animation on all Peers) and the transition to `Puck-puck Time!` via `sync_timing()` (`RELIABLE`, triggering the "Puck-puck Time!" banner on all Peers).

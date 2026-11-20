@@ -125,6 +125,10 @@ func _process(delta: float) -> void:
 		step_velocities(TICK_INTERVAL, ratio)
 		if timing_manager != null and timing_manager.get_current_timing() != TimingManager.TIMING_PUCK_PUCK:
 			break
+	var parent := get_parent()
+	if parent != null and parent.has_method("sync_puck_positions") and _in_puck_puck_time:
+		if timing_manager == null or timing_manager.get_current_timing() == TimingManager.TIMING_PUCK_PUCK:
+			parent.call("sync_puck_positions", {}, MpTransport.UNRELIABLE_ORDERED)
 
 
 func step_positions(delta: float, fast_play_ratio: float = -1.0) -> void:

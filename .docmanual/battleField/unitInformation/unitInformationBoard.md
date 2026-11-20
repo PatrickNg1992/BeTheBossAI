@@ -8,7 +8,7 @@ It appears on the left and right of the screen, corresponding to the two sides o
 
 On each side, the board looks like a table with 2 columns and multiple rows. The cell is called a *Unit Display*. Each Unit Display holds a unit. 
 
-For flexibility, the board has 8 rows and can display up to 16 Units on each side. For easy description, we number them as three letters: (L/R)(1-2)(1-8), which means {Left/right board}{Column Num}{Row Num}. The unit number ordering should follow L11, L12, L21, L22, L31, L32, L41, L42, L51, L52......Same for the right side
+For flexibility, the board has 8 rows and can display up to 16 Units on each side. For easy description, we number them as three letters: (L/R)(1-8)(1-2), which means {Left/right board}{Row Num}{Column Num}. The unit number ordering should follow L11, L12, L21, L22, L31, L32, L41, L42, L51, L52......Same for the right side
 
 The unit information board works closely with the unit manager (see ./unitInformationManager.md) to show the unit information to the players. The board listens to events from the manager.
 
@@ -16,19 +16,19 @@ The unit information board works closely with the unit manager (see ./unitInform
 
 Each cell shows the unit's image. Below the cell is the unit's HP bar. In the upper-left corner of the cell, a *Reference Mark* lets players match the unit and its corresponding pucks. 
 
-The Unit Display for boss monsters spans 2 horizontal cells, which looks greater. For the player's boss monster, its Unit Display does not show the HP because that information appears in the upper-left corner of the screen. It only shows the current HP bar and remaining HP bar count of the opponent's boss monster.
+The Unit Display for boss monsters spans 2 horizontal cells, which looks greater. On the right side of a boss monster's 2-cell Unit Display, its current *Frenzy Power* is displayed (each boss monster has its own Frenzy Power, supporting 2-player modes). For the local seated player's own boss monster (Player A's boss monster for Player A and Spectators; Player B's boss monster for Player B), its Unit Display omits the HP bar because that information appears in the upper-left corner of the screen. All other boss monsters on the board (the co-op partner's boss monster or the opponent's boss monster) show their current HP bar and remaining HP bar count (`x N`) inside their 2-cell Unit Display.
 
 If the unit is an enemy adventurer, a *Class Mark* appears in the upper-right corner to tell what class the unit is.
 
 When a player hovers the mouse over a Unit Display, the corresponding puck on the table will be highlighted so they can spot the puck easily. When a player clicks on the Unit Display, a small pop-up window named *Unit Detail Display* will appear to the side.
 
-Defeated units will have a grey Unit Display, and their HP bar will disappear. 
+Defeated units will have a grey Unit Display with a red cross mark over the unit portrait, and their HP bar, Damage Stack count mark, and Action Tag turn numbers will disappear. Temporarily removed units (such as pocketed units) will have a grey Unit Display, keep their HP bar visible, and show the pocket return turn countdown in place of normal Action Tag turn numbers. 
 
-The Unit Display should show the Ghost HP bar according to the Damage Stack. (Check the Unit Information Manager document) The Damage Stack count (how many times damage has been taken) should be displayed to the right of the unit image. 
+The Unit Display should show the Ghost HP bar according to the Damage Stack and Hit Level. (Check the Unit Information Manager and Damage Calculation documents) On the left of the HP bar, a small circle mark displays the Damage Stack count (how many times damage has been taken, invisible when 0). On the right/lower-right of the unit image, the Action Tag turn countdown integer(s) (or pocket return countdown) are displayed.
 
 ### Unit Detail Display
 
-The Unit Detail Display shows more detail about a unit. It appears when the player hovers over the Unit Display. The Unit Detail Display closes when the player clicks elsewhere.
+The Unit Detail Display shows more detail about a unit. It appears when the player clicks on the Unit Display. The Unit Detail Display closes when the player clicks elsewhere (or clicks the same Unit Display again).
 
 (TBC) Information to be shown:
 
@@ -36,7 +36,7 @@ The Unit Detail Display shows more detail about a unit. It appears when the play
 
 - Detail class name and the Class mark icon of the unit, if it is an adventurer
 
-- HP and Max HP value
+- HP bar with numeric HP / Max HP value (plus remaining health bar count if Boss Monster)
 
 - Skills of the unit
 
@@ -72,7 +72,7 @@ Each side shows one player's boss monster and the minions. The left side shows p
 
 Rows L1 and R1 hold each side's boss monster. 
 
-Rows L5-8 and R5-8 are left empty. Rows L6-8 and R6-8 show the 6 *Target Pucks* to defeat (TBC). 
+Row L5 and R5 are left empty. Rows L6-8 and R6-8 show the 6 *Target Pucks* to defeat (TBC). 
 
 Rows L2-4 and R2-4 show up to 6 minions of each side.
 
@@ -86,10 +86,21 @@ On the left side, L1-4 are the same as a single-player game that shows Player A'
 
 Reference marks identify different pucks on the cue table. A reference mark marks the same symbol on the upper-left Unit Display and the middle of the puck of a unit. Each wave uses unique marks.
 
-The members of the first Adventurer Team are marked as A1, A2, A3, A4, A5 and A6. Meanwhile, the members of the second Adventurer Team are marked as B1, B2, B3, B4, B5 and B6. For easy identification, in general the reference number will be arranged by unit classes that ?1 is guardian class, ?2 is warrior class, ?3 is ranger class, ?4 is magician class. ?5 and ?6 are free positions. Therefore, some numbers may be missing in the middle for some small teams.
+The members of the first Adventurer Team are marked as A1, A2, A3, A4, A5 and A6. Meanwhile, the members of the second Adventurer Team are marked as B1, B2, B3, B4, B5 and B6. For easy identification, in general for normal random Adventurer Team generation, the reference number will be arranged by unit classes that ?1 is Knight (guardian) class, ?2 is Warrior class, ?3 is Ranger class, ?4 is Mage (magician) class. ?5 and ?6 are free positions for duplicate classes. Therefore, some numbers may be missing in the middle for some small teams, and their corresponding Unit Display cells are left empty rather than compacted. Note: this class-to-number rule applies to normal random Adventurer Team generation; customized team compositions in specific stages are free to override it.
 
-Also, the puck colour shall be different for different classes, but it is specified in another document.
+For easy visual matching, both the **puck** and the **Unit Display grid border** are coloured according to the unit's position index (chosen to match the default class positions):
+- `?1`: **Blue** (fits Knight)
+- `?2`: **Red** (fits Warrior)
+- `?3`: **Yellow** (fits Ranger)
+- `?4`: **Purple** (fits Mage)
+- `?5`: **Green** (free position)
+- `?6`: **Cyan** (free position)
+- **Boss Monster**: **Black**
+
+To distinguish between the two Enemy Adventurer Teams when both use the same `?1..?6` position colours, the **Reference Mark colour** itself differs by team:
+- **Adventurer Team 1 (`A1..A6`)**: **Deep Grey** Reference Mark colour
+- **Adventurer Team 2 (`B1..B6`)**: **Deep Brown** Reference Mark colour
 
 (This logic affects the enemy random algorithm)
 
-On the player side, the boss monster of player A (or the player of a single-player game) is marked as Ω and the minions are marked as ωI, ω2, ω3...The boss monster of player B is marked as Ψ and the minions are marked as ψ1, ψ2, ψ3...
+On the player side, the boss monster of player A (or the player of a single-player game) is marked as Ω and the minions are marked as ω1, ω2, ω3... (using **Gold** for the Ω / ω Reference Mark colour). The boss monster of player B is marked as Ψ and the minions are marked as ψ1, ψ2, ψ3... (using **Silver** for the Ψ / ψ Reference Mark colour). For minion puck and grid border colours (`1..6`), use a deeper shade of the corresponding `1..6` position colours (Blue, Red, Yellow, Purple, Green, Cyan; exact shades TBC).

@@ -64,6 +64,8 @@ var _consume_fills: Array[ColorRect] = []
 var _overdrag_fills: Array[ColorRect] = []
 var _secondary_fills: Array[ColorRect] = []
 var _secondary_charging_fills: Array[ColorRect] = []
+var _secondary_consume_fills: Array[ColorRect] = []
+var _secondary_overdrag_fills: Array[ColorRect] = []
 var _tag_movers: Array[Control] = []
 var _tag_turns: Array[Label] = []
 var _tag_counts: Array[Label] = []
@@ -107,6 +109,8 @@ func _build_board() -> void:
 	_overdrag_fills.resize(SLOT_COUNT)
 	_secondary_fills.resize(SLOT_COUNT)
 	_secondary_charging_fills.resize(SLOT_COUNT)
+	_secondary_consume_fills.resize(SLOT_COUNT)
+	_secondary_overdrag_fills.resize(SLOT_COUNT)
 	_target_energy_ratios.resize(SLOT_COUNT)
 	_target_energy_ratios.fill(0.0)
 	_target_charging_ratios.resize(SLOT_COUNT)
@@ -148,6 +152,12 @@ func _make_secondary_slot_cell(slot: int, upper: bool) -> Control:
 	var charging_fill := _make_bar_rect(charging_color, upper)
 	cell.add_child(charging_fill)
 	_secondary_charging_fills[slot] = charging_fill
+	var consume_fill := _make_bar_rect(consume_preview_color, upper)
+	cell.add_child(consume_fill)
+	_secondary_consume_fills[slot] = consume_fill
+	var overdrag_fill := _make_bar_rect(overdrag_preview_color, upper)
+	cell.add_child(overdrag_fill)
+	_secondary_overdrag_fills[slot] = overdrag_fill
 	return cell
 
 
@@ -283,6 +293,10 @@ func _normalize_state(raw: Dictionary) -> Dictionary:
 	var s := raw.duplicate(true)
 	if not s.has("preview_cost"):
 		s["preview_cost"] = _state.get("preview_cost", 0.0)
+	if not s.has("preview_seat"):
+		s["preview_seat"] = _state.get("preview_seat", "")
+	if not s.has("preview_in_deadzone"):
+		s["preview_in_deadzone"] = _state.get("preview_in_deadzone", false)
 	if s.has("turn_progress") and not s.has("charge"):
 		s["charge"] = float(s["turn_progress"])
 	elif not s.has("charge"):
@@ -339,14 +353,36 @@ func render_state(state: Dictionary) -> void:
 	_render_energy(main_e, ch, false)
 	if two_p:
 		_render_secondary_energy(sec_e, ch)
-	_render_preview(main_e, float(_state.get("preview_cost", 0.0)))
+	_render_all_previews()
 	_render_tags(_state.get("tags", {}))
 
 
 ## Update only the aiming preview_cost on top of the current state.
-func set_preview_cost(cost: float) -> void:
+func set_preview_cost(cost: float, player_seat: String = "", in_deadzone: bool = false) -> void:
 	_state["preview_cost"] = maxf(cost, 0.0)
-	_render_preview(_main_energy_of(_state), float(_state.get("preview_cost", 0.0)))
+	_state["preview_seat"] = player_seat
+	_state["preview_in_deadzone"] = in_deadzone
+	_render_all_previews()
+
+
+func _render_all_previews() -> void:
+	var main_e := _main_energy_of(_state)
+	var sec_e := _secondary_energy_of(_state)
+	var cost := float(_state.get("preview_cost", 0.0))
+	var seat := str(_state.get("preview_seat", ""))
+	var in_dz := bool(_state.get("preview_in_deadzone", false))
+	var two_p := bool(_state.get("has_player_b", false))
+	var on_secondary := false
+	if two_p and not seat.is_empty():
+		var main_seat := "b" if _perspective_role == "b" else "a"
+		on_secondary = (seat != main_seat)
+	if on_secondary:
+		_render_preview_on_arrays(main_e, 0.0, false, _consume_fills, _overdrag_fills)
+		_render_preview_on_arrays(sec_e, cost, in_dz, _secondary_consume_fills, _secondary_overdrag_fills)
+	else:
+		_render_preview_on_arrays(main_e, cost, in_dz, _consume_fills, _overdrag_fills)
+		if two_p:
+			_render_preview_on_arrays(sec_e, 0.0, false, _secondary_consume_fills, _secondary_overdrag_fills)
 
 
 func get_preview_cost() -> float:
@@ -405,7 +441,8 @@ func apply_state(state: Dictionary) -> void:
 				glides.append([prev, slot])
 	var main_rewound := new_main_e < old_main_e - 0.001
 	var sec_rewound := two_p and (new_sec_e < old_sec_e - 0.001)
-	if main_rewound or sec_rewound:
+	var is_rewinding := (_rewind_tween != null and _rewind_tween.is_running()) or (_secondary_rewind_tween != null and _secondary_rewind_tween.is_running())
+	if main_rewound or sec_rewound or is_rewinding:
 		kind = "rewind"
 	elif int(floorf(new_main_e + 0.001)) > int(floorf(old_main_e + 0.001)):
 		for slot in range(int(floorf(old_main_e + 0.001)), int(floorf(new_main_e + 0.001))):
@@ -426,7 +463,7 @@ func apply_state(state: Dictionary) -> void:
 			_play_secondary_rewind_sequential(old_sec_e, new_sec_e, ch)
 		else:
 			_render_secondary_energy(new_sec_e, ch)
-	_render_preview(new_main_e, float(_state.get("preview_cost", 0.0)))
+	_render_all_previews()
 	_render_tags(new_tags)
 	# Post-render fix-ups: movers in motion show their OLD numbers until the
 	# arrow lands on the next edge, then count down.
@@ -529,6 +566,12 @@ func tag_info(slot: int) -> Dictionary:
 
 func _render_energy(energy: float, charge: float, animate: bool) -> void:
 	if _rewind_tween != null and _rewind_tween.is_running():
+		var clamped_target := clampf(energy, 0.0, float(SLOT_COUNT))
+		var cur_target := 0.0
+		for ratio in _target_energy_ratios:
+			cur_target += ratio
+		if is_equal_approx(clamped_target, cur_target):
+			return
 		_rewind_tween.kill()
 		_rewind_tween = null
 	var clamped_energy := clampf(energy, 0.0, float(SLOT_COUNT))
@@ -556,6 +599,12 @@ func _render_energy(energy: float, charge: float, animate: bool) -> void:
 
 func _render_secondary_energy(energy: float, charge: float) -> void:
 	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running():
+		var clamped_target := clampf(energy, 0.0, float(SLOT_COUNT))
+		var cur_target := 0.0
+		for ratio in _secondary_target_energy_ratios:
+			cur_target += ratio
+		if is_equal_approx(clamped_target, cur_target):
+			return
 		_secondary_rewind_tween.kill()
 		_secondary_rewind_tween = null
 	var clamped_energy := clampf(energy, 0.0, float(SLOT_COUNT))
@@ -579,21 +628,34 @@ func _render_secondary_energy(energy: float, charge: float) -> void:
 
 
 func _render_preview(energy: float, preview_cost: float) -> void:
+	_render_preview_on_arrays(energy, preview_cost, false, _consume_fills, _overdrag_fills)
+
+
+func _render_preview_on_arrays(energy: float, preview_cost: float, in_deadzone: bool, consume_arr: Array[ColorRect], overdrag_arr: Array[ColorRect]) -> void:
 	var clamped_energy := clampf(energy, 0.0, float(SLOT_COUNT))
 	var clamped_cost := clampf(preview_cost, 0.0, float(SLOT_COUNT))
+	if in_deadzone and clamped_cost <= 0.0001:
+		for slot in range(SLOT_COUNT):
+			if consume_arr[slot] != null:
+				_apply_segment(consume_arr[slot], consume_preview_color, 0.0, 0.0)
+			if overdrag_arr[slot] != null:
+				_apply_segment(overdrag_arr[slot], overdrag_preview_color, 0.0, 1.0 if slot == 0 else 0.0)
+		return
 	var affordable := minf(clamped_cost, clamped_energy)
 	for slot in range(SLOT_COUNT):
 		var slot_f := float(slot)
 		var c_start := clampf(0.0 - slot_f, 0.0, 1.0)
 		var c_end := clampf(affordable - slot_f, 0.0, 1.0)
-		_apply_segment(_consume_fills[slot], consume_preview_color, c_start, maxf(c_start, c_end))
+		if consume_arr[slot] != null:
+			_apply_segment(consume_arr[slot], consume_preview_color, c_start, maxf(c_start, c_end))
 
-		if clamped_cost > clamped_energy + 0.0001:
-			var o_start := clampf(clamped_energy - slot_f, 0.0, 1.0)
-			var o_end := clampf(clamped_cost - slot_f, 0.0, 1.0)
-			_apply_segment(_overdrag_fills[slot], overdrag_preview_color, o_start, maxf(o_start, o_end))
-		else:
-			_apply_segment(_overdrag_fills[slot], overdrag_preview_color, 0.0, 0.0)
+		if overdrag_arr[slot] != null:
+			if clamped_cost > clamped_energy + 0.0001:
+				var o_start := clampf(clamped_energy - slot_f, 0.0, 1.0)
+				var o_end := clampf(clamped_cost - slot_f, 0.0, 1.0)
+				_apply_segment(overdrag_arr[slot], overdrag_preview_color, o_start, maxf(o_start, o_end))
+			else:
+				_apply_segment(overdrag_arr[slot], overdrag_preview_color, 0.0, 0.0)
 
 
 func _apply_segment(rect: ColorRect, color: Color, start_ratio: float, end_ratio: float) -> void:

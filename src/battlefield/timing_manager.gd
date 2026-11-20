@@ -30,6 +30,7 @@ var _energy: float = 0.0
 var _energy_b: float = 0.0
 var _charge_progress: float = 0.0
 var _play_used_in_current_slot: bool = false
+var _play_used_by_seat: Dictionary = {"a": false, "b": false}
 var _staged_damage: Dictionary = {}
 var _settle_events: Array = []
 var _settle_elapsed: float = 0.0
@@ -144,11 +145,29 @@ func can_enter_play() -> bool:
 	return not _paused and _current_timing == TIMING_CHARGING and not _play_used_in_current_slot
 
 
+func can_player_enter_play(seat: String) -> bool:
+	if _paused or _current_timing != TIMING_CHARGING:
+		return false
+	if seat != "a" and seat != "b":
+		return false
+	return not bool(_play_used_by_seat.get(seat, false))
+
+
+func has_player_used_play_in_slot(seat: String) -> bool:
+	return bool(_play_used_by_seat.get(seat, false))
+
+
+func reset_play_used() -> void:
+	_play_used_in_current_slot = false
+	_play_used_by_seat["a"] = false
+	_play_used_by_seat["b"] = false
+
+
 func enter_prepare() -> bool:
 	if _paused:
 		return false
 	_charge_progress = 0.0
-	_play_used_in_current_slot = false
+	reset_play_used()
 	_transition_to(TIMING_PREPARE)
 	return true
 
@@ -156,6 +175,7 @@ func enter_prepare() -> bool:
 func start_charging() -> bool:
 	if _paused:
 		return false
+	reset_play_used()
 	_transition_to(TIMING_CHARGING)
 	return true
 
@@ -164,6 +184,17 @@ func request_play() -> bool:
 	if not can_enter_play():
 		return false
 	_play_used_in_current_slot = true
+	_play_used_by_seat["a"] = true
+	_transition_to(TIMING_PLAY)
+	return true
+
+
+func request_player_play(seat: String) -> bool:
+	if not can_player_enter_play(seat):
+		return false
+	_play_used_by_seat[seat] = true
+	if single_player_mode or seat == "a":
+		_play_used_in_current_slot = bool(_play_used_by_seat.get("a", false))
 	_transition_to(TIMING_PLAY)
 	return true
 
@@ -307,7 +338,7 @@ func _finish_charge_step(step_amount: float) -> void:
 		_energy = minf(MAX_ENERGY, snappedf(_energy + step_amount, 0.5))
 	if _energy_b < MAX_ENERGY:
 		_energy_b = minf(MAX_ENERGY, snappedf(_energy_b + step_amount, 0.5))
-	_play_used_in_current_slot = false
+	reset_play_used()
 	charge_slot_completed.emit(_energy)
 
 

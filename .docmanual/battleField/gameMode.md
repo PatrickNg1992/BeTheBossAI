@@ -6,20 +6,24 @@
 
 The game mode for single-player games. 
 
-The player chooses boss monsters to fight against enemy adventurer. In each stage, there are a few waves of enemy teams. The player proceeds to the next wave by defeating all enemies of a wave. 
+The player chooses boss monsters to fight against enemy adventurers. In each stage, there are a few waves of enemy teams. The player proceeds to the next wave by defeating all enemies in a wave. 
 
 ## Player vs Player
 
 2 Players fight against each other. 
 
-Each player chooses a Boss monster and a few minion monsters. The target of the game is to defeat all the minion monsters of the opponents.
+Each player chooses a Boss monster and 6 adventurers. The target of the game is to defeat all the opponent's adventurers. In this mode, adventurer types will differ from the single-player game. Details to be specified.
 
-Each one has their own energy bar, hands and deck. The energy bar is visible to both, while the hands are secret to the opponent.
+This mode does not have waves. Once all Adventurers of a player are defeated, that player is defeated, and the game ends.
 
-(TBC) Players should prevent shooting their own boss pucks at the opponent's boss puck.
+Each player has their own energy bar, hand, and deck. The energy bar is visible to both, while the hands are hidden from the opponent.
 
-(TBC) Treat the opponent's minion pucks similarly to the enemy adventurers in single-player games.
+Players should avoid shooting their own boss pucks at the opponent's boss puck. The own boss puck will lose most of its velocity, which collides in an inelastic collision, and the opponent gains 3 extra energy as a drawback. 
 
 ## 2 Player vs AI
 
-TBC
+2 Players on the same side fight for 2 Adventurer Teams.
+
+The game will count how much damage is dealt by each player. 
+
+Very similar to a single-player game.
