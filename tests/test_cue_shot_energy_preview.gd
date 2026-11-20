@@ -124,6 +124,20 @@ func test_drag_quantizes_energy_in_half_slot_steps_and_updates_time_board_previe
 	_cue_mgr.update_drag(Vector3(20.0, 1.5, 0.0))
 	assert_eq(_cue_mgr.get_required_energy(), 9.0, "Shot cost caps at 9.0")
 
+	# Player B seat energy check: when Player A has 1.0 Energy but Player B has 6.0 Energy,
+	# a drag costing 3.5 Energy is NOT over-dragged when aiming as Player B ("b")
+	_cue_mgr.cancel_drag(false)
+	_tm.set_energy(1.0)
+	_tm.set_energy_b(6.0)
+	_board.set_perspective_role("b")
+	_board.render_state({"has_player_b": true, "energy_a": 1.0, "energy_b": 6.0, "charge": 0.0, "tags": {}})
+	_cue_mgr.begin_drag(Vector3(0.0, 1.5, 0.0))
+	_cue_mgr.update_drag(Vector3(3.1, 1.5, 0.0))
+	assert_eq(_cue_mgr.get_required_energy(), 3.5, "Selected 3.5 Energy")
+	assert_false(_cue_mgr.is_overdragged(), "Not over-dragged for Player B who owns 6.0 Energy (even though Player A has 1.0)")
+	assert_false(_cue_mgr.get_aim_line_state().get("is_invalid_red", true), "Aiming line is valid colour for Player B")
+	_board.set_perspective_role("a")
+
 
 func test_release_in_deadzone_or_overdrag_cancels_while_valid_release_spends_energy_and_enters_puck_puck() -> void:
 	_tm.set_energy(5.0)

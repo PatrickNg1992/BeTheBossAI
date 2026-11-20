@@ -31,6 +31,15 @@ signal serve_failed()
 ## Host-side: whether the room is currently open for connections.
 var is_serving := false
 
+## Transfer reliability flags for broadcast / send_to_host / send_to_peer.
+enum TransferMode {
+	RELIABLE = 0,
+	UNRELIABLE_ORDERED = 1,
+}
+
+const RELIABLE := TransferMode.RELIABLE
+const UNRELIABLE_ORDERED := TransferMode.UNRELIABLE_ORDERED
+
 
 ## Pumps the transport (no-op for in-memory transports; the Dev transport
 ## services ENet here). The manager calls this every frame when a transport
@@ -66,17 +75,17 @@ func kick(_peer_id: int) -> void:
 
 
 ## Host: send a message to every connected Peer.
-func broadcast(_message: Dictionary) -> void:
+func broadcast(_message: Dictionary, _transfer_mode: int = RELIABLE) -> void:
 	push_error("MpTransport.broadcast not implemented")
 
 
 ## Peer: send a message to the Host.
-func send_to_host(_message: Dictionary) -> void:
+func send_to_host(_message: Dictionary, _transfer_mode: int = RELIABLE) -> void:
 	push_error("MpTransport.send_to_host not implemented")
 
 
 ## Host: send a message to one specific Peer.
-func send_to_peer(_peer_id: int, _message: Dictionary) -> void:
+func send_to_peer(_peer_id: int, _message: Dictionary, _transfer_mode: int = RELIABLE) -> void:
 	push_error("MpTransport.send_to_peer not implemented")
 
 

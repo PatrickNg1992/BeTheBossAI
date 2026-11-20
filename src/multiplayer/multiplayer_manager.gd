@@ -116,7 +116,12 @@ func _process(_delta: float) -> void:
 
 func choose_host() -> void:
 	is_host = true
-	peers = {HOST_ID: {"name": "", "role": ROLE_A}}
+	var default_host_name := waiting_room.host_name_edit.text.strip_edges() if waiting_room != null and waiting_room.host_name_edit != null else "Player-A"
+	if default_host_name.is_empty():
+		default_host_name = "Player-A"
+		if waiting_room != null and waiting_room.host_name_edit != null:
+			waiting_room.host_name_edit.text = default_host_name
+	peers = {HOST_ID: {"name": default_host_name, "role": ROLE_A}}
 	_show_sub_scene(waiting_room)
 	_render_room()
 
@@ -238,9 +243,10 @@ func request_start_game() -> void:
 ## Host: Close Room kicks all Peers (they get the host-closed Notification)
 ## and returns the Host to the Menu — the only clean session end.
 func close_room() -> void:
-	if not is_host or transport == null:
+	if not is_host:
 		return
-	transport.close_room()
+	if transport != null:
+		transport.close_room()
 	_go_to_menu()
 
 
@@ -292,10 +298,11 @@ func _accept_rejoin(peer_id: int, peer_name: String) -> void:
 	peers[peer_id] = {"name": peer_name, "role": _dropped_role}
 	grace_active = false
 	_ensure_grace_timer().stop()
+	_broadcast_room_state()
+	_configure_battlefield_session()
 	transport.send_to_peer(peer_id, {"type": "rejoin_battle"})
 	transport.broadcast({"type": "battle_resumed"})
 	_unfreeze_battle()
-	_broadcast_room_state()
 
 
 ## Grace ended (timer expiry, or a Leave on the frozen screen): the game
@@ -337,11 +344,27 @@ func _on_frozen_leave_pressed() -> void:
 func _start_battle() -> void:
 	var packed: PackedScene = load(BATTLEFIELD_SCENE_PATH)
 	battlefield = packed.instantiate()
+	_configure_battlefield_session()
 	_container.add_child(battlefield)
 	if battlefield.has_signal("battle_finished"):
 		battlefield.battle_finished.connect(_on_battle_finished)
 	_show_sub_scene(battlefield)
 	_update_battle_overlay()
+
+
+func _configure_battlefield_session() -> void:
+	if battlefield == null or not battlefield.has_method("configure_session"):
+		return
+	var my_id := HOST_ID if is_host else (transport.get_local_id() if transport != null else 0)
+	var spectators: Array[int] = []
+	for pid in peers:
+		if peers[pid].get("role") == ROLE_SPECTATOR:
+			spectators.append(int(pid))
+	battlefield.configure_session(transport, is_host, my_id, {
+		"player_a": _peer_in_role(ROLE_A),
+		"player_b": _peer_in_role(ROLE_B),
+		"spectators": spectators,
+	})
 
 
 ## The battle-time Leave button (testing escape hatch) is visible during a
@@ -636,6 +659,7 @@ func _apply_room_state(message: Dictionary) -> void:
 	if battlefield == null:
 		_show_sub_scene(waiting_room)
 	else:
+		_configure_battlefield_session()
 		_update_battle_overlay()
 	_render_room()
 

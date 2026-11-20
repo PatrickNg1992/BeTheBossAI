@@ -59,10 +59,13 @@ func test_localhost_host_join_smoke() -> void:
 	client.message_received.connect(func(_from: int, msg: Dictionary) -> void: client_got.append(msg))
 	client.send_to_host({"type": "take_seat", "seat": "b"})
 	host.broadcast({"type": "room_state", "host_name": "Alice"})
+	client.send_to_host({"type": "aim_update", "cost": 2.5}, MpTransport.UNRELIABLE_ORDERED)
+	host.broadcast({"type": "puck_pos", "x": 1.0}, MpTransport.UNRELIABLE_ORDERED)
+	host.send_to_peer(2, {"type": "direct_unreliable"}, MpTransport.UNRELIABLE_ORDERED)
 	_pump(0.5)
-	assert_eq(host_got.size(), 1, "Host received the Peer's message")
-	assert_eq(client_got.size(), 1, "Peer received the broadcast")
-	if client_got.size() == 1:
+	assert_eq(host_got.size(), 2, "Host received both reliable and unreliable_ordered messages")
+	assert_eq(client_got.size(), 3, "Peer received reliable broadcast, unreliable broadcast, and unreliable direct")
+	if client_got.size() >= 1:
 		assert_eq(client_got[0].get("host_name", ""), "Alice", "Broadcast payload intact")
 
 	var closed := [false]

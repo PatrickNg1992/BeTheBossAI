@@ -98,6 +98,10 @@ fc is the cushion friction factor
 
 ## Collision effects
 
-Besides the normal rebound impulse, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impulse applied to pucks that hit the blocks of the cuhsion. The function should be in a script that attached to cushion blocks and extendable. 
+Special unit effects are triggered during collisions. When two pucks collide, first calculate the basic force that should be applied to each other. Then check the unit skills and effects. Finally, create a Damage Object to the Damage Stack. Call a function in the PuckVelocityManager to run the checks.
+
+Besides the normal rebound impulse, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impulse applied to pucks that hit the cushion blocks. The function should be in a script that is attached to cushion blocks and extendable. 
 
 ## Gravity
+
+There is gravity acting on pucks. Pucks not on the cue table will fall. This applies when pucks fall into the pocket area. When a puck's height is below 5 of the table, it temporarily disappears and should appear again at the end of the settle phase if it is defeated.

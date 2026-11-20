@@ -27,6 +27,7 @@ const MAX_ENERGY := 20.0
 
 var _current_timing: String = TIMING_CHARGING
 var _energy: float = 0.0
+var _energy_b: float = 0.0
 var _charge_progress: float = 0.0
 var _play_used_in_current_slot: bool = false
 var _staged_damage: Dictionary = {}
@@ -50,6 +51,35 @@ func get_current_timing() -> String:
 
 func get_energy() -> float:
 	return _energy
+
+
+func get_energy_b() -> float:
+	return _energy_b
+
+
+func get_player_energy(seat: String) -> float:
+	return _energy_b if seat == "b" else _energy
+
+
+func set_energy_b(amount: float) -> void:
+	_energy_b = clampf(snappedf(amount, 0.5), 0.0, MAX_ENERGY)
+	energy_changed.emit(_energy, _charge_progress)
+
+
+func set_player_energy(seat: String, amount: float) -> void:
+	if seat == "b":
+		set_energy_b(amount)
+	else:
+		set_energy(amount)
+
+
+func consume_player_energy(seat: String, amount: float) -> float:
+	if amount <= 0.0:
+		return get_player_energy(seat)
+	if seat == "b":
+		set_energy_b(maxf(0.0, _energy_b - amount))
+		return _energy_b
+	return consume_energy(amount)
 
 
 func get_charge_progress() -> float:
@@ -265,8 +295,9 @@ func complete_charge_slot() -> void:
 
 
 func _next_charge_step_needed() -> float:
-	var frac := fposmod(_energy, 1.0)
-	if frac > 0.25 and frac < 0.75:
+	var frac_a := fposmod(_energy, 1.0)
+	var frac_b := fposmod(_energy_b, 1.0)
+	if (frac_a > 0.25 and frac_a < 0.75) or (frac_b > 0.25 and frac_b < 0.75):
 		return 0.5
 	return 1.0
 
@@ -274,6 +305,8 @@ func _next_charge_step_needed() -> float:
 func _finish_charge_step(step_amount: float) -> void:
 	if _energy < MAX_ENERGY:
 		_energy = minf(MAX_ENERGY, snappedf(_energy + step_amount, 0.5))
+	if _energy_b < MAX_ENERGY:
+		_energy_b = minf(MAX_ENERGY, snappedf(_energy_b + step_amount, 0.5))
 	_play_used_in_current_slot = false
 	charge_slot_completed.emit(_energy)
 

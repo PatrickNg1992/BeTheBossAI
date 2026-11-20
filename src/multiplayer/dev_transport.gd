@@ -94,26 +94,27 @@ func kick(peer_id: int) -> void:
 	_conn.flush()
 
 
-func broadcast(message: Dictionary) -> void:
+func broadcast(message: Dictionary, transfer_mode: int = RELIABLE) -> void:
 	if _conn == null or not is_host:
 		return
+	var flag := _enet_flag_for(transfer_mode)
 	for id in _peers:
-		_send(_peers[id], {"k": "msg", "d": message})
+		_send(_peers[id], {"k": "msg", "d": message}, flag)
 	_conn.flush()
 
 
-func send_to_host(message: Dictionary) -> void:
+func send_to_host(message: Dictionary, transfer_mode: int = RELIABLE) -> void:
 	if _conn == null or is_host or _server_peer == null:
 		return
-	_send(_server_peer, {"k": "msg", "d": message})
+	_send(_server_peer, {"k": "msg", "d": message}, _enet_flag_for(transfer_mode))
 	_conn.flush()
 
 
-func send_to_peer(peer_id: int, message: Dictionary) -> void:
+func send_to_peer(peer_id: int, message: Dictionary, transfer_mode: int = RELIABLE) -> void:
 	var peer: ENetPacketPeer = _peers.get(peer_id)
 	if peer == null:
 		return
-	_send(peer, {"k": "msg", "d": message})
+	_send(peer, {"k": "msg", "d": message}, _enet_flag_for(transfer_mode))
 	_conn.flush()
 
 
@@ -157,8 +158,14 @@ func dispose() -> void:
 
 # ----- internals -----
 
-func _send(peer: ENetPacketPeer, packet: Dictionary) -> void:
-	peer.send(CHANNEL, var_to_bytes(packet), ENetPacketPeer.FLAG_RELIABLE)
+func _enet_flag_for(transfer_mode: int) -> int:
+	if transfer_mode == UNRELIABLE_ORDERED:
+		return 0
+	return ENetPacketPeer.FLAG_RELIABLE
+
+
+func _send(peer: ENetPacketPeer, packet: Dictionary, flag: int = ENetPacketPeer.FLAG_RELIABLE) -> void:
+	peer.send(CHANNEL, var_to_bytes(packet), flag)
 
 
 func _handle_event(event: Array) -> void:

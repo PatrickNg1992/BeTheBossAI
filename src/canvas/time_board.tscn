@@ -27,7 +27,7 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_top = 4.0
+offset_top = 0.0
 grow_horizontal = 2
 mouse_filter = 2
 theme_override_styles/panel = SubResource("StyleBoxTexture_wood")
@@ -36,9 +36,9 @@ theme_override_styles/panel = SubResource("StyleBoxTexture_wood")
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 8
+theme_override_constants/margin_top = 4
 theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_bottom = 4
 
 [node name="Content" type="HBoxContainer" parent="Frame/Margin"]
 layout_mode = 2
@@ -57,6 +57,20 @@ stretch_mode = 5
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 2
+
+[node name="SecondaryBarBox" type="VBoxContainer" parent="Frame/Margin/Content/Board"]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="SecondaryUpperBarRow" type="HBoxContainer" parent="Frame/Margin/Content/Board/SecondaryBarBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SecondaryLowerBar" type="HBoxContainer" parent="Frame/Margin/Content/Board/SecondaryBarBox"]
+layout_mode = 2
+mouse_filter = 2
 
 [node name="UpperTags" type="HBoxContainer" parent="Frame/Margin/Content/Board"]
 layout_mode = 2

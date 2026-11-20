@@ -132,7 +132,27 @@ func is_in_deadzone() -> bool:
 func is_overdragged() -> bool:
 	if timing_manager == null:
 		return false
-	return _required_energy > timing_manager.get_energy() + 0.0001
+	return _required_energy > _get_owned_energy() + 0.0001
+
+
+func _get_owned_energy() -> float:
+	if timing_manager == null:
+		return 0.0
+	var seat := _get_aiming_seat()
+	return timing_manager.get_player_energy(seat)
+
+
+func _get_aiming_seat() -> String:
+	var parent := get_parent()
+	if parent != null and parent.has_method("get_local_role"):
+		var role := str(parent.call("get_local_role"))
+		if role == "a" or role == "b":
+			return role
+	if time_board != null and time_board.has_method("get_perspective_role"):
+		var p_role := str(time_board.get_perspective_role())
+		if p_role == "a" or p_role == "b":
+			return p_role
+	return "a"
 
 
 func get_required_energy() -> float:
@@ -213,7 +233,12 @@ func release_drag() -> bool:
 	if boss_puck is BasePuck:
 		(boss_puck as BasePuck).apply_impulse(dir * impulse_mag)
 	if timing_manager != null:
-		timing_manager.fire_cue_shot(spent)
+		var seat := _get_aiming_seat()
+		if seat == "b":
+			timing_manager.consume_player_energy("b", spent)
+			timing_manager.fire_cue_shot(0.0)
+		else:
+			timing_manager.fire_cue_shot(spent)
 	shot_launched.emit(spent, dir)
 	return true
 

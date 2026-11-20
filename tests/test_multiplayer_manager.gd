@@ -218,6 +218,12 @@ func test_confirm_requires_a_host_name() -> void:
 	var manager := _boot_host()
 	if manager == null:
 		return
+	assert_eq(manager.waiting_room.host_name_edit.text, "Player-A",
+		"Host name defaults to Player-A for testing convenience")
+	assert_false(manager.waiting_room.confirm_button.disabled,
+		"Confirm enabled with default Player-A host name")
+	manager.waiting_room.host_name_edit.text = ""
+	manager.waiting_room.host_name_edit.emit_signal("text_changed", "")
 	assert_true(manager.waiting_room.confirm_button.disabled,
 		"Confirm disabled while the Host name is empty")
 	manager.waiting_room.host_name_edit.text = "Alice"
@@ -481,6 +487,17 @@ func test_close_room_kicks_all_peers_with_notification() -> void:
 		"Kicked Peers get the localized host-closed Notification")
 	assert_eq(host.chosen_target.resource_path, MENU_SCENE_PATH,
 		"The Host returns to the Menu too")
+
+
+func test_close_room_before_confirm_returns_host_to_menu() -> void:
+	var manager := _boot()
+	if manager == null:
+		return
+	manager.role_selector.host_button.emit_signal("pressed")
+	assert_true(manager.transport == null, "No transport created before Confirm")
+	manager.waiting_room.close_room_button.emit_signal("pressed")
+	assert_eq(manager.chosen_target.resource_path, MENU_SCENE_PATH,
+		"Close Room before Confirm returns the Host to the Menu")
 
 
 func test_host_offline_sends_peer_to_menu_with_notification() -> void:

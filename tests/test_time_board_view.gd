@@ -226,3 +226,68 @@ func test_all_energy_reductions_trigger_sequential_rewind_animation() -> void:
 	assert_eq(_board.slot_fill_ratio(3), 0.0, "Slots 3..4 drained")
 
 
+# ----- Ticket 02 (battlefield-data-sync): Two-Player Time Board mode & perspective mapping -----
+
+
+func test_two_player_mode_visibility_and_perspective_mapping() -> void:
+	if _board == null:
+		return
+	# 1. Single-player (has_player_b = false): extra top bar is hidden
+	_board.render_state({
+		"has_player_b": false,
+		"energy_a": 12.0,
+		"energy_b": 0.0,
+		"charge": 0.5,
+		"tags": {},
+	})
+	assert_false(_board.is_two_player_mode(), "1-player mode when has_player_b is false")
+	assert_eq(_board.slot_fill_ratio(11), 1.0, "Main bar shows Player A's 12.0 Energy")
+	assert_eq(_board.slot_fill_ratio(12), 0.5, "Main bar shows 0.5 charge at slot 12")
+
+	# 2. Two-player mode as Player A ("a") or Spectator ("spectator"):
+	#    Main bar = Player A (14.5), Extra top bar = Player B (6.5)
+	_board.set_perspective_role("a")
+	_board.render_state({
+		"has_player_b": true,
+		"energy_a": 14.5,
+		"energy_b": 6.5,
+		"charge": 0.0,
+		"tags": {5: {"count": 2, "turns": 14}},
+	})
+	assert_true(_board.is_two_player_mode(), "Extra top bar is visible when has_player_b is true")
+	assert_eq(_board.slot_fill_ratio(13), 1.0, "Player A sees own Energy (14.5) on main bar slot 13")
+	assert_eq(_board.slot_fill_ratio(14), 0.5, "Player A sees own Energy (14.5) half-slot on main bar slot 14")
+	assert_eq(_board.secondary_slot_fill_ratio(5), 1.0, "Player A sees Player B's Energy (6.5) on secondary top bar slot 5")
+	assert_eq(_board.secondary_slot_fill_ratio(6), 0.5, "Player A sees Player B's Energy (6.5) half-slot on secondary top bar slot 6")
+	assert_eq(_board.secondary_slot_fill_ratio(7), 0.0, "Secondary top bar slot 7 is empty")
+
+	# Spectator sees the same orientation (Main = Player A, Secondary = Player B)
+	_board.set_perspective_role("spectator")
+	assert_eq(_board.slot_fill_ratio(14), 0.5, "Spectator sees Player A's 14.5 Energy on main bar")
+	assert_eq(_board.secondary_slot_fill_ratio(6), 0.5, "Spectator sees Player B's 6.5 Energy on secondary top bar")
+
+	# 3. Two-player mode as Player B ("b"): reversed so Player B sees self on main bar!
+	#    Main bar = Player B (6.5), Extra top bar = Player A (14.5)
+	_board.set_perspective_role("b")
+	assert_eq(_board.slot_fill_ratio(5), 1.0, "Player B sees own Energy (6.5) on main bar slot 5")
+	assert_eq(_board.slot_fill_ratio(6), 0.5, "Player B sees own Energy (6.5) half-slot on main bar slot 6")
+	assert_eq(_board.slot_fill_ratio(7), 0.0, "Player B main bar slot 7 is empty")
+	assert_eq(_board.secondary_slot_fill_ratio(13), 1.0, "Player B sees Player A's Energy (14.5) on secondary top bar slot 13")
+	assert_eq(_board.secondary_slot_fill_ratio(14), 0.5, "Player B sees Player A's Energy (14.5) half-slot on secondary top bar slot 14")
+
+	# 4. Rewind animation triggers when EITHER player's Energy decreases in 2-player mode
+	_board.last_animation_kind = ""
+	_board.apply_state({
+		"has_player_b": true,
+		"energy_a": 10.0,
+		"energy_b": 6.5,
+		"charge": 0.0,
+		"tags": {},
+	})
+	assert_eq(_board.last_animation_kind, "rewind",
+		"Lowering Player A's Energy (on the secondary bar for Player B) still triggers rewind animation")
+	assert_eq(_board.secondary_slot_fill_ratio(9), 1.0, "Secondary bar rewound to 10.0 (slot 9 filled)")
+	assert_eq(_board.secondary_slot_fill_ratio(10), 0.0, "Secondary bar slot 10 drained")
+
+
+

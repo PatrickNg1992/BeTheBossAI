@@ -292,12 +292,6 @@ mouse_filter = 2
 
 [node name="TimeBoard" parent="Canvas" unique_id=664790673 instance=ExtResource("8_tb")]
 unique_name_in_owner = true
-layout_mode = 3
-anchors_preset = -1
-anchor_left = 0.3
-anchor_top = 0.008
-anchor_right = 0.7
-anchor_bottom = 0.14
 
 [node name="PlayButton" type="Button" parent="Canvas" unique_id=664790675]
 unique_name_in_owner = true

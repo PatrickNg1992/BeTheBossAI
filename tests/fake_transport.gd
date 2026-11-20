@@ -20,6 +20,12 @@ var _host: FakeTransport = null
 var _peers: Dictionary = {}  # host-side: peer_id -> FakeTransport
 var _next_peer_id := 2
 
+## Recorded outgoing messages so tests can assert whether a message was sent
+## with RELIABLE or UNRELIABLE_ORDERED.
+## Each entry: {"op": "broadcast"|"send_to_host"|"send_to_peer", "target_peer_id": int, "message": Dictionary, "transfer_mode": int}
+var sent_records: Array[Dictionary] = []
+var last_transfer_mode: int = RELIABLE
+
 ## port -> serving host FakeTransport (the fake ignores the IP; Dev-mode
 ## tests are all localhost anyway). Reset between tests.
 static var registry: Dictionary = {}
@@ -79,20 +85,45 @@ func close_room() -> void:
 		peer.room_closed.emit()
 
 
-func broadcast(message: Dictionary) -> void:
+func broadcast(message: Dictionary, transfer_mode: int = RELIABLE) -> void:
+	last_transfer_mode = transfer_mode
+	sent_records.append({
+		"op": "broadcast",
+		"target_peer_id": 0,
+		"message": message.duplicate(true),
+		"transfer_mode": transfer_mode,
+	})
 	for peer_id in _peers:
 		_peers[peer_id].message_received.emit(1, message.duplicate(true))
 
 
-func send_to_host(message: Dictionary) -> void:
+func send_to_host(message: Dictionary, transfer_mode: int = RELIABLE) -> void:
+	last_transfer_mode = transfer_mode
+	sent_records.append({
+		"op": "send_to_host",
+		"target_peer_id": 1,
+		"message": message.duplicate(true),
+		"transfer_mode": transfer_mode,
+	})
 	if _host != null:
 		_host.message_received.emit(_local_id, message.duplicate(true))
 
 
-func send_to_peer(peer_id: int, message: Dictionary) -> void:
+func send_to_peer(peer_id: int, message: Dictionary, transfer_mode: int = RELIABLE) -> void:
+	last_transfer_mode = transfer_mode
+	sent_records.append({
+		"op": "send_to_peer",
+		"target_peer_id": peer_id,
+		"message": message.duplicate(true),
+		"transfer_mode": transfer_mode,
+	})
 	var peer: FakeTransport = _peers.get(peer_id)
 	if peer != null:
 		peer.message_received.emit(1, message.duplicate(true))
+
+
+func clear_sent_records() -> void:
+	sent_records.clear()
 
 
 ## Host-side: forcibly disconnect a Peer; its link dies (host_lost).

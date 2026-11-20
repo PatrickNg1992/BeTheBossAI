@@ -22,16 +22,17 @@ src/
 │
 ├── menu/
 │   ├── menu.tscn, menu.gd       # Menu, the game's first page (run/main_scene)
-│   ├── single_player_scene.tscn + single_player_loader.gd  # Invisible loader: OfflineMultiplayerPeer + Battlefield
+│   ├── single_player_scene.tscn + single_player_loader.gd  # Invisible loader: LoopbackTransport + Battlefield
 │   └── pending_notification.gd  # Pending-Notification autoload (one-slot localization key holder)
-│
+
 ├── multiplayer_scene.tscn       # Multiplayer Scene (invisible): Container swaps Role Selector / Waiting Room /
 │                                # Battlefield; BattleOverlay holds the battle-time Leave button (testing hatch)
-│
+
 ├── multiplayer/
 │   ├── multiplayer_manager.gd   # Manager: sub-scene swapping, connection logic, room state, role validation
 │   ├── mp_transport.gd          # MpTransport seam: serve/join/leave/close_room/kick + message channel + events + poll()
 │   ├── dev_transport.gd         # Dev transport: raw ENetConnection, handshake carries name+version
+│   ├── loopback_transport.gd    # Local loopback MpTransport for Single-Player (is_host = true, local peer ID 1)
 │   ├── role_selector.tscn/.gd   # Role Selector view: Host / Join (form + Connecting…) / Back
 │   └── waiting_room.tscn/.gd    # Waiting Room view: config bar, seats, spectator list, start/close/leave
 │

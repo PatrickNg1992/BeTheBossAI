@@ -27,6 +27,7 @@ const BAR_SIZE := 10
 const GOAL_SLOT := 19
 
 @export var slot_size := Vector2(44, 15)
+@export var secondary_slot_size := Vector2(44, 6)
 @export var slot_gap := 3.0
 ## Turn duration — the single configurable time knob (default 1s). Tag
 ## glides run this long so indicators slide continuously.
@@ -49,6 +50,9 @@ const GOAL_SLOT := 19
 ## Ticket-01 scaffolding: cycle a crafted state to preview the animations.
 @export var demo_mode := false
 
+@onready var _secondary_bar_box: VBoxContainer = $Frame/Margin/Content/Board/SecondaryBarBox
+@onready var _secondary_upper_bar: HBoxContainer = $Frame/Margin/Content/Board/SecondaryBarBox/SecondaryUpperBarRow
+@onready var _secondary_lower_bar: HBoxContainer = $Frame/Margin/Content/Board/SecondaryBarBox/SecondaryLowerBar
 @onready var _upper_tags: HBoxContainer = $Frame/Margin/Content/Board/UpperTags
 @onready var _upper_bar: HBoxContainer = $Frame/Margin/Content/Board/UpperBarRow
 @onready var _lower_bar: HBoxContainer = $Frame/Margin/Content/Board/LowerBar
@@ -58,14 +62,20 @@ var _fills: Array[ColorRect] = []
 var _charging_fills: Array[ColorRect] = []
 var _consume_fills: Array[ColorRect] = []
 var _overdrag_fills: Array[ColorRect] = []
+var _secondary_fills: Array[ColorRect] = []
+var _secondary_charging_fills: Array[ColorRect] = []
 var _tag_movers: Array[Control] = []
 var _tag_turns: Array[Label] = []
 var _tag_counts: Array[Label] = []
 var _tag_arrows: Array[TextureRect] = []
 var _fill_tweens: Dictionary = {}
 var _rewind_tween: Tween = null
+var _secondary_rewind_tween: Tween = null
 var _target_energy_ratios: Array[float] = []
 var _target_charging_ratios: Array[float] = []
+var _secondary_target_energy_ratios: Array[float] = []
+var _secondary_target_charging_ratios: Array[float] = []
+var _perspective_role: String = "a"
 
 ## The animation kind the last apply_state() requested — "glide",
 ## "fade_teleport", "rewind", or "" for none. The observable animation seam
@@ -88,16 +98,23 @@ func _ready() -> void:
 # ----- construction (all generated: tuning happens via the exports) -----
 
 func _build_board() -> void:
-	for row in [_lower_bar, _upper_bar, _lower_tags, _upper_tags]:
-		row.add_theme_constant_override("separation", int(slot_gap))
+	for row in [_lower_bar, _upper_bar, _lower_tags, _upper_tags, _secondary_lower_bar, _secondary_upper_bar]:
+		if row != null:
+			row.add_theme_constant_override("separation", int(slot_gap))
 	_fills.resize(SLOT_COUNT)
 	_charging_fills.resize(SLOT_COUNT)
 	_consume_fills.resize(SLOT_COUNT)
 	_overdrag_fills.resize(SLOT_COUNT)
+	_secondary_fills.resize(SLOT_COUNT)
+	_secondary_charging_fills.resize(SLOT_COUNT)
 	_target_energy_ratios.resize(SLOT_COUNT)
 	_target_energy_ratios.fill(0.0)
 	_target_charging_ratios.resize(SLOT_COUNT)
 	_target_charging_ratios.fill(0.0)
+	_secondary_target_energy_ratios.resize(SLOT_COUNT)
+	_secondary_target_energy_ratios.fill(0.0)
+	_secondary_target_charging_ratios.resize(SLOT_COUNT)
+	_secondary_target_charging_ratios.fill(0.0)
 	_tag_movers.resize(SLOT_COUNT)
 	_tag_turns.resize(SLOT_COUNT)
 	_tag_counts.resize(SLOT_COUNT)
@@ -106,10 +123,32 @@ func _build_board() -> void:
 	for slot in range(BAR_SIZE):
 		_lower_bar.add_child(_make_slot_cell(slot, false))
 		_lower_tags.add_child(_make_tag_cell(slot, false))
+		if _secondary_lower_bar != null:
+			_secondary_lower_bar.add_child(_make_secondary_slot_cell(slot, false))
 	for column in range(BAR_SIZE):
 		var slot := GOAL_SLOT - column
 		_upper_bar.add_child(_make_slot_cell(slot, true))
 		_upper_tags.add_child(_make_tag_cell(slot, true))
+		if _secondary_upper_bar != null:
+			_secondary_upper_bar.add_child(_make_secondary_slot_cell(slot, true))
+
+
+func _make_secondary_slot_cell(slot: int, upper: bool) -> Control:
+	var cell := Control.new()
+	cell.custom_minimum_size = secondary_slot_size
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := ColorRect.new()
+	bg.color = goal_color if slot == GOAL_SLOT else slot_color
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(bg)
+	var fill := _make_bar_rect(energy_color, upper)
+	cell.add_child(fill)
+	_secondary_fills[slot] = fill
+	var charging_fill := _make_bar_rect(charging_color, upper)
+	cell.add_child(charging_fill)
+	_secondary_charging_fills[slot] = charging_fill
+	return cell
 
 
 func _make_slot_cell(slot: int, upper: bool) -> Control:
@@ -162,7 +201,7 @@ func _make_bar_rect(color: Color, upper: bool) -> ColorRect:
 ## direction — so tags sit on box edges, never mid-box.
 func _make_tag_cell(slot: int, upper: bool) -> Control:
 	var cell := Control.new()
-	cell.custom_minimum_size = Vector2(slot_size.x, slot_size.y + 17.0)
+	cell.custom_minimum_size = Vector2(slot_size.x, 22.0)
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mover := Control.new()
 	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -171,15 +210,15 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	cell.add_child(mover)
 	var turns := Label.new()
 	turns.modulate = turns_color
-	turns.add_theme_font_size_override("font_size", 13)
+	turns.add_theme_font_size_override("font_size", 11)
 	turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	turns.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	turns.size = Vector2(slot_size.x, 15)
+	turns.size = Vector2(slot_size.x, 11)
 	turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mover.add_child(turns)
 	# The count sits on the arrow itself, in a contrasting color.
 	var arrow_frame := Control.new()
-	arrow_frame.size = Vector2(slot_size.x, slot_size.y + 6.0)
+	arrow_frame.size = Vector2(slot_size.x, 12.0)
 	arrow_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var arrow := TextureRect.new()
 	arrow.texture = arrow_down_texture if upper else arrow_up_texture
@@ -189,7 +228,7 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	arrow_frame.add_child(arrow)
 	var count := Label.new()
 	count.modulate = count_color
-	count.add_theme_font_size_override("font_size", 12)
+	count.add_theme_font_size_override("font_size", 10)
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -200,10 +239,10 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	# arrow never overlaps the text line.
 	if upper:
 		turns.position = Vector2.ZERO
-		arrow_frame.position = Vector2(0, 17)
+		arrow_frame.position = Vector2(0, 10)
 	else:
 		arrow_frame.position = Vector2.ZERO
-		turns.position = Vector2(0, slot_size.y + 8)
+		turns.position = Vector2(0, 11)
 	_tag_movers[slot] = mover
 	_tag_arrows[slot] = arrow
 	_tag_counts[slot] = count
@@ -220,20 +259,94 @@ func _edge_offset(upper: bool) -> float:
 
 # ----- public view API (the model→view seam) -----
 
+## Sets the local viewer's seat role ("a", "b", or "spectator") so that in
+## 2-player mode a seated player always sees their own Energy on the main
+## bottom bar and the opponent's Energy on the secondary top bar (while
+## Spectators see Player A on the main bar and Player B on the secondary bar).
+func set_perspective_role(role: String) -> void:
+	var normalized := role if (role == "a" or role == "b") else "spectator"
+	if _perspective_role == normalized:
+		return
+	_perspective_role = normalized
+	render_state(_state)
+
+
+func get_perspective_role() -> String:
+	return _perspective_role
+
+
+func is_two_player_mode() -> bool:
+	return _secondary_bar_box != null and _secondary_bar_box.visible
+
+
+func _normalize_state(raw: Dictionary) -> Dictionary:
+	var s := raw.duplicate(true)
+	if not s.has("preview_cost"):
+		s["preview_cost"] = _state.get("preview_cost", 0.0)
+	if s.has("turn_progress") and not s.has("charge"):
+		s["charge"] = float(s["turn_progress"])
+	elif not s.has("charge"):
+		s["charge"] = 0.0
+	if not s.has("has_player_b"):
+		s["has_player_b"] = false
+	if s.has("energy_a"):
+		s["energy_a"] = float(s["energy_a"])
+	else:
+		s["energy_a"] = float(s.get("energy", 0.0))
+	if s.has("energy_b"):
+		s["energy_b"] = float(s["energy_b"])
+	else:
+		s["energy_b"] = 0.0
+	if not s.has("tags"):
+		if s.has("action_tags") and s["action_tags"] is Dictionary:
+			s["tags"] = s["action_tags"].duplicate(true)
+		elif s.has("action_tags") and s["action_tags"] is Array:
+			var tag_map := {}
+			for item in s["action_tags"]:
+				if item is Dictionary and item.has("slot"):
+					tag_map[int(item["slot"])] = {
+						"count": int(item.get("count", 0)),
+						"turns": int(item.get("turns", 0)),
+					}
+			s["tags"] = tag_map
+		else:
+			s["tags"] = {}
+	return s
+
+
+func _main_energy_of(s: Dictionary) -> float:
+	var two_p := bool(s.get("has_player_b", false))
+	if two_p and _perspective_role == "b":
+		return float(s.get("energy_b", 0.0))
+	return float(s.get("energy_a", s.get("energy", 0.0)))
+
+
+func _secondary_energy_of(s: Dictionary) -> float:
+	if _perspective_role == "b":
+		return float(s.get("energy_a", s.get("energy", 0.0)))
+	return float(s.get("energy_b", 0.0))
+
+
 ## Render a full board state instantly, no animation.
 func render_state(state: Dictionary) -> void:
-	_state = state.duplicate(true)
-	if not _state.has("preview_cost"):
-		_state["preview_cost"] = 0.0
-	_render_energy(float(state.get("energy", 0.0)), float(state.get("charge", 0.0)), false)
-	_render_preview(float(state.get("energy", 0.0)), float(state.get("preview_cost", 0.0)))
-	_render_tags(state.get("tags", {}))
+	_state = _normalize_state(state)
+	var two_p := bool(_state.get("has_player_b", false))
+	if _secondary_bar_box != null:
+		_secondary_bar_box.visible = two_p
+	var main_e := _main_energy_of(_state)
+	var sec_e := _secondary_energy_of(_state)
+	var ch := float(_state.get("charge", 0.0))
+	_render_energy(main_e, ch, false)
+	if two_p:
+		_render_secondary_energy(sec_e, ch)
+	_render_preview(main_e, float(_state.get("preview_cost", 0.0)))
+	_render_tags(_state.get("tags", {}))
 
 
 ## Update only the aiming preview_cost on top of the current state.
 func set_preview_cost(cost: float) -> void:
 	_state["preview_cost"] = maxf(cost, 0.0)
-	_render_preview(float(_state.get("energy", 0.0)), float(_state.get("preview_cost", 0.0)))
+	_render_preview(_main_energy_of(_state), float(_state.get("preview_cost", 0.0)))
 
 
 func get_preview_cost() -> float:
@@ -246,7 +359,12 @@ func get_preview_cost() -> float:
 ## to lowest.
 func animate_energy_reduction(new_energy: float, charge: float = -1.0) -> void:
 	var next := _state.duplicate(true)
-	next["energy"] = clampf(new_energy, 0.0, float(SLOT_COUNT))
+	var clamped := clampf(new_energy, 0.0, float(SLOT_COUNT))
+	next["energy"] = clamped
+	if bool(next.get("has_player_b", false)) and _perspective_role == "b":
+		next["energy_b"] = clamped
+	else:
+		next["energy_a"] = clamped
 	next["preview_cost"] = 0.0
 	if charge >= 0.0:
 		next["charge"] = clampf(charge, 0.0, 1.0)
@@ -258,12 +376,20 @@ func animate_energy_reduction(new_energy: float, charge: float = -1.0) -> void:
 ## smoothly, a completing slot pops, spend-Energy rewinds, tag moves glide,
 ## 9→10 wraps fade-teleport. Records last_animation_kind.
 func apply_state(state: Dictionary) -> void:
-	var old: Dictionary = _state
+	var old: Dictionary = _normalize_state(_state)
+	var next: Dictionary = _normalize_state(state)
 	var kind := ""
-	var new_energy: float = float(state.get("energy", 0.0))
-	var old_energy: float = float(old.get("energy", 0.0))
+	var two_p := bool(next.get("has_player_b", false))
+	if _secondary_bar_box != null:
+		_secondary_bar_box.visible = two_p
+
+	var old_main_e := _main_energy_of(old)
+	var new_main_e := _main_energy_of(next)
+	var old_sec_e := _secondary_energy_of(old)
+	var new_sec_e := _secondary_energy_of(next)
+
 	var old_tags: Dictionary = old.get("tags", {})
-	var new_tags: Dictionary = state.get("tags", {})
+	var new_tags: Dictionary = next.get("tags", {})
 	# Detect movement before rendering (same count one slot further along
 	# the path = the same tag gliding; 9→10 wraps with a fade-teleport).
 	var glides: Array = []
@@ -277,25 +403,30 @@ func apply_state(state: Dictionary) -> void:
 				teleports.append([prev, slot])
 			else:
 				glides.append([prev, slot])
-	if new_energy < old_energy - 0.001:
+	var main_rewound := new_main_e < old_main_e - 0.001
+	var sec_rewound := two_p and (new_sec_e < old_sec_e - 0.001)
+	if main_rewound or sec_rewound:
 		kind = "rewind"
-	elif int(floorf(new_energy + 0.001)) > int(floorf(old_energy + 0.001)):
-		for slot in range(int(floorf(old_energy + 0.001)), int(floorf(new_energy + 0.001))):
+	elif int(floorf(new_main_e + 0.001)) > int(floorf(old_main_e + 0.001)):
+		for slot in range(int(floorf(old_main_e + 0.001)), int(floorf(new_main_e + 0.001))):
 			_play_charge_pop(slot)
 	if not teleports.is_empty():
 		kind = "fade_teleport"
 	elif not glides.is_empty():
 		kind = "glide"
 	last_animation_kind = kind
-	var merged := state.duplicate(true)
-	if not merged.has("preview_cost"):
-		merged["preview_cost"] = _state.get("preview_cost", 0.0)
-	_state = merged
-	if new_energy < old_energy - 0.001:
-		_play_rewind_sequential(old_energy, new_energy, float(_state.get("charge", 0.0)))
+	_state = next
+	var ch := float(_state.get("charge", 0.0))
+	if main_rewound:
+		_play_rewind_sequential(old_main_e, new_main_e, ch)
 	else:
-		_render_energy(float(_state.get("energy", 0.0)), float(_state.get("charge", 0.0)), true)
-	_render_preview(float(_state.get("energy", 0.0)), float(_state.get("preview_cost", 0.0)))
+		_render_energy(new_main_e, ch, true)
+	if two_p:
+		if sec_rewound:
+			_play_secondary_rewind_sequential(old_sec_e, new_sec_e, ch)
+		else:
+			_render_secondary_energy(new_sec_e, ch)
+	_render_preview(new_main_e, float(_state.get("preview_cost", 0.0)))
 	_render_tags(new_tags)
 	# Post-render fix-ups: movers in motion show their OLD numbers until the
 	# arrow lands on the next edge, then count down.
@@ -358,6 +489,27 @@ func slot_overdrag_ratio(slot: int) -> float:
 	return _overdrag_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
+## Rendered fill ratio of a slot on the secondary (2-player top) bar:
+## 1.0 filled, 0.5 on a half-filled energy slot, the fractional charge on a
+## charging-only slot, 0.0 otherwise.
+func secondary_slot_fill_ratio(slot: int) -> float:
+	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running() and slot >= 0 and slot < _secondary_target_energy_ratios.size():
+		if _secondary_target_energy_ratios[slot] > 0.0001:
+			return _secondary_target_energy_ratios[slot]
+		return _secondary_target_charging_ratios[slot]
+	var owned_ratio := _secondary_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
+	if owned_ratio > 0.0001:
+		return owned_ratio
+	return secondary_slot_charging_ratio(slot)
+
+
+## Rendered charging-progress ratio on a slot of the secondary bar (0.0..1.0).
+func secondary_slot_charging_ratio(slot: int) -> float:
+	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running() and slot >= 0 and slot < _secondary_target_charging_ratios.size():
+		return _secondary_target_charging_ratios[slot]
+	return _secondary_charging_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
+
+
 ## Tag render info for a slot: {"side", "count", "turns", "arrow"} from the
 ## committed state, or empty when no tag is rendered there. (Transient
 ## in-flight label text is motion, not renderable output.)
@@ -400,6 +552,30 @@ func _render_energy(energy: float, charge: float, animate: bool) -> void:
 		var ch_ratio := maxf(0.0, ch_end - ch_start)
 		_target_charging_ratios[slot] = ch_ratio
 		_apply_segment(_charging_fills[slot], charging_color, ch_start, maxf(ch_start, ch_end))
+
+
+func _render_secondary_energy(energy: float, charge: float) -> void:
+	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running():
+		_secondary_rewind_tween.kill()
+		_secondary_rewind_tween = null
+	var clamped_energy := clampf(energy, 0.0, float(SLOT_COUNT))
+	var clamped_charge := clampf(charge, 0.0, 1.0)
+	var charge_end := clampf(clamped_energy + clamped_charge, 0.0, float(SLOT_COUNT))
+	for slot in range(SLOT_COUNT):
+		var slot_f := float(slot)
+		var fill := _secondary_fills[slot]
+		if fill == null:
+			continue
+		var energy_in_slot := clampf(clamped_energy - slot_f, 0.0, 1.0)
+		_secondary_target_energy_ratios[slot] = energy_in_slot
+		fill.color = energy_color
+		_apply_fill_width(fill, slot_size.x * energy_in_slot)
+
+		var ch_start := clampf(clamped_energy - slot_f, 0.0, 1.0)
+		var ch_end := clampf(charge_end - slot_f, 0.0, 1.0)
+		var ch_ratio := maxf(0.0, ch_end - ch_start)
+		_secondary_target_charging_ratios[slot] = ch_ratio
+		_apply_segment(_secondary_charging_fills[slot], charging_color, ch_start, maxf(ch_start, ch_end))
 
 
 func _render_preview(energy: float, preview_cost: float) -> void:
@@ -557,7 +733,60 @@ func _play_rewind_sequential(old_energy: float, new_energy: float, charge: float
 		cur = next_val
 	_rewind_tween.tween_callback(func() -> void:
 		_rewind_tween = null
-		_render_energy(float(_state.get("energy", 0.0)), float(_state.get("charge", 0.0)), false)
+		_render_energy(_main_energy_of(_state), float(_state.get("charge", 0.0)), false)
+	)
+
+
+func _play_secondary_rewind_sequential(old_energy: float, new_energy: float, charge: float) -> void:
+	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running():
+		_secondary_rewind_tween.kill()
+		_secondary_rewind_tween = null
+	var clamped_old := clampf(old_energy, 0.0, float(SLOT_COUNT))
+	var clamped_new := clampf(new_energy, 0.0, float(SLOT_COUNT))
+	var clamped_charge := clampf(charge, 0.0, 1.0)
+	var charge_end := clampf(clamped_new + clamped_charge, 0.0, float(SLOT_COUNT))
+
+	for slot in range(SLOT_COUNT):
+		var slot_f := float(slot)
+		var fill := _secondary_fills[slot]
+		if fill == null:
+			continue
+		var old_ratio := clampf(clamped_old - slot_f, 0.0, 1.0)
+		var new_ratio := clampf(clamped_new - slot_f, 0.0, 1.0)
+		_secondary_target_energy_ratios[slot] = new_ratio
+		var ch_start := clampf(clamped_new - slot_f, 0.0, 1.0)
+		var ch_end := clampf(charge_end - slot_f, 0.0, 1.0)
+		_secondary_target_charging_ratios[slot] = maxf(0.0, ch_end - ch_start)
+		_apply_segment(_secondary_charging_fills[slot], charging_color, 0.0, 0.0)
+		fill.color = energy_color
+		if old_ratio > new_ratio + 0.0001:
+			_apply_fill_width(fill, slot_size.x * old_ratio)
+		else:
+			_apply_fill_width(fill, slot_size.x * new_ratio)
+
+	var top_slot := mini(SLOT_COUNT - 1, int(ceilf(clamped_old - 0.0001)) - 1)
+	var bottom_slot := maxi(0, int(floorf(clamped_new + 0.0001)))
+	if top_slot < bottom_slot:
+		return
+
+	_secondary_rewind_tween = create_tween()
+	var cur := snappedf(clamped_old, 0.5)
+	var target := snappedf(clamped_new, 0.5)
+	while cur > target + 0.001:
+		var next_val := maxf(target, snappedf(cur - 0.5, 0.5))
+		var slot := clampi(int(floorf(cur - 0.0001)), 0, SLOT_COUNT - 1)
+		var slot_target_ratio := clampf(next_val - float(slot), 0.0, 1.0)
+		var fill := _secondary_fills[slot]
+		var target_w := slot_size.x * slot_target_ratio
+		var dur := rewind_slot_duration * (cur - next_val)
+		if fill.anchor_right == 0.0:
+			_secondary_rewind_tween.tween_property(fill, "offset_right", target_w, maxf(dur, 0.02))
+		else:
+			_secondary_rewind_tween.tween_property(fill, "offset_left", -target_w, maxf(dur, 0.02))
+		cur = next_val
+	_secondary_rewind_tween.tween_callback(func() -> void:
+		_secondary_rewind_tween = null
+		_render_secondary_energy(_secondary_energy_of(_state), float(_state.get("charge", 0.0)))
 	)
 
 
