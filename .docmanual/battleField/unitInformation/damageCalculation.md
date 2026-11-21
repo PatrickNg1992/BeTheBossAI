@@ -10,13 +10,15 @@ All units hold a Damage Stack, including Boss monsters, minions and adventurers.
 
 ### Damage DO (Data Object)
 
-A Damage DO of a unit stores the source and value of damage taken. It also specifies other information, such as damage type.
+A Damage DO of a unit stores the source and value of damage taken. It also specifies other information, such as damage type and whether the damage is fixed (`is_fixed`). Damage values can be decimal numbers during calculation and are rounded to the nearest integer when settled in Settle Time (while `current_hp` and `max_hp` are always integers).
 
-When two pucks collide in `PuckVelocityManager`, after calculating the collision Impulse scalar `J`, `PuckVelocityManager` checks collision effects and pushes a `Damage DO` to the affected unit's Damage Stack in `UnitInformationManager` (following the collision matrix: Enemy Adventurers take collision damage from any impact except with an allied Knight; Boss Monsters only take collision damage from impacts with a Knight). For the demo formula (to be refined later), collision damage is linear with the collision Impulse `J`, landing in approximately the `50 ~ 200` range per collision depending on hitting velocity/impulse. 
+When two pucks collide in `PuckVelocityManager`, after calculating the collision Impulse scalar `J`, `PuckVelocityManager` checks collision effects and pushes a `Damage DO` to the affected unit's Damage Stack in `UnitInformationManager` (following the collision matrix: Enemy Adventurers take collision damage from any impact except with an allied Knight; Boss Monsters only take collision damage from impacts with a Knight). For the demo formula (to be refined later), collision damage is linear with the collision Impulse `J`, landing in approximately the `50 ~ 200` range per collision depending on hitting velocity/impulse.
+
+When a puck falls into a Pocket Area, a fixed `Damage DO` equal to half of the unit's `max_hp` (rounded up to integer: `ceil(max_hp / 2.0)`) is pushed to its Damage Stack. This Pocket Area `Damage DO` is fixed and immune to both `Frenzy Power` and `Hit Level`. After falling into a Pocket Area, when the puck returns to the table, it respawns at a random empty, non-pocket Tile inside the middle 80% of the Cue Table.
 
 ## Frenzy Power
 
-Frenzy Power is a bonus mechanism that allows players to multiply the damage with a good play. It is a percentage number (default `100%`) that multiplies the total damage right before the Damage Settlement. 
+Frenzy Power is a bonus mechanism that allows players to multiply the damage with a good play. It is a percentage number (default `100.0%`, displayed to 1 decimal place) that multiplies the total damage right before the Damage Settlement.
 
 The number can be affected by collisions and effects. Typically, the power number increases whenever the Boss monster collides with an enemy adventurer puck (default `+10%`). However, if the puck is a knight class, the number will decrease (default `-20%`), with a minimum floor of `50%`. Sometimes the battlefields will spawn special blocks that allow the player to adjust the Frenzy Power.
 
@@ -50,7 +52,7 @@ Damage taken by Boss Monster and Minions:
 
 For any Boss Monster, pending and settled damage in a single Settle Phase is capped at clearing at most 1 Health Bar (its Ghost HP bar trails down to 0 of the active Health Bar, and excess damage never spills over into the next Health Bar). This applies to every Boss Monster in every Settle Phase.
 
-After Damage Settlement, the Damage stack translates to the actual Damage value dealt to units, Hit Level resets to 0 for all units, and each Boss Monster's Frenzy Power decays to `(current_frenzy / 2) + 50%`. Then the units check whether they are defeated.
+After Damage Settlement, the Damage stack translates to the actual integer Damage value dealt to units (rounded to the nearest integer, and shown on the Unit Display as a negative HP change number such as `-567`), Hit Level resets to 0 for all units, and each Boss Monster's Frenzy Power decays to `(current_frenzy / 2) + 50%`. Then the units check whether they are defeated.
 
 ## Visual Effect (Count and HP Trailing)
 

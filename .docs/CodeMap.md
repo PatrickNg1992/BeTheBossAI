@@ -57,6 +57,7 @@ src/
 │   ├── timing_manager.gd        # TimingManager: 6-Timing state machine, Energy charging, staged damage, Pause & Fast Play
 │   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz ground friction & at-rest detection
 │   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot, 0.5-slot Energy preview, 3D aiming arrow & launch
+│   ├── damage_do.gd             # DamageDO: per-hit staged damage record (source_unit_id, owner_boss_unit_id, value, damage_type)
 │   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, stats, Damage Stack & 0..N pucks
 │   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout & puck binding
 │   └── demo_battlefield.gd      # Demo battlefield root: wires TimingManager + Play/Fast Play/Pause UI + surfaces `battle_finished`

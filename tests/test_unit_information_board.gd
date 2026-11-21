@@ -63,48 +63,70 @@ func test_single_player_pve_layout_and_class_to_slot_mapping_with_uncompacted_ga
 	assert_eq(m3.reference_mark, "ω3", "Player A Minion 3 Reference Mark is ω3")
 
 	# Register Team 1 (full 6 members: Knight, Warrior, Ranger, Mage + 2 distinct duplicate classes at ?5 and ?6)
+	var puck_t1_k := EnemyAdventurer.new()
+	var puck_t1_dup1 := EnemyAdventurer.new()
+	var puck_t1_dup2 := EnemyAdventurer.new()
 	var team1_units: Array = mgr.register_adventurer_team(1, [
-		{"unit_id": "t1_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT},
+		{"unit_id": "t1_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t1_k},
 		{"unit_id": "t1_w", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR},
 		{"unit_id": "t1_r", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
 		{"unit_id": "t1_m", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
-		{"unit_id": "t1_dup1", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR},
-		{"unit_id": "t1_dup2", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
+		{"unit_id": "t1_dup1", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR, "puck": puck_t1_dup1},
+		{"unit_id": "t1_dup2", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t1_dup2},
 	])
 	assert_eq(team1_units.size(), 6, "Team 1 registered 6 adventurers")
-	assert_eq(mgr.get_unit_at_grid("R21").reference_mark, "A1", "Knight maps to ?1 -> A1 at R21")
-	assert_eq(mgr.get_unit_at_grid("R21").slot_color, mgr.COLOR_SLOT_1_BLUE, "?1 colour is Blue")
-	assert_eq(mgr.get_unit_at_grid("R22").reference_mark, "A2", "Warrior maps to ?2 -> A2 at R22")
-	assert_eq(mgr.get_unit_at_grid("R22").slot_color, mgr.COLOR_SLOT_2_RED, "?2 colour is Red")
-	assert_eq(mgr.get_unit_at_grid("R31").reference_mark, "A3", "Ranger maps to ?3 -> A3 at R31")
-	assert_eq(mgr.get_unit_at_grid("R31").slot_color, mgr.COLOR_SLOT_3_YELLOW, "?3 colour is Yellow")
-	assert_eq(mgr.get_unit_at_grid("R32").reference_mark, "A4", "Mage maps to ?4 -> A4 at R32")
-	assert_eq(mgr.get_unit_at_grid("R32").slot_color, mgr.COLOR_SLOT_4_PURPLE, "?4 colour is Purple")
-	assert_eq(mgr.get_unit_at_grid("R41").reference_mark, "A5", "1st duplicate maps to ?5 -> A5 at R41")
-	assert_eq(mgr.get_unit_at_grid("R41").slot_color, mgr.COLOR_SLOT_5_GREEN, "?5 colour is Green")
-	assert_eq(mgr.get_unit_at_grid("R42").reference_mark, "A6", "2nd duplicate maps to ?6 -> A6 at R42")
-	assert_eq(mgr.get_unit_at_grid("R42").slot_color, mgr.COLOR_SLOT_6_ORANGE, "?6 colour is Orange")
+	assert_eq(mgr.get_unit_at_grid("R21").reference_mark, "V", "Knight maps to slot 1 -> V (Vanguard) at R21")
+	assert_eq(mgr.get_unit_at_grid("R21").slot_color, mgr.COLOR_SLOT_1_BLUE, "Knight colour is Blue")
+	assert_eq(mgr.get_unit_at_grid("R22").reference_mark, "B", "Warrior maps to slot 2 -> B (Brawler) at R22")
+	assert_eq(mgr.get_unit_at_grid("R22").slot_color, mgr.COLOR_SLOT_2_RED, "Warrior colour is Red")
+	assert_eq(mgr.get_unit_at_grid("R31").reference_mark, "R", "Ranger maps to slot 3 -> R (Ranger) at R31")
+	assert_eq(mgr.get_unit_at_grid("R31").slot_color, mgr.COLOR_SLOT_5_GREEN, "Ranger colour is Green")
+	assert_eq(mgr.get_unit_at_grid("R32").reference_mark, "S", "Mage maps to slot 4 -> S (Spell) at R32")
+	assert_eq(mgr.get_unit_at_grid("R32").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Mage colour is Purple")
+	assert_eq(mgr.get_unit_at_grid("R41").reference_mark, "F", "1st duplicate maps to slot 5 -> F (Free) at R41")
+	assert_eq(mgr.get_unit_at_grid("R41").slot_color, mgr.COLOR_SLOT_2_RED, "Duplicate Warrior in F keeps Warrior Red colour")
+	assert_eq(mgr.get_unit_at_grid("R42").reference_mark, "E", "2nd duplicate maps to slot 6 -> E (Extra) at R42")
+	assert_eq(mgr.get_unit_at_grid("R42").slot_color, mgr.COLOR_SLOT_1_BLUE, "Duplicate Knight in E keeps Knight Blue colour!")
 	assert_eq(mgr.get_unit_at_grid("R21").reference_mark_color, mgr.COLOR_MARK_TEAM1_GREY, "Team 1 Reference Mark colour is Deep Grey")
 	assert_true(mgr.get_unit_at_grid("R22").avatar_path != mgr.get_unit_at_grid("R41").avatar_path, "Duplicate Warrior gets a distinct avatar image from the first Warrior")
 
-	# Register Team 2 with a missing Warrior (?2) and missing Ranger (?3): only Knight, Mage, and a duplicate Mage!
-	# Missing class slots R62 (B2) and R71 (B3) must stay empty rather than compacting!
-	mgr.register_adventurer_team(2, [
-		{"unit_id": "t2_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT},
-		{"unit_id": "t2_m", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
-		{"unit_id": "t2_m2", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
-	])
-	assert_true(mgr.get_unit_at_grid("R61") != null, "Team 2 Knight is at R61 (B1)")
-	assert_eq(mgr.get_unit_at_grid("R61").reference_mark, "B1", "Team 2 Knight Reference Mark is B1")
-	assert_eq(mgr.get_unit_at_grid("R61").reference_mark_color, mgr.COLOR_MARK_TEAM2_BROWN, "Team 2 Reference Mark colour is Deep Brown")
-	assert_true(mgr.get_unit_at_grid("R62") == null, "Missing Warrior leaves R62 (B2) empty (not compacted)")
-	assert_true(mgr.get_unit_at_grid("R71") == null, "Missing Ranger leaves R71 (B3) empty (not compacted)")
-	assert_true(mgr.get_unit_at_grid("R72") != null, "Team 2 Mage is at R72 (B4)")
-	assert_eq(mgr.get_unit_at_grid("R72").reference_mark, "B4", "Team 2 Mage Reference Mark is B4")
-	assert_true(mgr.get_unit_at_grid("R81") != null, "Duplicate Mage takes first free position R81 (B5)")
-	assert_eq(mgr.get_unit_at_grid("R81").reference_mark, "B5", "Duplicate Mage Reference Mark is B5")
-	assert_true(mgr.get_unit_at_grid("R82") == null, "Unused 6th slot R82 (B6) stays empty")
+	# Verify Team 1 puck stripe rules: no team2 stripe; slot 1 has no X stripe, slot 5 (F) has White X stripe (5), slot 6 (E) has Black X stripe (6)
+	assert_false(puck_t1_k.has_team2_stripe(), "Team 1 puck has no Team 2 stripe")
+	assert_eq(puck_t1_k.get_free_slot_x_mode(), 0, "Slot 1 (V) has no free-position X stripe")
+	assert_false(puck_t1_dup1.has_team2_stripe(), "Team 1 slot 5 puck has no Team 2 stripe")
+	assert_eq(puck_t1_dup1.get_free_slot_x_mode(), 5, "Slot 5 (F) puck has White 4-sided X stripe (mode 5)")
+	assert_eq(puck_t1_dup2.get_free_slot_x_mode(), 6, "Slot 6 (E) puck has Black 4-sided X stripe (mode 6)")
 
+	# Register Team 2 with a missing Warrior (slot 2) and missing Ranger (slot 3): only Knight, Mage, and a duplicate Mage!
+	# Missing class slots R62 (b) and R71 (r) must stay empty rather than compacting!
+	var puck_t2_k := EnemyAdventurer.new()
+	var puck_t2_m2 := EnemyAdventurer.new()
+	mgr.register_adventurer_team(2, [
+		{"unit_id": "t2_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t2_k},
+		{"unit_id": "t2_m", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
+		{"unit_id": "t2_m2", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "puck": puck_t2_m2},
+	])
+	assert_true(mgr.get_unit_at_grid("R61") != null, "Team 2 Knight is at R61 (v)")
+	assert_eq(mgr.get_unit_at_grid("R61").reference_mark, "v", "Team 2 Knight Reference Mark is small letter 'v'")
+	assert_eq(mgr.get_unit_at_grid("R61").reference_mark_color, mgr.COLOR_MARK_TEAM2_BROWN, "Team 2 Reference Mark colour is Deep Brown")
+	assert_true(puck_t2_k.has_team2_stripe(), "Team 2 puck has 2-sided White team stripe")
+	assert_eq(puck_t2_k.get_free_slot_x_mode(), 0, "Team 2 slot 1 (v) has no free-position X stripe")
+	assert_true(mgr.get_unit_at_grid("R62") == null, "Missing Warrior leaves R62 (b) empty (not compacted)")
+	assert_true(mgr.get_unit_at_grid("R71") == null, "Missing Ranger leaves R71 (r) empty (not compacted)")
+	assert_true(mgr.get_unit_at_grid("R72") != null, "Team 2 Mage is at R72 (s)")
+	assert_eq(mgr.get_unit_at_grid("R72").reference_mark, "s", "Team 2 Mage Reference Mark is small letter 's'")
+	assert_true(mgr.get_unit_at_grid("R81") != null, "Duplicate Mage takes first free position R81 (f)")
+	assert_eq(mgr.get_unit_at_grid("R81").reference_mark, "f", "Duplicate Mage Reference Mark is small letter 'f'")
+	assert_eq(mgr.get_unit_at_grid("R81").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Duplicate Mage in 'f' keeps Mage Purple colour")
+	assert_true(puck_t2_m2.has_team2_stripe(), "Team 2 duplicate Mage puck has 2-sided White team stripe")
+	assert_eq(puck_t2_m2.get_free_slot_x_mode(), 5, "Team 2 slot 5 (f) puck also has White 4-sided X stripe (mode 5)")
+	assert_true(mgr.get_unit_at_grid("R82") == null, "Unused 6th slot R82 (e) stays empty")
+
+	puck_t1_k.free()
+	puck_t1_dup1.free()
+	puck_t1_dup2.free()
+	puck_t2_k.free()
+	puck_t2_m2.free()
 	tree.root.remove_child(mgr)
 	mgr.free()
 
@@ -114,16 +136,16 @@ func test_custom_stage_override_and_2p_coop_and_2p_versus_layouts() -> void:
 	if mgr == null:
 		return
 
-	# 1. Custom stage override: explicitly place a Mage in slot 1 (A1 / R21)
+	# 1. Custom stage override: explicitly place a Mage in slot 1 (V / R21)
 	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
 	mgr.register_adventurer_team(1, [
 		{"unit_id": "custom_mage_slot1", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "slot_override": 1},
 	])
 	var custom_u = mgr.get_unit_at_grid("R21")
 	assert_true(custom_u != null, "Custom stage override places Mage in slot 1 (R21)")
-	assert_eq(custom_u.reference_mark, "A1", "Custom slot 1 unit gets A1 Reference Mark")
+	assert_eq(custom_u.reference_mark, "V", "Custom slot 1 unit gets V Reference Mark")
 	assert_eq(custom_u.adventurer_class, EnemyAdventurer.AdventurerClass.MAGE, "Custom slot 1 unit keeps Mage class")
-	assert_eq(custom_u.slot_color, mgr.COLOR_SLOT_1_BLUE, "Custom slot 1 unit gets slot 1 Blue border/puck colour")
+	assert_eq(custom_u.slot_color, mgr.COLOR_SLOT_4_PURPLE, "Custom slot 1 Mage unit gets Mage Purple border/puck colour")
 
 	# 2. 2-Player Co-op layout: L1 = Player A Boss (Ω), L2-L4 = Player A Minions (ω1..6),
 	#    L5 = Player B Boss (Ψ), L6-L8 = Player B Minions (ψ1..6)
@@ -177,10 +199,10 @@ func test_multi_puck_registration_links_zero_to_n_pucks_with_same_reference_mark
 	mgr.register_puck("ranger_a3", puck1)
 	mgr.register_puck("ranger_a3", puck2)
 	assert_eq(unit_do.pucks.size(), 2, "Unit holds 2 active pucks simultaneously")
-	assert_eq(puck1.get_reference_mark(), "A3", "Puck 1 carries unit Reference Mark A3")
-	assert_eq(puck2.get_reference_mark(), "A3", "Puck 2 carries unit Reference Mark A3")
-	assert_eq(puck1.get_slot_color(), mgr.COLOR_SLOT_3_YELLOW, "Puck 1 receives slot 3 Yellow colour")
-	assert_eq(puck2.get_slot_color(), mgr.COLOR_SLOT_3_YELLOW, "Puck 2 receives slot 3 Yellow colour")
+	assert_eq(puck1.get_reference_mark(), "R", "Puck 1 carries unit Reference Mark R")
+	assert_eq(puck2.get_reference_mark(), "R", "Puck 2 carries unit Reference Mark R")
+	assert_eq(puck1.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 1 receives Ranger Green colour")
+	assert_eq(puck2.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 2 receives Ranger Green colour")
 
 	mgr.unregister_puck("ranger_a3", puck1)
 	assert_eq(unit_do.pucks.size(), 1, "Unregistering a puck leaves 1 active puck")
@@ -218,12 +240,12 @@ func test_board_view_renders_2x8_grids_frenzy_power_and_role_based_boss_hp_visib
 	var cell_l5: Dictionary = board.get_cell_info("L51")
 	assert_true(cell_l1.get("occupied", false), "L11 is occupied by Player A Boss")
 	assert_eq(cell_l1.get("reference_mark"), "Ω", "L11 shows Reference Mark Ω")
-	assert_eq(cell_l1.get("frenzy_text"), "130%", "L11 shows Player A Boss Frenzy Power on right side")
+	assert_eq(cell_l1.get("frenzy_text"), "130.0%", "L11 shows Player A Boss Frenzy Power to 1 d.p. on right side")
 	assert_false(cell_l1.get("hp_bar_visible", true), "Local Player A's own Boss Unit Display omits HP bar")
 
 	assert_true(cell_l5.get("occupied", false), "L51 is occupied by Player B Boss")
 	assert_eq(cell_l5.get("reference_mark"), "Ψ", "L51 shows Reference Mark Ψ")
-	assert_eq(cell_l5.get("frenzy_text"), "110%", "L51 shows Player B Boss Frenzy Power on right side")
+	assert_eq(cell_l5.get("frenzy_text"), "110.0%", "L51 shows Player B Boss Frenzy Power to 1 d.p. on right side")
 	assert_true(cell_l5.get("hp_bar_visible", false), "Other Boss Monster (Player B at L51) displays its HP bar")
 	assert_eq(cell_l5.get("bars_text"), "x9", "Other Boss Monster displays remaining Health Bar count x9")
 
@@ -236,12 +258,12 @@ func test_board_view_renders_2x8_grids_frenzy_power_and_role_based_boss_hp_visib
 	assert_eq(cell_l1.get("bars_text"), "x12", "When viewed by Player B, Player A's Boss shows x12")
 	assert_false(cell_l5.get("hp_bar_visible", true), "When viewed by Player B, Player B's own Boss at L51 omits HP bar")
 
-	# 3. Verify Team 1 Header at R11 and Adventurer cells at R21 (A1) & R22 (A2), and empty R31
+	# 3. Verify Team 1 Header at R11 and Adventurer cells at R21 (V) & R22 (B), and empty R31
 	var cell_r1: Dictionary = board.get_cell_info("R11")
 	assert_true(cell_r1.get("is_team_header", false), "R11 is Adventurer Team 1 header span")
 	var cell_r21: Dictionary = board.get_cell_info("R21")
-	assert_true(cell_r21.get("occupied", false), "R21 is occupied by A1 Knight")
-	assert_eq(cell_r21.get("reference_mark"), "A1", "R21 shows A1")
+	assert_true(cell_r21.get("occupied", false), "R21 is occupied by V Knight")
+	assert_eq(cell_r21.get("reference_mark"), "V", "R21 shows V")
 	assert_true(cell_r21.get("class_mark_visible", false), "Enemy Adventurer shows Class Mark in upper-right")
 	assert_true(cell_r21.get("hp_bar_visible", false), "Enemy Adventurer shows HP bar")
 	var cell_r31: Dictionary = board.get_cell_info("R31")
@@ -295,3 +317,367 @@ func test_demo_battlefield_spawns_10_adventurers_in_two_teams_and_removes_floati
 
 	tree.root.remove_child(bf)
 	bf.free()
+
+
+# ----- Ticket 02: Damage Stack, Hit Level, Frenzy Power & Ghost HP Trailing Pipeline -----
+
+
+func test_damage_stack_hit_level_frenzy_power_ghost_hp_and_settle_time_pipeline() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mgr := _new_manager()
+	var board := _new_board()
+	if mgr == null or board == null:
+		return
+	tree.root.add_child(mgr)
+	tree.root.add_child(board)
+
+	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
+	mgr.register_boss("boss_a", "a", {"max_hp": 1000, "current_hp": 1000, "bars_remaining": 15, "max_bars": 15})
+	mgr.register_adventurer_team(1, [
+		{"unit_id": "adv_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "max_hp": 3000, "current_hp": 3000},
+		{"unit_id": "adv_warrior", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR, "max_hp": 2200, "current_hp": 2200},
+	])
+	board.bind_manager(mgr)
+	board.set_local_role("a")
+
+	# 1. Initially Damage Stack count is 0 -> circle badge on R22 (Warrior) is invisible, Ghost HP == Current HP (2200)
+	var cell_w: Dictionary = board.get_cell_info("R22")
+	assert_eq(cell_w.get("damage_stack_count", -1), 0, "Initial Damage Stack count is 0")
+	assert_false(cell_w.get("damage_badge_visible", true), "Damage Stack circle badge is invisible when count is 0")
+	assert_eq(cell_w.get("ghost_hp", -1), 2200, "Initial Ghost HP equals current HP 2200")
+	assert_eq(cell_w.get("current_hp", -1), 2200, "Initial current HP is 2200")
+
+	# 2. Boss Monster collides with non-Knight Adventurer twice (+10% each -> 120.0% Frenzy Power)
+	mgr.record_boss_collision_frenzy("boss_a", "adv_warrior")
+	mgr.record_boss_collision_frenzy("boss_a", "adv_warrior")
+	var boss_do = mgr.get_unit("boss_a")
+	assert_true(is_equal_approx(boss_do.frenzy_power, 1.2), "Boss Frenzy Power increased by +10% twice to 120%")
+	assert_eq(board.get_cell_info("L11").get("frenzy_text"), "120.0%", "Boss Unit Display updates Frenzy Power to 120.0%")
+
+	# 3. Push 2 DamageDO entries onto Warrior's Damage Stack (100 and 200, source boss_a) + set Hit Level = 2 (1.1^2 = 1.21)
+	#    Also verify harder hit (200) produces a larger badge shake amplitude than softer hit (100)!
+	mgr.push_damage("adv_warrior", 100, "boss_a", "boss_a", "collision")
+	var shake_soft := float(board.get_cell_info("R22").get("last_badge_shake_amplitude", 0.0))
+	mgr.push_damage("adv_warrior", 200, "boss_a", "boss_a", "collision")
+	var shake_hard := float(board.get_cell_info("R22").get("last_badge_shake_amplitude", 0.0))
+	assert_true(shake_soft > 0.0, "Damage Stack badge shakes when unit takes damage")
+	assert_true(shake_hard > shake_soft, "A harder hit (200) creates a larger badge shake than a softer hit (100)")
+
+	mgr.modify_hit_level("adv_warrior", 2)
+	var warrior_do = mgr.get_unit("adv_warrior")
+	assert_eq(warrior_do.hit_level, 2, "Warrior Hit Level is 2")
+	assert_eq(warrior_do.damage_stack.size(), 2, "Warrior Damage Stack holds 2 DamageDO records in time order")
+
+	# 4. Pre-Settle Ghost HP considers ONLY Damage Stack (100 + 200 = 300) and Hit Level (1.1^2 = 1.21) -> round(300 * 1.21) = 363!
+	#    It must NOT include the Boss Monster's 120% Frenzy Power yet!
+	#    And Warrior's actual current_hp is still 2200 before Settle Time!
+	cell_w = board.get_cell_info("R22")
+	assert_true(cell_w.get("damage_badge_visible", false), "Damage Stack circle badge is visible when count > 0")
+	assert_eq(cell_w.get("damage_stack_count"), 2, "Damage Stack circle badge shows count 2")
+	assert_eq(cell_w.get("damage_badge_text"), "2", "Damage Stack badge label displays '2'")
+	assert_eq(cell_w.get("current_hp"), 2200, "Actual HP is unchanged (2200) before Settle Time")
+	assert_eq(cell_w.get("ghost_hp"), 2200 - 363, "Pre-settle Ghost HP is 2200 - round(300 * 1.1^2) = 1837 (excluding Frenzy Power)")
+
+	# 5. Impulse-proportional Unit Display shake during Puck-puck Time! collision
+	mgr.notify_unit_collision_impulse("adv_warrior", 6.0)
+	var display_shake_low := float(board.get_cell_info("R22").get("last_display_shake_amplitude", 0.0))
+	mgr.notify_unit_collision_impulse("adv_warrior", 18.0)
+	var display_shake_high := float(board.get_cell_info("R22").get("last_display_shake_amplitude", 0.0))
+	assert_true(display_shake_low > 0.0, "Unit Display shakes on puck collision")
+	assert_true(display_shake_high > display_shake_low, "Higher collision Impulse produces larger Unit Display shake")
+
+	# 6. Settle Time resolution:
+	#    - Frenzy Power spread visual triggers
+	#    - Warrior final damage = round((100 * 1.2 + 200 * 1.2) * 1.1^2) = round(360 * 1.21) = 436 -> current_hp = 2200 - 436 = 1764
+	#    - Damage Stack clears (count = 0, badge hidden)
+	#    - Hit Level resets to 0
+	#    - Boss Frenzy Power decays: (1.2 / 2) + 0.5 = 1.10 (110%)
+	var settle_result: Dictionary = mgr.settle_all_damage()
+	assert_true(bool(settle_result.get("frenzy_spread_triggered", false)), "Frenzy Power spread visual effect triggered on Settle")
+	assert_eq(warrior_do.current_hp, 2200 - 436, "Settled damage on Warrior includes 120% Frenzy Power and 1.1^2 Hit Level (2200 - 436 = 1764)")
+	assert_eq(warrior_do.damage_stack.size(), 0, "Warrior Damage Stack cleared after Settle Time")
+	assert_eq(warrior_do.hit_level, 0, "Warrior Hit Level reset to 0 after Settle Time")
+	assert_true(is_equal_approx(boss_do.frenzy_power, 1.10), "Boss Frenzy Power decayed from 120% to (120%/2 + 50%) = 110%")
+
+	cell_w = board.get_cell_info("R22")
+	assert_false(cell_w.get("damage_badge_visible", true), "Damage Stack circle badge hides again after Settle Time")
+	assert_eq(cell_w.get("current_hp"), 1764, "Unit Display HP bar reflects settled HP 1764")
+	assert_eq(cell_w.get("ghost_hp"), 1764, "Ghost HP matches current HP after Settle Time")
+	assert_eq(cell_w.get("last_settled_hp_change_text"), "-436", "Unit Display shows settled HP change as '-436'")
+	assert_eq(board.get_cell_info("L11").get("frenzy_text"), "110.0%", "Boss Unit Display shows decayed Frenzy Power 110.0%")
+
+	tree.root.remove_child(board)
+	tree.root.remove_child(mgr)
+	board.free()
+	mgr.free()
+
+
+func test_two_player_coop_per_source_frenzy_knight_penalty_floor_and_boss_one_bar_cap() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mgr := _new_manager()
+	var board := _new_board()
+	if mgr == null or board == null:
+		return
+	tree.root.add_child(mgr)
+	tree.root.add_child(board)
+
+	mgr.configure_mode(mgr.MODE_TWO_PLAYER_COOP)
+	var boss_a = mgr.register_boss("boss_a", "a", {"max_hp": 1000, "current_hp": 400, "bars_remaining": 5, "max_bars": 15, "frenzy_power": 1.4})
+	var boss_b = mgr.register_boss("boss_b", "b", {"max_hp": 1000, "current_hp": 500, "bars_remaining": 1, "max_bars": 15, "frenzy_power": 1.0})
+	mgr.register_adventurer_team(1, [
+		{"unit_id": "adv_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "max_hp": 3000, "current_hp": 3000},
+		{"unit_id": "adv_mage", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "max_hp": 1500, "current_hp": 1500},
+	])
+	board.bind_manager(mgr)
+	board.set_local_role("a")
+
+	# 1. Player B Boss collides with a Knight 3 times: 100% -> 80% -> 60% -> 50% (clamped at 50% floor!)
+	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.8), "Hitting a Knight decreases Boss B Frenzy Power by -20% to 80%")
+	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.6), "2nd Knight hit decreases Boss B Frenzy Power to 60%")
+	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.5), "3rd Knight hit clamps Boss B Frenzy Power at 50% minimum floor")
+
+	# 2. Per-DamageDO source Boss Frenzy Power in 2-Player Co-op:
+	#    Mage takes:
+	#      - 200 damage from Player A Boss (Frenzy = 140% -> 280)
+	#      - 200 damage from Player B Boss (Frenzy = 50% -> 100)
+	#      - 100 damage from environment/trap with no Boss owner (defaults to 100% -> 100)
+	#    With Mage Hit Level = 1 (1.1^1 = 1.1):
+	#      - Pre-settle Ghost HP damage = round((200 + 200 + 100) * 1.1) = 550 -> Ghost HP = 1500 - 550 = 950
+	#      - Settle Time final damage = round((280 + 100 + 100) * 1.1) = round(480 * 1.1) = 528 -> Settled HP = 1500 - 528 = 972
+	mgr.push_damage("adv_mage", 200, "boss_a", "boss_a", "collision")
+	mgr.push_damage("adv_mage", 200, "boss_b", "boss_b", "collision")
+	mgr.push_damage("adv_mage", 100, "trap", "", "effect")
+	mgr.modify_hit_level("adv_mage", 1)
+
+	assert_eq(mgr.get_preview_ghost_hp("adv_mage"), 1500 - 550, "Pre-settle Ghost HP on Mage is 950 (excludes Frenzy Power)")
+
+	# 3. Strict 1-Health-Bar-per-Settle cap on ALL Boss Monsters:
+	#    - Boss A has current_hp = 400 / 1000 and bars_remaining = 5.
+	#      Deal 2500 damage to Boss A (enough to clear 2.5 bars if uncapped!).
+	#      Pre-settle Ghost HP on Boss A must clamp to 0 of the active Health Bar!
+	#      At Settle Time, Boss A loses ONLY 1 Health Bar (bars_remaining: 5 -> 4) and refills to 1000/1000 (all excess damage discarded!).
+	#    - Boss B has current_hp = 500 / 1000 and bars_remaining = 1 (last bar).
+	#      Deal 900 damage to Boss B -> clears its last bar (bars_remaining: 1 -> 0, current_hp = 0, is_dead = true).
+	mgr.push_damage("boss_a", 2500, "adv_knight", "", "collision")
+	assert_eq(mgr.get_preview_ghost_hp("boss_a"), 0, "Boss Monster Ghost HP clamps at 0 of the current Health Bar")
+
+	mgr.push_damage("boss_b", 900, "adv_knight", "", "collision")
+	assert_eq(board.get_cell_info("L51").get("ghost_hp"), 0, "Boss B Unit Display Ghost HP trails down to 0")
+
+	mgr.settle_all_damage()
+
+	var mage_do = mgr.get_unit("adv_mage")
+	assert_eq(mage_do.current_hp, 1500 - 528, "2P Co-op Mage settled damage applies per-DamageDO source Boss Frenzy Power (1500 - 528 = 972)")
+
+	assert_eq(boss_a.bars_remaining, 4, "Boss A lost at most 1 Health Bar (5 -> 4) despite 2500 staged damage")
+	assert_eq(boss_a.current_hp, 1000, "Boss A refilled to 100% (1000) of the next Health Bar with excess damage discarded")
+	assert_false(boss_a.is_dead, "Boss A is still alive with 4 bars remaining")
+
+	assert_eq(boss_b.bars_remaining, 0, "Boss B cleared its last Health Bar (1 -> 0)")
+	assert_eq(boss_b.current_hp, 0, "Boss B HP is 0 when final Health Bar breaks")
+	assert_true(boss_b.is_dead, "Boss B is defeated when bars_remaining reaches 0")
+
+	# 4. Verify Frenzy Power decay pulls values BOTH above 100% (140% -> 120%) and below 100% (50% -> 75%) halfway toward 100%
+	assert_true(is_equal_approx(boss_a.frenzy_power, 1.20), "Boss A Frenzy Power decayed from 140% to (140%/2 + 50%) = 120%")
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.75), "Boss B Frenzy Power recovered from 50% to (50%/2 + 50%) = 75%")
+
+	tree.root.remove_child(board)
+	tree.root.remove_child(mgr)
+	board.free()
+	mgr.free()
+
+
+# ----- Ticket 03: Migrate Unit HP/Stats to Unit Information, Scale Adventurer HP & Wire Linear Impulse Collision Damage -----
+
+
+func test_unit_hp_stats_migrated_to_unit_info_with_thousands_scale_adventurer_hp() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mgr := _new_manager()
+	if mgr == null:
+		return
+	tree.root.add_child(mgr)
+
+	# 1. Verify puck scripts hold only physics properties (no standalone combat HP/stat fields on BasePuck)
+	var raw_puck := BasePuck.new()
+	var prop_names: Array[String] = []
+	for p in raw_puck.get_property_list():
+		prop_names.append(str(p.get("name", "")))
+	assert_false(prop_names.has("current_hp"), "current_hp moved out of BasePuck into UnitInformationDO")
+	assert_false(prop_names.has("max_hp"), "max_hp moved out of BasePuck into UnitInformationDO")
+	assert_false(prop_names.has("attack_damage"), "attack_damage moved out of BasePuck into UnitInformationDO")
+	assert_true(prop_names.has("mass") and prop_names.has("radius") and prop_names.has("restitution"),
+		"BasePuck retains physics properties (mass, radius, restitution)")
+	raw_puck.free()
+
+	# 2. Verify default Enemy Adventurer max HP values are scaled to thousands level in UnitInformationDO:
+	#    Knight = 3000, Warrior = 2200, Ranger = 2200, Mage = 1500
+	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
+	mgr.register_adventurer_team(1, [
+		{"unit_id": "u_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT},
+		{"unit_id": "u_warrior", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR},
+		{"unit_id": "u_ranger", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
+		{"unit_id": "u_mage", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
+	])
+	assert_eq(mgr.get_unit("u_knight").max_hp, 3000, "Knight default max HP is 3000")
+	assert_eq(mgr.get_unit("u_knight").current_hp, 3000, "Knight starts at 3000 HP in UnitInformationDO")
+	assert_eq(mgr.get_unit("u_warrior").max_hp, 2200, "Warrior default max HP is 2200")
+	assert_eq(mgr.get_unit("u_ranger").max_hp, 2200, "Ranger default max HP is 2200")
+	assert_eq(mgr.get_unit("u_mage").max_hp, 1500, "Mage default max HP is 1500")
+
+	tree.root.remove_child(mgr)
+	mgr.free()
+
+
+func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenzy_power() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var root := Node3D.new()
+	tree.root.add_child(root)
+
+	var tm := TimingManager.new()
+	tm.name = "TimingManager"
+	root.add_child(tm)
+
+	var mgr := _new_manager()
+	mgr.name = "UnitInformationManager"
+	root.add_child(mgr)
+
+	var pvm := PuckVelocityManager.new()
+	pvm.name = "PuckVelocityManager"
+	pvm.timing_manager = tm
+	root.add_child(pvm)
+
+	var board := _new_board()
+	root.add_child(board)
+	board.bind_manager(mgr)
+
+	var boss := DragonPlayer.new()
+	boss.name = "Player"
+	root.add_child(boss)
+
+	var warrior := EnemyAdventurer.new()
+	warrior.name = "WarriorPuck"
+	warrior.adventurer_class = EnemyAdventurer.AdventurerClass.WARRIOR
+	root.add_child(warrior)
+
+	var mage := EnemyAdventurer.new()
+	mage.name = "MagePuck"
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
+	root.add_child(mage)
+
+	var knight := EnemyAdventurer.new()
+	knight.name = "KnightPuck"
+	knight.adventurer_class = EnemyAdventurer.AdventurerClass.KNIGHT
+	root.add_child(knight)
+
+	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
+	mgr.register_boss("boss_a", "a", {"max_hp": 1000, "current_hp": 1000, "bars_remaining": 15, "max_bars": 15, "puck": boss})
+	mgr.register_adventurer_team(1, [
+		{"unit_id": "adv_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": knight},
+		{"unit_id": "adv_warrior", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR, "puck": warrior},
+		{"unit_id": "adv_mage", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "puck": mage},
+	])
+
+	var boss_do = mgr.get_unit("boss_a")
+	var warrior_do = mgr.get_unit("adv_warrior")
+	var mage_do = mgr.get_unit("adv_mage")
+	var knight_do = mgr.get_unit("adv_knight")
+
+	# 1. Boss Monster collides with Warrior at moderate hitting velocity:
+	#    Verify damage is linear with Impulse J, lands in ~50..200 range, pushes a DamageDO to Warrior's Damage Stack,
+	#    leaves Boss undamaged (only Knights damage Boss on collision), increases Boss Frenzy Power by +10% (to 110%),
+	#    and shakes both Warrior's Unit Display and Damage Stack count badge!
+	boss.global_position = Vector3(0.0, 1.8, 0.0)
+	warrior.global_position = Vector3(1.35, 1.675, 0.0) # combined radius = 0.8 + 0.6 = 1.4
+	boss.velocity = Vector3(4.5, 0.0, 0.0)
+	warrior.velocity = Vector3.ZERO
+	knight.global_position = Vector3(-12.0, 1.7, -8.0)
+	mage.global_position = Vector3(12.0, 1.675, -8.0)
+
+	assert_true(pvm.resolve_puck_puck_collision(boss, warrior), "Boss and Warrior collide")
+	assert_eq(warrior_do.damage_stack.size(), 1, "Collision pushed 1 DamageDO onto Warrior's Damage Stack")
+	var dmg_1: float = float(warrior_do.damage_stack[0].value)
+	assert_true(dmg_1 >= 50.0 and dmg_1 <= 200.0, "Moderate collision damage is in 50..200 range (got %.2f)" % dmg_1)
+	assert_eq(warrior_do.damage_stack[0].owner_boss_unit_id, "boss_a", "DamageDO attributes owner_boss_unit_id to boss_a")
+	assert_eq(boss_do.damage_stack.size(), 0, "Boss Monster takes no collision damage from non-Knight Warrior")
+	assert_true(is_equal_approx(boss_do.frenzy_power, 1.10), "Boss Frenzy Power increased by +10% to 110% on hitting Warrior")
+	assert_true(float(board.get_cell_info("R22").get("last_display_shake_amplitude", 0.0)) > 0.0, "Warrior Unit Display shook from collision Impulse")
+	assert_true(float(board.get_cell_info("R22").get("last_badge_shake_amplitude", 0.0)) > 0.0, "Warrior Damage Stack badge shook from collision damage")
+
+	# 2. Verify linearity with Impulse: a 2x faster hit produces 2x the collision damage!
+	boss.global_position = Vector3(0.0, 1.8, 0.0)
+	warrior.global_position = Vector3(1.35, 1.675, 0.0)
+	boss.velocity = Vector3(9.0, 0.0, 0.0)
+	warrior.velocity = Vector3.ZERO
+	assert_true(pvm.resolve_puck_puck_collision(boss, warrior), "2x speed Boss and Warrior collide")
+	assert_eq(warrior_do.damage_stack.size(), 2, "Warrior Damage Stack now has 2 hits")
+	var dmg_2: float = float(warrior_do.damage_stack[1].value)
+	assert_true(absf(dmg_2 - dmg_1 * 2.0) <= 0.1, "Collision damage scales linearly with Impulse (2x speed -> 2x damage: %.2f vs %.2f)" % [dmg_1, dmg_2])
+
+	# 3. Allied Adventurer vs. Adventurer collision (Warrior knocked into Mage):
+	#    Both non-Knight Adventurers take collision damage!
+	warrior.global_position = Vector3(5.0, 1.675, 0.0)
+	mage.global_position = Vector3(6.1, 1.675, 0.0) # combined radius = 0.6 + 0.55 = 1.15
+	warrior.velocity = Vector3(5.0, 0.0, 0.0)
+	mage.velocity = Vector3.ZERO
+	assert_true(pvm.resolve_puck_puck_collision(warrior, mage), "Warrior and Mage collide")
+	assert_eq(warrior_do.damage_stack.size(), 3, "Warrior took collision damage from hitting Mage")
+	assert_eq(mage_do.damage_stack.size(), 1, "Mage took collision damage from being hit by Warrior")
+
+	# 4. Knight protection rule: when a Knight collides with an allied Adventurer (Mage),
+	#    NEITHER the Knight nor the allied Mage takes collision damage!
+	var mage_hits_before: int = mage_do.damage_stack.size()
+	knight.global_position = Vector3(-5.0, 1.7, 0.0)
+	mage.global_position = Vector3(-3.85, 1.675, 0.0) # combined radius = 0.65 + 0.55 = 1.20
+	knight.velocity = Vector3(5.0, 0.0, 0.0)
+	mage.velocity = Vector3.ZERO
+	assert_true(pvm.resolve_puck_puck_collision(knight, mage), "Knight and allied Mage collide")
+	assert_eq(mage_do.damage_stack.size(), mage_hits_before, "Knight protects allied Mage from collision damage")
+	assert_eq(knight_do.damage_stack.size(), 0, "Knight takes no collision damage from colliding with allied Mage")
+
+	# 5. Boss Monster vs. Knight collision:
+	#    BOTH the Knight AND the Boss Monster take collision damage, and the Boss Monster's Frenzy Power decreases by -20%!
+	var frenzy_before_knight: float = float(boss_do.frenzy_power) # currently 1.20 (from 2 Warrior hits)
+	boss.global_position = Vector3(0.0, 1.8, 4.0)
+	knight.global_position = Vector3(1.40, 1.7, 4.0) # combined radius = 0.8 + 0.65 = 1.45
+	boss.velocity = Vector3(5.0, 0.0, 0.0)
+	knight.velocity = Vector3.ZERO
+	assert_true(pvm.resolve_puck_puck_collision(boss, knight), "Boss and Knight collide")
+	assert_eq(knight_do.damage_stack.size(), 1, "Knight takes collision damage from Boss impact")
+	assert_eq(boss_do.damage_stack.size(), 1, "Boss Monster takes collision damage from Knight impact")
+	assert_true(is_equal_approx(boss_do.frenzy_power, frenzy_before_knight - 0.20),
+		"Boss Frenzy Power decreased by -20% on colliding with Knight (120% -> 100%)")
+
+	# 6. End-to-end Settle Time: when all pucks come to rest in Puck-puck Time!, TimingManager enters Settle Time
+	#    and UnitInformationManager settles the Damage Stacks into actual HP reductions!
+	assert_eq(warrior_do.current_hp, 2200, "Warrior actual HP is still 2200 before Settle Time")
+	mgr.settle_all_damage()
+	assert_true(warrior_do.current_hp < 2200, "Warrior HP reduced after Settle Time resolves collision Damage Stack")
+	assert_true(boss_do.current_hp < 1000, "Boss Monster HP reduced after Settle Time resolves Knight collision damage")
+
+	# 7. Pocket Area fall damage & 80% middle respawn:
+	#    Give Mage an odd max_hp (1501) -> ceil(1501 / 2.0) = 751 fixed damage, immune to Boss Frenzy (150%) and Hit Level (3)!
+	mage_do.max_hp = 1501
+	mage_do.current_hp = 1501
+	boss_do.frenzy_power = 1.50
+	mgr.set_hit_level("adv_mage", 3)
+	var pocket_dmg_do: DamageDO = mgr.push_pocket_fall_damage("adv_mage")
+	assert_true(pocket_dmg_do != null and pocket_dmg_do.is_fixed, "Pocket fall creates a fixed DamageDO")
+	assert_true(is_equal_approx(pocket_dmg_do.value, 751.0), "Pocket fall DamageDO is ceil(1501 / 2.0) = 751")
+	assert_eq(mgr.get_preview_damage("adv_mage"), 751, "Fixed pocket fall damage is immune to Hit Level in Ghost HP preview")
+	mgr.settle_all_damage()
+	assert_eq(mage_do.current_hp, 1501 - 751, "Fixed pocket fall damage is immune to Frenzy Power and Hit Level at Settle Time (1501 - 751 = 750)")
+	assert_eq(board.get_cell_info("R32").get("last_settled_hp_change_text"), "-751", "Unit Display shows settled pocket HP change '-751'")
+
+	# 8. Pocketed puck collider disabled in custom collision resolution:
+	#    When mage is falling in a Pocket Area, a second puck (warrior) moving into the same Pocket Area must NOT collide with mage!
+	mage.begin_pocket_fall(Vector3(-14.0, 1.5, -9.0))
+	mage.global_position = Vector3(-14.0, 1.4, -9.0)
+	warrior.global_position = Vector3(-14.0, 1.675, -9.0)
+	warrior.velocity = Vector3(-4.0, 0.0, -4.0)
+	assert_false(pvm.resolve_puck_puck_collision(warrior, mage), "A puck falling in a Pocket Area has its collider disabled and never blocks a second puck entering the same hole")
+
+	tree.root.remove_child(root)
+	root.free()

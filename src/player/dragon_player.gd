@@ -6,8 +6,6 @@ extends BaseBossMonster
 
 
 func _ready() -> void:
-	max_bars = 15
-	bar_max_hp = 100
 	mass = 3.2
 	radius = 0.8
 	super()

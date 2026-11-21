@@ -584,7 +584,7 @@ func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -
 	assert_true(boss.velocity.z > 2.5, "Boss rebounded off top Cushion with positive Z velocity")
 	assert_true(boss.velocity.x < 9.5, "Parallel X speed was reduced by cushion_friction (fc) as well as ground friction")
 
-	# 3. Pocketed Puck respawns at nearest unoccupied non-pocket Tile once all Pucks come to rest
+	# 3. Pocketed Puck respawns at a random unoccupied non-pocket Tile inside the middle 80% of the Cue Table once all Pucks come to rest
 	# Corner block 1 is a Pocket Area at (-14, 0, -9). Drop mage into that pocket while boss is still moving
 	_tm.set_energy(5.0)
 	_tm.request_play()
@@ -600,7 +600,7 @@ func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -
 		pvm.step_velocities(0.05, 1.0)
 	assert_false(pvm.are_all_pucks_at_rest(), "Boss is still moving at 0.5s")
 
-	# Step another 0.6s (12 ticks): boss comes to rest -> mage respawns at nearest free non-pocket Tile!
+	# Step another 0.6s (12 ticks): boss comes to rest -> mage respawns at a free non-pocket Tile in the middle 80%!
 	for _i in range(12):
 		pvm.step_positions(0.05, 1.0)
 		pvm.step_velocities(0.05, 1.0)
@@ -608,9 +608,11 @@ func test_cushion_block_extendable_impact_rebound_and_pocket_respawn_at_rest() -
 	assert_false(table.is_pocket_at_world(mage.global_position), "Pocketed puck respawned onto a non-pocket Tile")
 	assert_true(mage.global_position.y >= 1.5, "Respawned puck is back on top of the table floor")
 	assert_true(mage.velocity.is_zero_approx(), "Respawned puck has zero velocity")
-	# Nearest non-pocket tiles to (-14, -9) are block 2 at (-12, -9) or block 16 at (-14, -7) (distance 2.0)
-	var dist_to_corner := Vector2(mage.global_position.x - (-14.0), mage.global_position.z - (-9.0)).length()
-	assert_true(is_equal_approx(dist_to_corner, 2.0), "Respawned at the nearest non-pocket Tile (distance 2.0 from corner pocket)")
+	# Middle 80% of 30x20 Cue Table: |x| <= 12.0 and |z| <= 8.0, and not overlapping Boss
+	assert_true(absf(mage.global_position.x) <= 12.01 and absf(mage.global_position.z) <= 8.01,
+		"Respawned inside the middle 80%% of the Cue Table (got (%.2f, %.2f))" % [mage.global_position.x, mage.global_position.z])
+	var dist_to_boss := Vector2(mage.global_position.x - boss.global_position.x, mage.global_position.z - boss.global_position.z).length()
+	assert_true(dist_to_boss >= mage.radius + boss.radius, "Respawned tile is empty and does not overlap other pucks")
 
 
 # ----- Ticket 04: 3D first-rebound and struck-puck aiming line preview -----

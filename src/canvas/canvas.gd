@@ -68,6 +68,27 @@ func _setup_unit_information_board() -> void:
 	var uim := _find_unit_information_manager()
 	if uim != null:
 		unit_information_board.bind_manager(uim)
+		if not uim.unit_updated.is_connected(_on_uim_unit_updated):
+			uim.unit_updated.connect(_on_uim_unit_updated)
+
+
+func _on_uim_unit_updated(u: UnitInformationDO) -> void:
+	if u == null or u.unit_kind != "boss":
+		return
+	var local_role := unit_information_board.local_role if unit_information_board != null else "a"
+	var hud_seat := "b" if local_role == "b" else "a"
+	if u.owner_seat != hud_seat:
+		return
+	var ghost_hp := u.get_preview_ghost_hp()
+	if ghost_hp < u.current_hp and player_hp_damage != null and player_hp_fill != null:
+		var max_v := maxi(u.max_hp, 1)
+		var cur_right := _get_hp_bar_width() * float(u.current_hp) / float(max_v)
+		var ghost_right := _get_hp_bar_width() * float(ghost_hp) / float(max_v)
+		player_hp_fill.offset_right = ghost_right
+		player_hp_damage.visible = true
+		player_hp_damage.offset_left = ghost_right
+		player_hp_damage.offset_right = cur_right
+		player_hp_damage.color = Color(0.95, 0.55, 0.16, 0.92)
 
 
 func _find_unit_information_manager() -> UnitInformationManager:
@@ -88,17 +109,15 @@ func set_local_role(role: String) -> void:
 
 
 func _setup_player_health_bar_for_role(role: String) -> void:
-	var parent := get_parent()
-	if parent == null:
-		return
-	var target_boss: BaseBossMonster = null
-	if role == "b":
-		target_boss = parent.get_node_or_null("PlayerB") as BaseBossMonster
-	if target_boss == null:
-		target_boss = parent.get_node_or_null("Player") as BaseBossMonster
-	if target_boss != null:
-		_set_hp_fill(target_boss.current_hp, target_boss.max_hp)
-		_on_player_bars_changed(target_boss.bars_remaining, target_boss.current_hp, target_boss.bar_max_hp)
+	var uim := _find_unit_information_manager()
+	if uim != null:
+		var boss_id := "boss_b" if role == "b" and uim.get_unit("boss_b") != null else "boss_a"
+		var boss_do := uim.get_unit(boss_id)
+		if boss_do != null:
+			_prev_player_hp = boss_do.current_hp
+			_set_hp_fill(boss_do.current_hp, boss_do.max_hp)
+			_on_player_bars_changed(boss_do.bars_remaining, boss_do.current_hp, boss_do.max_hp)
+			return
 
 
 # --- Player Health ---
@@ -113,8 +132,13 @@ func _setup_player_health_bar() -> void:
 	player.bars_changed.connect(_on_player_bars_changed)
 	player.bar_broken.connect(_on_player_bar_broken)
 	player.died.connect(_on_player_died)
-	_set_hp_fill(player.current_hp, player.max_hp)
-	_on_player_bars_changed(player.bars_remaining, player.current_hp, player.bar_max_hp)
+	var uim := _find_unit_information_manager()
+	if uim != null and not player.get_unit_id().is_empty():
+		var boss_do := uim.get_unit(player.get_unit_id())
+		if boss_do != null:
+			_prev_player_hp = boss_do.current_hp
+			_set_hp_fill(boss_do.current_hp, boss_do.max_hp)
+			_on_player_bars_changed(boss_do.bars_remaining, boss_do.current_hp, boss_do.max_hp)
 
 func _get_hp_bar_width() -> float:
 	if health_bar_container != null and health_bar_container.size.x > 10.0:

@@ -4,7 +4,7 @@
 
 **Blocked by:** None — can start immediately
 
-**Status:** ready-for-human
+**Status:** completed
 
 - [x] A battle-scoped **Unit Information Manager** node (in group `"unit_information_manager"`, not a global Autoload) holds a `UnitInformationDO` for every unit on the battlefield (whether alive, pocketed, or defeated) and links each unit to `0..N` active Puck objects.
 - [x] Floating 2D enemy health bars on the 3D Cue Table and legacy placeholder side cards are removed and replaced by the **Unit Information Board** on the left and right edges of the battlefield canvas.
@@ -13,8 +13,8 @@
 - [x] **2-Player Co-op layout**: Left board shows Player A's Boss Monster in `L1` and Minions in `L2–L4`, and Player B's Boss Monster in `L5` and Minions in `L6–L8`; Right board matches Single-Player PvE.
 - [x] **2-Player Versus layout**: Left board shows Player A's Boss Monster in `L1`, Minions in `L2–L4`, leaves `L5` empty, and reserves `L6–L8` for 6 Target Pucks; Right board shows Player B's Boss Monster in `R1`, Minions in `R2–R4`, leaves `R5` empty, and reserves `R6–R8` for 6 Target Pucks.
 - [x] In normal random Adventurer Team generation, slot numbers map to Classes as `?1` = Knight, `?2` = Warrior, `?3` = Ranger, `?4` = Mage, and `?5..6` = free positions for duplicate classes; if a class is absent in a small team, its number and corresponding grid cell remain empty rather than compacting, while customized stage compositions can override the class-to-slot assignment.
-- [x] Each unit's **Reference Mark** is displayed in the upper-left corner of its **Unit Display** and in the center of all `0..N` active Pucks belonging to that unit: `Ω` and `ω1..ω6` in **Gold** for Player A; `Ψ` and `ψ1..ψ6` in **Silver** for Player B; `A1..A6` in **Deep Grey** for Adventurer Team 1; `B1..B6` in **Deep Brown** for Adventurer Team 2.
-- [x] Both the Puck colour and the **Unit Display** border colour follow the unit's slot index: `?1` **Blue**, `?2` **Red**, `?3` **Yellow**, `?4` **Purple**, `?5` **Green**, `?6` **Orange**, Boss Monster **Black**, and Minions a deeper shade of `1..6`.
+- [x] Each unit's **Reference Mark** is displayed in the upper-left corner of its **Unit Display** and in the center of all `0..N` active Pucks belonging to that unit: `Ω` and `ω1..ω6` in **Gold** for Player A; `Ψ` and `ψ1..ψ6` in **Silver** for Player B; capital letters `V, B, R, S, F, E` in **Deep Grey** for Adventurer Team 1; small letters `v, b, r, s, f, e` in **Deep Brown** for Adventurer Team 2 (standing for Vanguard, Brawler, Ranger, Spell, Free, and Extra).
+- [x] Both the Puck colour and the **Unit Display** border colour follow the unit's **Class**: **Knight = Blue**, **Warrior = Red**, **Ranger = Green**, **Mage = Purple**, **Boss Monster = Black**, and Minions a deeper shade of `1..6`; pucks also render thin stripes to distinguish teams and free positions (Team 2 has a 2-sided **White** line stripe while Team 1 has none; position `5` `F`/`f` has a 4-sided **White** X stripe and position `6` `E`/`e` has a 4-sided **Black** X stripe).
 - [x] Each **Unit Display** renders the unit portrait, Reference Mark (upper-left), Class Mark (upper-right, for Enemy Adventurers), and HP bar below the cell.
 - [x] Every Boss Monster's 2-cell **Unit Display** shows its **Frenzy Power** percentage on the right side; the Boss Monster currently displayed in the large upper-left screen HUD (the local seated player's Boss Monster: Player A's Boss for Player A and Spectators; Player B's Boss for Player B) omits the HP bar inside its 2-cell Unit Display, while all other Boss Monsters on the board display their current HP bar and remaining Health Bar count (`x N`) inside their 2-cell Unit Display.
 - [x] All display text uses the multi-language localization holder.

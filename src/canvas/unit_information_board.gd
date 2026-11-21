@@ -68,6 +68,7 @@ func _build_grid_into(host: Container, side: String, rows_dict: Dictionary) -> v
 		row_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		row_box.add_theme_constant_override("separation", 4)
+		row_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		host.add_child(row_box)
 		rows_dict[r] = row_box
 
@@ -91,13 +92,67 @@ func bind_manager(p_manager: UnitInformationManager) -> void:
 			manager.units_cleared.disconnect(refresh_board)
 		if manager.mode_changed.is_connected(_on_mode_changed):
 			manager.mode_changed.disconnect(_on_mode_changed)
+		if manager.unit_damage_pushed.is_connected(_on_unit_damage_pushed):
+			manager.unit_damage_pushed.disconnect(_on_unit_damage_pushed)
+		if manager.unit_collision_impulse_received.is_connected(_on_unit_collision_impulse_received):
+			manager.unit_collision_impulse_received.disconnect(_on_unit_collision_impulse_received)
+		if manager.frenzy_power_spread_started.is_connected(_on_frenzy_power_spread_started):
+			manager.frenzy_power_spread_started.disconnect(_on_frenzy_power_spread_started)
+		if manager.damage_settled.is_connected(_on_damage_settled):
+			manager.damage_settled.disconnect(_on_damage_settled)
 	manager = p_manager
 	if manager != null:
 		manager.unit_registered.connect(_on_unit_changed)
 		manager.unit_updated.connect(_on_unit_changed)
 		manager.units_cleared.connect(refresh_board)
 		manager.mode_changed.connect(_on_mode_changed)
+		manager.unit_damage_pushed.connect(_on_unit_damage_pushed)
+		manager.unit_collision_impulse_received.connect(_on_unit_collision_impulse_received)
+		manager.frenzy_power_spread_started.connect(_on_frenzy_power_spread_started)
+		manager.damage_settled.connect(_on_damage_settled)
 	refresh_board()
+
+
+func _on_unit_damage_pushed(u: UnitInformationDO, dmg_do: DamageDO) -> void:
+	if u == null or dmg_do == null:
+		return
+	var cell := _cells.get(u.grid_id, null) as UnitDisplay
+	if cell != null:
+		cell.render_unit(u, local_role)
+		cell.trigger_damage_badge_shake(dmg_do.value)
+
+
+func _on_unit_collision_impulse_received(u: UnitInformationDO, impulse_magnitude: float) -> void:
+	if u == null:
+		return
+	var cell := _cells.get(u.grid_id, null) as UnitDisplay
+	if cell != null:
+		cell.trigger_collision_impulse_shake(impulse_magnitude)
+
+
+func _on_frenzy_power_spread_started(settled_records: Dictionary) -> void:
+	if manager == null:
+		return
+	for uid in settled_records.keys():
+		var u := manager.get_unit(str(uid))
+		if u != null and u.unit_kind == "enemy_adventurer":
+			var cell := _cells.get(u.grid_id, null) as UnitDisplay
+			if cell != null:
+				cell.play_frenzy_spread_effect()
+
+
+func _on_damage_settled(settled_records: Dictionary) -> void:
+	if manager == null:
+		return
+	for uid in settled_records.keys():
+		var dmg := int(settled_records.get(uid, 0))
+		if dmg <= 0:
+			continue
+		var u := manager.get_unit(str(uid))
+		if u != null:
+			var cell := _cells.get(u.grid_id, null) as UnitDisplay
+			if cell != null:
+				cell.show_settled_hp_change(dmg)
 
 
 func set_local_role(p_role: String) -> void:

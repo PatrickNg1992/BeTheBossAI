@@ -33,7 +33,7 @@ var power: int = 10
 var mass: float = 1.0
 var radius: float = 0.5
 
-var damage_stack: Array = []
+var damage_stack: Array[DamageDO] = []
 var hit_level: int = 0
 var frenzy_power: float = 1.0
 var is_focusing: bool = false
@@ -45,3 +45,41 @@ var skills: Array = []
 var statuses: Array = []
 
 var pucks: Array[BasePuck] = []
+
+
+func get_damage_stack_count() -> int:
+	return damage_stack.size()
+
+
+func get_damage_stack_sum() -> float:
+	var total := 0.0
+	for d in damage_stack:
+		if d != null:
+			total += d.value
+	return total
+
+
+## Pre-Settle Ghost HP damage considers Damage Stack and Hit Level (excluding Frenzy Power):
+## - Normal DamageDO entries scale by 1.1^(Hit Level)
+## - Fixed DamageDO entries (`is_fixed = true`, e.g. Pocket Area fall) are immune to Frenzy Power and Hit Level
+## Uses decimal numbers during calculation and rounds to nearest integer.
+func get_preview_damage() -> int:
+	if damage_stack.is_empty():
+		return 0
+	var scalable_sum := 0.0
+	var fixed_sum := 0.0
+	for d in damage_stack:
+		if d == null or d.value <= 0.0:
+			continue
+		if d.is_fixed:
+			fixed_sum += d.value
+		else:
+			scalable_sum += d.value
+	var total := fixed_sum + scalable_sum * pow(1.1, float(hit_level))
+	return int(round(total))
+
+
+func get_preview_ghost_hp() -> int:
+	if is_dead:
+		return 0
+	return maxi(0, current_hp - get_preview_damage())

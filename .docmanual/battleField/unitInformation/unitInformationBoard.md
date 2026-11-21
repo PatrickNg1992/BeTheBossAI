@@ -86,20 +86,27 @@ On the left side, L1-4 are the same as a single-player game that shows Player A'
 
 Reference marks identify different pucks on the cue table. A reference mark marks the same symbol on the upper-left Unit Display and the middle of the puck of a unit. Each wave uses unique marks.
 
-The members of the first Adventurer Team are marked as A1, A2, A3, A4, A5 and A6. Meanwhile, the members of the second Adventurer Team are marked as B1, B2, B3, B4, B5 and B6. For easy identification, in general for normal random Adventurer Team generation, the reference number will be arranged by unit classes that ?1 is Knight (guardian) class, ?2 is Warrior class, ?3 is Ranger class, ?4 is Mage (magician) class. ?5 and ?6 are free positions for duplicate classes. Therefore, some numbers may be missing in the middle for some small teams, and their corresponding Unit Display cells are left empty rather than compacted. Note: this class-to-number rule applies to normal random Adventurer Team generation; customized team compositions in specific stages are free to override it.
+The members of the first Adventurer Team are marked with **capital letters** (`V, B, R, S, F, E`), while the members of the second Adventurer Team are marked with **small letters** (`v, b, r, s, f, e`), corresponding to positions `1` through `6` (**V**anguard, **B**rawler, **R**anger, **S**pell, **F**ree, and **E**xtra). For easy identification, in general for normal random Adventurer Team generation, the reference position will be arranged by unit classes so that position `1` (`V`/`v`) is Knight (guardian) class, position `2` (`B`/`b`) is Warrior class, position `3` (`R`/`r`) is Ranger class, and position `4` (`S`/`s`) is Mage (magician) class. Positions `5` (`F`/`f`) and `6` (`E`/`e`) are free positions for duplicate classes. Therefore, some positions may be missing in the middle for some small teams, and their corresponding Unit Display cells are left empty rather than compacted. Note: this class-to-position rule applies to normal random Adventurer Team generation; customized team compositions in specific stages are free to override it.
 
-For easy visual matching, both the **puck** and the **Unit Display grid border** are coloured according to the unit's position index (chosen to match the default class positions):
-- `?1`: **Blue** (fits Knight)
-- `?2`: **Red** (fits Warrior)
-- `?3`: **Yellow** (fits Ranger)
-- `?4`: **Purple** (fits Mage)
-- `?5`: **Green** (free position)
-- `?6`: **Orange** (free position)
+For intuitive class recognition on the Cue Table, both the **puck** and the **Unit Display grid border** are coloured according to the unit's **Class** (even when placed in free positions `F`/`f` or `E`/`e`):
+- **Knight**: **Blue**
+- **Warrior**: **Red**
+- **Ranger**: **Green**
+- **Mage**: **Purple**
 - **Boss Monster**: **Black**
 
-To distinguish between the two Enemy Adventurer Teams when both use the same `?1..?6` position colours, the **Reference Mark colour** itself differs by team:
-- **Adventurer Team 1 (`A1..A6`)**: **Deep Grey** Reference Mark colour
-- **Adventurer Team 2 (`B1..B6`)**: **Deep Brown** Reference Mark colour
+To distinguish between multiple pucks of the same Class across teams and free positions (`5` and `6`), thin **stripes** are added on the pucks:
+1. **Team Stripe** (to separate Adventurer Team 1 and Adventurer Team 2):
+   - **Adventurer Team 1 (`V, B, R, S, F, E`)**: No team stripe
+   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: Thin **White** line stripe on **2 opposite sides** of the puck
+2. **Free-Position Stripe** (to identify free positions `5` and `6`):
+   - **Positions `1..4` (`V/v, B/b, R/r, S/s`)**: No free-position stripe
+   - **Position `5` (`F`/`f`)**: Thin **White** 4-sided stripe like an **X**
+   - **Position `6` (`E`/`e`)**: Thin **Black** 4-sided stripe like an **X**
+
+In addition, the **Reference Mark colour** itself differs by team:
+- **Adventurer Team 1 (`V, B, R, S, F, E`)**: **Deep Grey** Reference Mark colour
+- **Adventurer Team 2 (`v, b, r, s, f, e`)**: **Deep Brown** Reference Mark colour
 
 (This logic affects the enemy random algorithm)
 

@@ -6,16 +6,13 @@ signal died()
 
 const TABLE_GRAVITY: float = 25.0
 
-@export var max_hp: int = 100
 @export var move_speed: float = 3.0
-@export var attack_damage: int = 10
 @export var attack_range: float = 2.5
 @export var attack_cooldown: float = 1.0
 @export var mass: float = 1.0
 @export var radius: float = 0.5
 @export var restitution: float = 0.85
 
-var current_hp: int
 var is_dead: bool = false
 var is_falling_in_pocket: bool = false
 var _pocket_center: Vector3 = Vector3.ZERO
@@ -27,6 +24,9 @@ var _reference_mark: String = ""
 var _reference_mark_color: Color = Color(0.95, 0.85, 0.35, 1.0)
 var _slot_color: Color = Color(0.5, 0.5, 0.5, 1.0)
 var _ref_mark_label_3d: Label3D = null
+var _has_team2_stripe: bool = false
+var _free_slot_x_mode: int = 0 # 0 = none, 5 = White 4-side X stripe, 6 = Black 4-side X stripe
+var _stripes_root_3d: Node3D = null
 
 
 func set_unit_id(uid: String) -> void:
@@ -58,6 +58,100 @@ func set_slot_color(col: Color) -> void:
 
 func get_slot_color() -> Color:
 	return _slot_color
+
+
+func configure_puck_stripes(has_team2_stripe: bool, free_slot_x_mode: int = 0) -> void:
+	_has_team2_stripe = has_team2_stripe
+	_free_slot_x_mode = free_slot_x_mode
+	_update_puck_stripes_3d()
+
+
+func has_team2_stripe() -> bool:
+	return _has_team2_stripe
+
+
+func get_free_slot_x_mode() -> int:
+	return _free_slot_x_mode
+
+
+func _update_puck_stripes_3d() -> void:
+	if _stripes_root_3d != null and is_instance_valid(_stripes_root_3d):
+		remove_child(_stripes_root_3d)
+		_stripes_root_3d.queue_free()
+		_stripes_root_3d = null
+	if not _has_team2_stripe and _free_slot_x_mode == 0:
+		return
+
+	_stripes_root_3d = Node3D.new()
+	_stripes_root_3d.name = "PuckStripes3D"
+	add_child(_stripes_root_3d)
+
+	var cyl_h := 0.35
+	var cyl_r := maxf(radius, 0.5)
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null and col_shape.shape is CylinderShape3D:
+		cyl_h = (col_shape.shape as CylinderShape3D).height
+		cyl_r = (col_shape.shape as CylinderShape3D).radius
+
+	var top_y := cyl_h * 0.5 + 0.015
+	var tick_len := cyl_r * 0.36
+	var tick_radial_center := cyl_r - tick_len * 0.5 + 0.015
+	var tick_width := 0.145
+
+	# 1. Team 2 stripe: White line stripe on 2 opposite sides (0 deg and 180 deg along X axis)
+	if _has_team2_stripe:
+		var white_mat := StandardMaterial3D.new()
+		white_mat.albedo_color = Color(0.98, 0.98, 0.99, 1.0)
+		white_mat.roughness = 0.25
+		white_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for angle_deg in [0.0, 180.0]:
+			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, white_mat)
+
+	# 2. Free-position stripe (slots 5 and 6): 4-sided X stripe at 45, 135, 225, 315 deg
+	#    Slot 5 (F/f) = White; Slot 6 (E/e) = Black
+	if _free_slot_x_mode == 5 or _free_slot_x_mode == 6:
+		var x_mat := StandardMaterial3D.new()
+		if _free_slot_x_mode == 5:
+			x_mat.albedo_color = Color(0.98, 0.98, 0.99, 1.0)
+		else:
+			x_mat.albedo_color = Color(0.05, 0.04, 0.05, 1.0)
+		x_mat.roughness = 0.25
+		x_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		for angle_deg in [45.0, 135.0, 225.0, 315.0]:
+			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, x_mat)
+
+
+func _add_stripe_tick(
+	parent_node: Node3D,
+	angle_deg: float,
+	radial_center: float,
+	top_y: float,
+	cyl_h: float,
+	tick_len: float,
+	tick_width: float,
+	mat: StandardMaterial3D
+) -> void:
+	var pivot := Node3D.new()
+	pivot.rotation_degrees = Vector3(0.0, angle_deg, 0.0)
+	parent_node.add_child(pivot)
+
+	# Top surface radial stripe tick
+	var top_mesh := BoxMesh.new()
+	top_mesh.size = Vector3(tick_len, 0.025, tick_width)
+	var top_inst := MeshInstance3D.new()
+	top_inst.mesh = top_mesh
+	top_inst.material_override = mat
+	top_inst.position = Vector3(radial_center, top_y, 0.0)
+	pivot.add_child(top_inst)
+
+	# Outer cylinder wall vertical stripe tick
+	var side_mesh := BoxMesh.new()
+	side_mesh.size = Vector3(0.045, cyl_h + 0.015, tick_width)
+	var side_inst := MeshInstance3D.new()
+	side_inst.mesh = side_mesh
+	side_inst.material_override = mat
+	side_inst.position = Vector3(radial_center + tick_len * 0.5, 0.0, 0.0)
+	pivot.add_child(side_inst)
 
 
 func _apply_slot_color_to_mesh() -> void:
@@ -92,11 +186,16 @@ func _update_reference_mark_3d() -> void:
 	var half_h := 0.22
 	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape != null and col_shape.shape is CylinderShape3D:
-		half_h = (col_shape.shape as CylinderShape3D).height * 0.5 + 0.03
+		half_h = (col_shape.shape as CylinderShape3D).height * 0.5 + 0.035
 	var is_boss_mark := (_reference_mark == "Ω" or _reference_mark == "Ψ" or self is BaseBossMonster)
-	_ref_mark_label_3d.font_size = 112 if is_boss_mark else 74
-	_ref_mark_label_3d.pixel_size = 0.0095 if is_boss_mark else 0.0085
-	_ref_mark_label_3d.outline_size = 0
+	var bold_font := SystemFont.new()
+	bold_font.font_weight = 800
+	_ref_mark_label_3d.font = bold_font
+	_ref_mark_label_3d.font_size = 110 if is_boss_mark else 82
+	_ref_mark_label_3d.pixel_size = 0.0092 if is_boss_mark else 0.0082
+	# Same-color subtle stroke makes the letter extra bold without any white/contrasting halo
+	_ref_mark_label_3d.outline_size = 6
+	_ref_mark_label_3d.outline_modulate = _reference_mark_color
 	_ref_mark_label_3d.position = Vector3(0.0, half_h, 0.0)
 	_ref_mark_label_3d.text = _reference_mark
 	_ref_mark_label_3d.modulate = _reference_mark_color
@@ -105,7 +204,6 @@ func _update_reference_mark_3d() -> void:
 
 func _ready() -> void:
 	add_to_group("pucks")
-	current_hp = max_hp
 	collision_mask = 3
 	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
 	if col_shape != null and col_shape.shape is CylinderShape3D:
@@ -114,6 +212,8 @@ func _ready() -> void:
 		_update_reference_mark_3d()
 	if _slot_color != Color(0.5, 0.5, 0.5, 1.0):
 		_apply_slot_color_to_mesh()
+	if _has_team2_stripe or _free_slot_x_mode != 0:
+		_update_puck_stripes_3d()
 
 
 func apply_impulse(impulse: Vector3) -> void:
@@ -225,28 +325,42 @@ func _update_pocket_fall_rotation(delta: float) -> void:
 	basis = Basis(_pocket_tilt_axis, tilt_angle)
 
 
+func _find_unit_information_manager() -> Node:
+	var parent := get_parent()
+	if parent != null:
+		var sibling := parent.get_node_or_null("UnitInformationManager")
+		if sibling != null:
+			return sibling
+	if is_inside_tree():
+		return get_tree().get_first_node_in_group("unit_information_manager")
+	return null
+
+
 func take_damage(amount: int) -> void:
-	if is_dead:
+	if is_dead or amount <= 0:
 		return
-	current_hp = maxi(current_hp - amount, 0)
-	health_changed.emit(current_hp, max_hp)
-	if current_hp <= 0:
-		die()
+	var uim := _find_unit_information_manager()
+	if uim != null and not _unit_id.is_empty() and uim.has_method("apply_direct_damage"):
+		uim.call("apply_direct_damage", _unit_id, amount)
 
 
 func heal(amount: int) -> void:
-	if is_dead:
+	if is_dead or amount <= 0:
 		return
-	current_hp = mini(current_hp + amount, max_hp)
-	health_changed.emit(current_hp, max_hp)
+	var uim := _find_unit_information_manager()
+	if uim != null and not _unit_id.is_empty() and uim.has_method("heal_unit"):
+		uim.call("heal_unit", _unit_id, amount)
 
 
 func die() -> void:
+	if is_dead:
+		return
 	is_dead = true
 	died.emit()
-	await get_tree().create_timer(0.5).timeout
-	if is_instance_valid(self):
-		queue_free()
+	if is_inside_tree():
+		await get_tree().create_timer(0.5).timeout
+		if is_instance_valid(self):
+			queue_free()
 
 
 func can_attack() -> bool:
@@ -254,10 +368,16 @@ func can_attack() -> bool:
 
 
 func perform_attack(target: BasePuck) -> void:
-	if not can_attack():
+	if not can_attack() or target == null:
 		return
 	_attack_timer = attack_cooldown
-	target.take_damage(attack_damage)
+	var dmg := 10
+	var uim := _find_unit_information_manager()
+	if uim != null and not _unit_id.is_empty() and uim.has_method("get_unit"):
+		var my_do = uim.call("get_unit", _unit_id)
+		if my_do != null:
+			dmg = int(my_do.power)
+	target.take_damage(dmg)
 
 
 func _process(delta: float) -> void:

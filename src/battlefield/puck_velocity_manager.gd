@@ -14,9 +14,11 @@ signal all_pucks_at_rest()
 const TICK_INTERVAL := 0.05
 const STOP_SPEED_THRESHOLD := 0.002
 const DEFAULT_DECELERATION := 1.2
+const POCKET_RESPAWN_MIDDLE_RATIO := 0.80
 
 var battlefield: Battlefield = null
 var timing_manager: TimingManager = null
+var unit_information_manager: UnitInformationManager = null
 
 var _tick_accumulator: float = 0.0
 var _in_puck_puck_time: bool = false
@@ -39,6 +41,10 @@ func _resolve_references() -> void:
 		timing_manager = parent.get_node_or_null("TimingManager") as TimingManager
 	if timing_manager == null and is_inside_tree():
 		timing_manager = get_tree().get_first_node_in_group("timing_manager") as TimingManager
+	if unit_information_manager == null and parent != null:
+		unit_information_manager = parent.get_node_or_null("UnitInformationManager") as UnitInformationManager
+	if unit_information_manager == null and is_inside_tree():
+		unit_information_manager = get_tree().get_first_node_in_group("unit_information_manager") as UnitInformationManager
 
 
 func _bind_timing_signals() -> void:
@@ -100,6 +106,8 @@ func calculate_puck_position(puck: BasePuck, delta: float, fast_play_ratio: floa
 		var blk := battlefield.get_table_block_at_world(puck.global_position)
 		if blk != null and blk.is_pocket() and blk.is_within_pocket_capture_zone(puck.global_position):
 			blk.apply_pocket_effect(puck, delta, ratio)
+			if puck.is_falling_in_pocket:
+				_on_puck_entered_pocket(puck)
 	puck.apply_table_physics(eff_dt)
 	if absf(puck.velocity.y) > 0.0001:
 		puck.global_position.y += puck.velocity.y * eff_dt
@@ -170,7 +178,10 @@ func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1
 				apply_force_to_puck(puck, drag, tick_dt, ratio)
 			continue
 		if block != null and block.is_pocket():
+			var was_falling := puck.is_falling_in_pocket
 			block.apply_ground_effect(puck, tick_dt, ratio)
+			if not was_falling and puck.is_falling_in_pocket:
+				_on_puck_entered_pocket(puck)
 			continue
 		var horiz := Vector2(puck.velocity.x, puck.velocity.z)
 		if horiz.length() <= 0.00001:
@@ -191,16 +202,17 @@ func step_velocities(tick_dt: float = TICK_INTERVAL, fast_play_ratio: float = -1
 
 
 ## Resolves all Puck–Puck collisions over the current 20 Hz tick window using a
-## simple swept/overlap check.
+## simple swept/overlap check. Pocketed or falling pucks have their collider disabled
+## and never block or collide with other pucks.
 func _resolve_all_puck_collisions(pucks: Array[BasePuck], eff_dt: float) -> void:
 	var count := pucks.size()
 	for i in range(count):
 		var p1 := pucks[i]
-		if p1 == null or p1.is_dead:
+		if p1 == null or p1.is_dead or _is_puck_pocketed(p1):
 			continue
 		for j in range(i + 1, count):
 			var p2 := pucks[j]
-			if p2 == null or p2.is_dead:
+			if p2 == null or p2.is_dead or _is_puck_pocketed(p2):
 				continue
 			if _check_swept_or_overlap_pair(p1, p2, eff_dt):
 				resolve_puck_puck_collision(p1, p2)
@@ -243,7 +255,7 @@ func _check_swept_or_overlap_pair(p1: BasePuck, p2: BasePuck, eff_dt: float) -> 
 ##   4. v1f = v1 + (J / m1) * n,  v2f = v2 - (J / m2) * n
 ## Also separates positional overlap along n so pucks never snag.
 func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
-	if p1 == null or p2 == null or p1.is_dead or p2.is_dead:
+	if p1 == null or p2 == null or p1.is_dead or p2.is_dead or _is_puck_pocketed(p1) or _is_puck_pocketed(p2):
 		return false
 	var delta_xz := Vector3(
 		p1.global_position.x - p2.global_position.x,
@@ -279,6 +291,11 @@ func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
 
 	apply_impulse_to_puck(p1, impulse_vec)
 	apply_impulse_to_puck(p2, -impulse_vec)
+	_resolve_references()
+	if unit_information_manager != null:
+		unit_information_manager.handle_puck_collision(p1, p2, j_mag)
+		if timing_manager != null and j_mag > 0.0001:
+			timing_manager.record_settle_event({"type": "collision", "impulse": j_mag})
 	return true
 
 
@@ -358,19 +375,33 @@ func _puck_floor_y(puck: BasePuck) -> float:
 	return Battlefield.TABLE_TOP_Y + half_h
 
 
+func _on_puck_entered_pocket(puck: BasePuck) -> void:
+	_resolve_references()
+	if unit_information_manager != null:
+		unit_information_manager.push_pocket_fall_damage_for_puck(puck)
+	if timing_manager != null:
+		timing_manager.record_settle_event({"type": "pocket", "puck": puck.get_unit_id()})
+
+
 ## Once all non-pocketed Pucks come to rest, respawns any Puck that fell into
-## a Pocket Area at the nearest unoccupied non-pocket Tile.
+## a Pocket Area at a random empty, non-pocket Tile inside the middle 80% of
+## the Cue Table (with no other pucks and no pocket area).
 func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 	if battlefield == null:
 		return
+	var blocks_root := battlefield.get_node_or_null("TableBlocks")
+	if blocks_root == null:
+		return
+	var middle_half_x := Battlefield.TABLE_HALF_X * POCKET_RESPAWN_MIDDLE_RATIO
+	var middle_half_z := Battlefield.TABLE_HALF_Z * POCKET_RESPAWN_MIDDLE_RATIO
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+
 	for puck in pucks:
 		if puck == null or puck.is_dead or not _is_puck_pocketed(puck):
 			continue
-		var best_block: TableBlock = null
-		var best_dist_sq := INF
-		var blocks_root := battlefield.get_node_or_null("TableBlocks")
-		if blocks_root == null:
-			continue
+		var middle_candidates: Array[TableBlock] = []
+		var fallback_candidates: Array[TableBlock] = []
 		for child in blocks_root.get_children():
 			if not child is TableBlock:
 				continue
@@ -380,14 +411,18 @@ func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 			var tile_world := battlefield.to_global(blk.position)
 			if _is_tile_occupied(tile_world, puck, pucks):
 				continue
-			var dx := tile_world.x - puck.global_position.x
-			var dz := tile_world.z - puck.global_position.z
-			var d_sq := dx * dx + dz * dz
-			if d_sq < best_dist_sq:
-				best_dist_sq = d_sq
-				best_block = blk
-		if best_block != null:
-			var target_world := battlefield.to_global(best_block.position)
+			fallback_candidates.append(blk)
+			if absf(blk.position.x) <= middle_half_x + 0.001 and absf(blk.position.z) <= middle_half_z + 0.001:
+				middle_candidates.append(blk)
+
+		var chosen_block: TableBlock = null
+		if not middle_candidates.is_empty():
+			chosen_block = middle_candidates[rng.randi_range(0, middle_candidates.size() - 1)]
+		elif not fallback_candidates.is_empty():
+			chosen_block = fallback_candidates[rng.randi_range(0, fallback_candidates.size() - 1)]
+
+		if chosen_block != null:
+			var target_world := battlefield.to_global(chosen_block.position)
 			puck.reset_from_pocket_fall(Vector3(target_world.x, _puck_floor_y(puck), target_world.z))
 
 

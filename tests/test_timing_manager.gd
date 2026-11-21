@@ -370,14 +370,16 @@ func test_enemy_adventurers_only_move_and_attack_during_action_time() -> void:
 	tree.root.add_child(bf)
 
 	var tm: TimingManager = bf.timing_manager
+	var uim: UnitInformationManager = bf.get_node("UnitInformationManager") as UnitInformationManager
 	var enemy1 := bf.get_node("Enemy1") as BaseEnemy
 	var player := bf.get_node("Player") as BasePuck
-	assert_true(enemy1 != null and player != null, "Enemy1 and Player exist")
+	assert_true(enemy1 != null and player != null and uim != null, "Enemy1, Player, and UnitInformationManager exist")
+	var boss_do: UnitInformationDO = uim.get_unit("boss_a")
 
 	# Put Enemy1 right next to Player so it would normally chase/attack
 	enemy1.global_position = player.global_position + Vector3(1.5, 0.0, 0.0)
 	var start_pos := enemy1.global_position
-	var start_hp := player.current_hp
+	var start_hp := boss_do.current_hp
 
 	# In Charging Time: enemy does NOT move or attack
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_CHARGING, "In Charging Time")
@@ -385,29 +387,29 @@ func test_enemy_adventurers_only_move_and_attack_during_action_time() -> void:
 	enemy1._physics_process(0.5)
 	assert_eq(enemy1.global_position.x, start_pos.x, "Enemy X does not move in Charging Time")
 	assert_eq(enemy1.global_position.z, start_pos.z, "Enemy Z does not move in Charging Time")
-	assert_eq(player.current_hp, start_hp, "Enemy does not attack in Charging Time")
+	assert_eq(boss_do.current_hp, start_hp, "Enemy does not attack in Charging Time")
 
 	# In Play Time: enemy does NOT move or attack
 	tm.request_play()
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_PLAY, "In Play Time")
 	assert_false(enemy1.is_ai_active(), "Enemy AI is disabled in Play Time")
 	enemy1._physics_process(0.5)
-	assert_eq(player.current_hp, start_hp, "Enemy does not attack in Play Time")
+	assert_eq(boss_do.current_hp, start_hp, "Enemy does not attack in Play Time")
 
 	# Transition to Action Time: enemy CAN move and attack
 	tm.play_card(TimingManager.TIMING_ACTION)
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_ACTION, "In Action Time")
 	assert_true(enemy1.is_ai_active(), "Enemy AI is active in Action Time")
 	enemy1._physics_process(0.5)
-	assert_true(player.current_hp < start_hp, "Enemy attacks during Action Time")
+	assert_true(boss_do.current_hp < start_hp, "Enemy attacks during Action Time")
 
 	# Pause during Action Time: enemy stops acting while paused
-	var hp_after_attack := player.current_hp
+	var hp_after_attack := boss_do.current_hp
 	enemy1._attack_timer = 0.0
 	tm.pause()
 	assert_false(enemy1.is_ai_active(), "Enemy AI is disabled while paused even in Action Time")
 	enemy1._physics_process(0.5)
-	assert_eq(player.current_hp, hp_after_attack, "Enemy does not attack while paused")
+	assert_eq(boss_do.current_hp, hp_after_attack, "Enemy does not attack while paused")
 	tm.resume()
 
 	# Leaving Action Time disables enemy AI again

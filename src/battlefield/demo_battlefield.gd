@@ -621,10 +621,10 @@ func _setup_demo_unit_information() -> void:
 	if _player is BaseBossMonster:
 		var boss_a := _player as BaseBossMonster
 		unit_information_manager.register_boss("boss_a", "a", {
-			"max_hp": boss_a.bar_max_hp,
-			"current_hp": boss_a.current_hp,
-			"bars_remaining": boss_a.bars_remaining,
-			"max_bars": boss_a.max_bars,
+			"max_hp": 1000,
+			"current_hp": 1000,
+			"bars_remaining": 15,
+			"max_bars": 15,
 			"mass": boss_a.mass,
 			"radius": boss_a.radius,
 			"puck": boss_a,
@@ -632,10 +632,10 @@ func _setup_demo_unit_information() -> void:
 	var player_b := get_node_or_null("PlayerB") as BaseBossMonster
 	if player_b != null:
 		unit_information_manager.register_boss("boss_b", "b", {
-			"max_hp": player_b.bar_max_hp,
-			"current_hp": player_b.current_hp,
-			"bars_remaining": player_b.bars_remaining,
-			"max_bars": player_b.max_bars,
+			"max_hp": 1000,
+			"current_hp": 1000,
+			"bars_remaining": 15,
+			"max_bars": 15,
 			"mass": player_b.mass,
 			"radius": player_b.radius,
 			"puck": player_b,
@@ -671,9 +671,6 @@ func _setup_demo_unit_information() -> void:
 			team1_members.append({
 				"unit_id": "enemy_%d" % idx,
 				"adventurer_class": int(en.adventurer_class),
-				"max_hp": en.max_hp,
-				"current_hp": en.current_hp,
-				"power": en.attack_damage,
 				"mass": en.mass,
 				"radius": en.radius,
 				"puck": en,
@@ -689,9 +686,6 @@ func _setup_demo_unit_information() -> void:
 			team2_members.append({
 				"unit_id": "enemy_%d" % idx,
 				"adventurer_class": int(en.adventurer_class),
-				"max_hp": en.max_hp,
-				"current_hp": en.current_hp,
-				"power": en.attack_damage,
 				"mass": en.mass,
 				"radius": en.radius,
 				"puck": en,
@@ -734,6 +728,9 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 		_flash_puck_puck_banner()
 	elif new_timing == TimingManager.TIMING_ACTION:
 		_action_elapsed = 0.0
+	elif new_timing == TimingManager.TIMING_SETTLE:
+		if is_host and unit_information_manager != null:
+			unit_information_manager.settle_all_damage()
 	if is_host and (new_timing == TimingManager.TIMING_SETTLE or new_timing == TimingManager.TIMING_PREPARE):
 		sync_puck_positions({}, MpTransport.RELIABLE)
 	if is_host and new_timing == TimingManager.TIMING_CHARGING and _old_timing != TimingManager.TIMING_PLAY:

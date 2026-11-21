@@ -327,24 +327,30 @@ func apply_synced_aiming(payload: Dictionary) -> void:
 	_update_aim_line_visuals()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not can_aim():
+func _input(event: InputEvent) -> void:
+	if not _dragging or not can_aim():
 		return
-	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT:
-			if mb.pressed:
-				if _try_begin_drag_from_screen(mb.position):
-					return
-			elif _dragging:
-				release_drag()
-		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed and _dragging:
-			cancel_drag(true)
-	elif event is InputEventMouseMotion and _dragging:
+	if event is InputEventMouseMotion:
 		var mm := event as InputEventMouseMotion
 		var hit := _raycast_table_plane(mm.position)
 		if hit.get("valid", false):
 			update_drag(hit["point"])
+	elif event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
+			release_drag()
+		elif mb.button_index == MOUSE_BUTTON_RIGHT and mb.pressed:
+			cancel_drag(true)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not can_aim() or _dragging:
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
+			if _try_begin_drag_from_screen(mb.position):
+				return
 
 
 func _try_begin_drag_from_screen(screen_pos: Vector2) -> bool:
