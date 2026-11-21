@@ -1,0 +1,6 @@
+update hero to adventurer except the concept of legenary hero
+update base class name: knight to guard, warrior to brawler, mage to speller. they are the base classes. knight, warrior and mage should be upper classes
+
+Acolyte, Scout
+
+

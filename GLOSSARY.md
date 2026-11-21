@@ -50,6 +50,32 @@ A hole in the table that a puck may fall into.
 
 4 sides of the table. 
 
+# Unit Information & Damage System
+
+## Unit Information Board
+
+The HUD board on the left and right edges of the battlefield canvas, arranged as two 2-column × 8-row grids (`{L|R}{Row 1..8}{Col 1..2}`) of **Unit Displays** (plus a click-to-open **Unit Detail Display** popup). Replaces floating health bars on the 3D Cue Table.
+
+## Unit Information Manager
+
+The battle-scoped manager node inside the Battlefield Scene that owns authoritative `Unit Information` data objects (stats, `current_hp`, `max_hp`, `bars_remaining`, `Damage Stack`, `Hit Level`, `Frenzy Power`, and `0..N` active Puck references) for every unit in the battle. Puck scripts store physics state only (`radius`, `mass`, `restitution`, `position`, `velocity`, `rotation`).
+
+## Reference Mark
+
+The short identifier shown on both the upper-left corner of a unit's **Unit Display** and the center of its Puck(s) on the Cue Table: `Ω` / `ω1..ω6` in Gold for Player A; `Ψ` / `ψ1..ψ6` in Silver for Player B; capital letters `V, B, R, S, F, E` in Deep Grey for Adventurer Team 1; small letters `v, b, r, s, f, e` in Deep Brown for Adventurer Team 2 (**V**anguard, **B**rawler, **R**anger, **S**pell, **F**ree, **E**xtra). Pucks and Unit Display borders are coloured by Class (Knight = Blue, Warrior = Red, Ranger = Green, Mage = Purple, Boss Monster = Black), with a 4-sided White X stripe for Team 1, a 4-sided Black X stripe for Team 2, and a white 8-ball circle behind the letter for free positions `F`/`f` and `E`/`e`.
+
+## Damage Stack
+
+The time-ordered list of pending `Damage DO` records accumulated on a unit during `Puck-puck Time!` or `Action Time` before resolving in `Settle Time`. Shown as a shaking hit-count badge and a blood-red Ghost HP trail before settling into an integer HP reduction (with a `-567` popup).
+
+## Frenzy Power
+
+A percentage damage multiplier (baseline `100.0%`, floor `50.0%`, displayed to 1 d.p. on the right of each Boss Monster's 2-cell Unit Display). Increases by `+10%` when colliding with an opponent non-Knight Adventurer, decreases by `-20%` when colliding with an opponent Knight, multiplies opponent Adventurer damage at `Settle Time`, and decays via `new_frenzy = (current_frenzy / 2) + 50%` after each `Settle Time`.
+
+## Hit Level
+
+A per-unit integer (default `0`, `+1` when an Adventurer hits a Cushion during `Puck-puck Time!`, resets to `0` after `Settle Time`) that scales damage exponentially by $1.1^{\text{Hit Level}}$. 
+
 # Cue and Collision System
 
 ## Cue-shot

@@ -1,16 +1,12 @@
-# Hero Classes
+# Adventurer Classes
 
-To make the game more fun and meet the medieval style, we introduce a class system for Heroes. Each hero is assigned a class to characterise it.
+To make the game more fun and fit the medieval style, we introduce a class system for Adventurers. Each adventurer is assigned a class to characterise them.
 
 There are four basic classes: Warrior, Knight, Ranger, and Mage. More classes will be added in future designs.
 
-The class determines the basic attacks and some passive effects of a Hero. Each hero will be randomly assigned some passive skills or an active skill in addition. The Hero generation logic shall be described in more detail in ./heroGeneration.md
-
-
+The class determines an Adventurer's basic attacks and some passive effects. Each adventurer will be assigned passive skills and an active skill. The Adventurer generation logic shall be described in more detail in ./adventurerGeneration.md
 
 The following will describe the fundamental characteristics of each basic class.
-
-
 
 \*\* Here **player's buck** means the pucks of boss monster and minions  
 
@@ -50,10 +46,6 @@ When a puck collides with a knight puck, it loses force, so its speed decreases.
 
 Players should be careful not to collide with a charging knight.
 
-
-
-
-
 Relative strength like the following
 
 | Class   | HP  | ATK | ATK FRQ | SPD | RNG |
@@ -62,3 +54,34 @@ Relative strength like the following
 | Mage    | 1   | 5   | 1       | 3   | 5   |
 | Ranger  | 3   | 2   | 5       | 5   | 3-4 |
 | Knight  | 5   | 1   | 2       | 1   | 2   |
+
+## Classes Advancement
+
+- Guard: defence-based
+  - Sentinel: defence-based
+    - Bastion: tanky
+    - Vanguard: taunt and block
+  - Knight: effect-based
+    - Paladin: support and heal effects
+    - Banneret: aura-based
+- Brawler: melee-based
+  - Warrior: attack-based
+    - Champion: balanced-attacker
+    - Berserker: strong attack with negative effects
+  - Duelist: effect-based
+    - Virtuoso: effect-buffed attack
+    - Spellblade: effect damage
+- Scout: ranged-based
+  - Shooter: attack-based
+    - Marksman: long range focus
+    - Barrager: heavy power focus
+  - Ranger: effect-based
+    - Trapper: hinder effects
+    - Assassin: effect-buffed attack and damage prevention
+- Acolyte: magic-based
+  - Mage: damage-based
+    - Sorcerer: attack-based
+    - Warlock: effect damage-based
+  - Priest: support-based
+    - Bishop: healer
+    - Enchanter: buffs

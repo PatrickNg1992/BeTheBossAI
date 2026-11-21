@@ -37,8 +37,8 @@ src/
 │   └── waiting_room.tscn/.gd    # Waiting Room view: config bar, seats, spectator list, start/close/leave
 │
 ├── pucks/
-│   ├── base_puck.gd            # Shared puck base: HP, damage, death, attack cooldown
-│   ├── base_boss_monster.gd    # Boss Monster base ("player" group)
+│   ├── base_puck.gd            # Shared puck base: physics (mass, radius, velocity, pocket fall), 3D Reference Mark, 4-sided X stripes & 8-ball circle, hover highlight ring
+│   ├── base_boss_monster.gd    # Boss Monster base ("player" group, bar break & invincibility flash)
 │   └── base_enemy.gd           # Enemy base: AI state machine (wander/chase/attack)
 │
 ├── player/
@@ -46,7 +46,7 @@ src/
 │
 ├── enemies/
 │   ├── enemy_adventurer.gd           # Enemy Adventurer (class config + hit flash)
-│   └── health_bar_3d.gd        # (unused — replaced by CanvasLayer bars)
+│   └── health_bar_3d.gd        # (unused — replaced by UnitInformationBoard)
 │
 ├── battlefield/
 │   ├── cue_table.tscn           # Hardcoded 30×20 medieval Cue Table: numbered TableBlocks (1..150),
@@ -55,12 +55,12 @@ src/
 │   ├── table_block.gd           # TableBlock (StaticBody3D): block_number, swappable BlockType & ground friction
 │   ├── cushion_block.gd         # CushionBlock (StaticBody3D): cushion_number, wood/grass CushionType & rebound math
 │   ├── timing_manager.gd        # TimingManager: 6-Timing state machine, Energy charging, staged damage, Pause & Fast Play
-│   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz ground friction & at-rest detection
-│   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot, 0.5-slot Energy preview, 3D aiming arrow & launch
-│   ├── damage_do.gd             # DamageDO: per-hit staged damage record (source_unit_id, owner_boss_unit_id, value, damage_type)
+│   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz collision/friction, cushion Hit Level & middle-80% pocket respawn
+│   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot (Player A / Player B Boss puck), 0.5-slot Energy preview & 3D aiming arrow
+│   ├── damage_do.gd             # DamageDO: per-hit staged damage record (source_unit_id, owner_boss_unit_id, decimal value, damage_type, is_fixed)
 │   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, stats, Damage Stack & 0..N pucks
-│   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout & puck binding
-│   └── demo_battlefield.gd      # Demo battlefield root: wires TimingManager + Play/Fast Play/Pause UI + surfaces `battle_finished`
+│   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout, Damage Stack/Frenzy/Hit Level & snapshot sync
+│   └── demo_battlefield.gd      # Demo battlefield root: 1P & 2P PvP setup, Host-authoritative sync, Play/Fast Play/Pause UI & PvP victory countdown
 │
 ├── cards/
 │   ├── base_card_info.gd       # Card data Resource: type, name, description, color
@@ -69,7 +69,7 @@ src/
 │   └── card_manager.gd         # Deck / hand / casting area / discard logic + signals
 │
 ├── canvas/
-│   ├── canvas.gd               # HUD: boss multi-bar HP, UnitInformationBoard mount, warnings
+│   ├── canvas.gd               # HUD: upper-left Boss multi-bar HP + Ghost HP trail, UnitInformationBoard mount, warnings
 │   ├── unit_display.gd         # UnitDisplay: medieval 1- or 2-cell unit card (portrait, Reference Mark, Class Mark, Frenzy Power, HP bar, Action Tag turns, Defeated/Pocketed states)
 │   ├── unit_detail_display.gd  # UnitDetailDisplay: click-to-inspect popup showing localized Name, Class, numeric HP/Max HP, Power, Mass, Radius, Hit Level, Frenzy Power, Condition, Skills & Statuses
 │   ├── unit_information_board.gd # UnitInformationBoard: left & right 2×8 grids ({L|R}{1..8}{1..2}) driven by UnitInformationManager
@@ -78,7 +78,7 @@ src/
 │
 ├── resource/
 │   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, double_arrow, goal_flag, sword,
-│                               # puck_puck_banner, pocket_swirl, cartoon avatars (boss_dragon, knight, warrior, ranger, mage, minion),
+│                               # puck_puck_banner, pocket_swirl, cartoon avatars (boss_dragon, boss_skeleton, knight/warrior/ranger/mage variants, minion),
 │                               # and class_mark PNGs (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
@@ -87,6 +87,6 @@ src/
 
 ## Subsystem notes
 
-- **Health bars** — enemy bars are 2D widgets on the CanvasLayer; each frame `Camera3D.unproject_position()` converts the enemy's world position to screen coordinates (`canvas.gd`). The boss's multi-bar HP with break flash also lives there.
+- **Unit Information & Health bars** — `UnitInformationManager` (`unit_information_manager.gd`) owns authoritative `UnitInformationDO` records (`unit_information_do.gd`) and `DamageDO` (`damage_do.gd`) stacks for all units, rendered on the left and right 2×8 `UnitInformationBoard` (`unit_information_board.gd`, `unit_display.gd`, `unit_detail_display.gd`) and the upper-left Boss Monster multi-bar HP HUD (`canvas.gd`). Replaces the old floating 3D-to-2D enemy health bars.
 - **Cards** — `card_manager.gd` holds logic and signals (`hand_updated`, `deck_count_changed`, `discard_count_changed`, `card_played`, casting updates); `card_canvas.gd` is all card UI. Card effects are not yet implemented; demo effects (Rush / Teleport / Recover) are specced in `.scratch/card-effects/spec.md`.
 - **Battlefield** — the 30×20 medieval Cue Table lives in `src/battlefield/cue_table.tscn` (instanced as `Battlefield` in `demo_bettlefield.tscn`) with hardcoded numbered `TableBlock_1..150` (`table_block.gd`), `Cushion_1..54` (`cushion_block.gd`), and `CornerFlag_1..4`.
