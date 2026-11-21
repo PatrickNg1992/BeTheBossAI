@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Migrate Unit HP/Stats to Unit Information, Scale Adventurer HP & Wire Linear Impulse Collision Damage, 04 — Action Tag Turn Countdowns, Defeated & Pocketed Unit Display States, and Skill Popups
 
-**Status:** ready-for-human
+**Status:** completed
 
 - [x] Hovering the mouse over a **Unit Display** highlights all `0..N` active Pucks linked to that unit on the Cue Table so the player can easily spot them; moving the mouse away removes the highlight.
 - [x] Clicking on a **Unit Display** opens the **Unit Detail Display** popup alongside the board for that unit (hovering alone does not open it).
