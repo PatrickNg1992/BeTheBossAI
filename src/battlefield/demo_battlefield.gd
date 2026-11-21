@@ -48,6 +48,10 @@ var last_shot_player: String = "a"
 var pvp_winner_seat: String = ""
 var _pvp_win_elapsed: float = 0.0
 var _pvp_win_label: Label = null
+var _pvp_win_countdown_label: Label = null
+var _paused_center_label: Label = null
+var _play_button_alert_count: int = 0
+var _play_alert_tween: Tween = null
 var stage_index: int = 0
 var wave_index: int = 0
 var ready_players: Array[String] = []
@@ -209,13 +213,15 @@ func _apply_role_and_authority_mode() -> void:
 
 
 func _process(delta: float) -> void:
-	if not is_host:
-		return
 	if not pvp_winner_seat.is_empty():
 		_pvp_win_elapsed += delta
-		if _pvp_win_elapsed >= 5.0 - 0.0001:
+		var rem_sec := maxi(1, int(ceil(5.0 - _pvp_win_elapsed)))
+		_update_pvp_win_countdown_label(rem_sec)
+		if is_host and _pvp_win_elapsed >= 5.0 - 0.0001:
 			_pvp_win_elapsed = 0.0
 			battle_finished.emit()
+		return
+	if not is_host:
 		return
 	if timing_manager == null or timing_manager.is_paused():
 		return
@@ -292,6 +298,10 @@ func action_cancel_play() -> void:
 	_send_action_to_host("action_cancel_play", {}, MpTransport.RELIABLE)
 
 
+func action_toggle_pause() -> void:
+	_send_action_to_host("action_toggle_pause", {}, MpTransport.RELIABLE)
+
+
 func _send_action_to_host(action_name: String, payload: Dictionary, transfer_mode: int) -> void:
 	var msg := {
 		"type": "bf_action",
@@ -343,10 +353,13 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 				return
 			if puck_velocity_manager != null and not puck_velocity_manager.are_all_pucks_at_rest():
 				return
+			var prev_active := active_player
+			active_player = sender_role
 			if timing_manager.request_player_play(sender_role):
-				active_player = sender_role
 				sync_timing()
 				sync_time_board({}, MpTransport.RELIABLE)
+			else:
+				active_player = prev_active
 		"action_cancel_play":
 			if timing_manager.get_current_timing() != TimingManager.TIMING_PLAY:
 				return
@@ -405,6 +418,9 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 				return
 			sync_cards()
 			sync_timing()
+		"action_toggle_pause":
+			timing_manager.set_paused(not timing_manager.is_paused())
+			sync_timing()
 
 
 # ----- Modular Host -> All Peers Sync Functions -----
@@ -429,6 +445,8 @@ func sync_timing(payload: Dictionary = {}) -> void:
 		data["can_enter_play_a"] = timing_manager.can_player_enter_play(ROLE_A)
 	if not data.has("can_enter_play_b") and timing_manager != null:
 		data["can_enter_play_b"] = timing_manager.can_player_enter_play(ROLE_B)
+	if not data.has("paused") and timing_manager != null:
+		data["paused"] = timing_manager.is_paused()
 	_dispatch_sync("timing", data, MpTransport.RELIABLE)
 
 
@@ -559,6 +577,8 @@ func _apply_sync(category: String, payload: Dictionary) -> void:
 				for rp in payload.get("ready_players", []):
 					ready_players.append(str(rp))
 			var target_timing := str(payload.get("timing", ""))
+			if payload.has("paused") and timing_manager != null:
+				timing_manager.set_paused(bool(payload["paused"]))
 			if not is_host and timing_manager != null and not target_timing.is_empty():
 				if payload.has("can_enter_play"):
 					timing_manager._play_used_in_current_slot = not bool(payload["can_enter_play"])
@@ -898,7 +918,7 @@ func _on_fast_play_pressed() -> void:
 
 
 func _on_pause_button_pressed() -> void:
-	timing_manager.set_paused(not timing_manager.is_paused())
+	action_toggle_pause()
 
 
 func _on_action_button_pressed() -> void:
@@ -910,6 +930,14 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	if new_timing == TimingManager.TIMING_PUCK_PUCK:
 		_puck_puck_elapsed = 0.0
 		_flash_puck_puck_banner()
+	elif new_timing == TimingManager.TIMING_PLAY:
+		if has_player_b():
+			var my_role := get_local_role()
+			if not active_player.is_empty() and active_player != my_role:
+				_flash_puck_puck_banner(Loc.t("pvp_opponent_takes_play"))
+	elif new_timing == TimingManager.TIMING_CHARGING:
+		if not _old_timing.is_empty() and _old_timing != TimingManager.TIMING_CHARGING:
+			_alert_play_button()
 	elif new_timing == TimingManager.TIMING_ACTION:
 		_action_elapsed = 0.0
 	elif new_timing == TimingManager.TIMING_SETTLE:
@@ -1050,10 +1078,10 @@ func _show_pvp_win_banner(winner_seat: String) -> void:
 		_pvp_win_label = Label.new()
 		_pvp_win_label.name = "PvPWinBannerLabel"
 		_pvp_win_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-		_pvp_win_label.offset_left = -260
-		_pvp_win_label.offset_right = 260
-		_pvp_win_label.offset_top = -50
-		_pvp_win_label.offset_bottom = 50
+		_pvp_win_label.offset_left = -280
+		_pvp_win_label.offset_right = 280
+		_pvp_win_label.offset_top = -65
+		_pvp_win_label.offset_bottom = 5
 		_pvp_win_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_pvp_win_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_pvp_win_label.add_theme_font_size_override("font_size", 46)
@@ -1065,14 +1093,59 @@ func _show_pvp_win_banner(winner_seat: String) -> void:
 			canvas_node.add_child(_pvp_win_label)
 		else:
 			add_child(_pvp_win_label)
+	if _pvp_win_countdown_label == null or not is_instance_valid(_pvp_win_countdown_label):
+		_pvp_win_countdown_label = Label.new()
+		_pvp_win_countdown_label.name = "PvPWinCountdownLabel"
+		_pvp_win_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		_pvp_win_countdown_label.offset_left = -280
+		_pvp_win_countdown_label.offset_right = 280
+		_pvp_win_countdown_label.offset_top = 8
+		_pvp_win_countdown_label.offset_bottom = 52
+		_pvp_win_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_pvp_win_countdown_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_pvp_win_countdown_label.add_theme_font_size_override("font_size", 24)
+		_pvp_win_countdown_label.add_theme_color_override("font_color", Color(0.96, 0.92, 0.80, 1.0))
+		_pvp_win_countdown_label.add_theme_color_override("font_outline_color", Color(0.08, 0.03, 0.02, 0.98))
+		_pvp_win_countdown_label.add_theme_constant_override("outline_size", 6)
+		_pvp_win_countdown_label.z_index = 50
+		if canvas_node != null:
+			canvas_node.add_child(_pvp_win_countdown_label)
+		else:
+			add_child(_pvp_win_countdown_label)
 	_pvp_win_label.text = msg
 	_pvp_win_label.visible = true
+	_update_pvp_win_countdown_label(5)
+
+
+func _update_pvp_win_countdown_label(seconds_left: int) -> void:
+	if _pvp_win_countdown_label != null and is_instance_valid(_pvp_win_countdown_label):
+		_pvp_win_countdown_label.text = Loc.t("pvp_return_in_sec", {"sec": maxi(1, seconds_left)})
+		_pvp_win_countdown_label.visible = true
 
 
 func get_win_banner_text() -> String:
 	if _pvp_win_label != null and is_instance_valid(_pvp_win_label) and _pvp_win_label.visible:
-		return _pvp_win_label.text
+		var sub := _pvp_win_countdown_label.text if (_pvp_win_countdown_label != null and is_instance_valid(_pvp_win_countdown_label) and _pvp_win_countdown_label.visible) else ""
+		return (_pvp_win_label.text + "\n" + sub).strip_edges()
 	return ""
+
+
+func get_play_button_alert_count() -> int:
+	return _play_button_alert_count
+
+
+func _alert_play_button() -> void:
+	_play_button_alert_count += 1
+	if play_button == null or not is_inside_tree():
+		return
+	if _play_alert_tween != null and _play_alert_tween.is_running():
+		_play_alert_tween.kill()
+	play_button.pivot_offset = play_button.size * 0.5 if play_button.size.x > 4.0 else play_button.custom_minimum_size * 0.5
+	play_button.scale = Vector2(1.16, 1.16)
+	play_button.modulate = Color(1.3, 1.25, 0.85, 1.0)
+	_play_alert_tween = create_tween()
+	_play_alert_tween.tween_property(play_button, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_play_alert_tween.parallel().tween_property(play_button, "modulate", Color.WHITE, 0.45)
 
 
 func _on_charge_slot_completed(_new_energy: float) -> void:
@@ -1160,9 +1233,44 @@ func _refresh_controls() -> void:
 		fast_play_button.text = FAST_PLAY_LABELS[_fast_play_index]
 	if pause_button != null:
 		pause_button.text = Loc.t("timing_resume") if paused else Loc.t("timing_pause")
+	_update_paused_center_label(paused)
 	if action_button != null:
 		action_button.text = Loc.t("timing_action")
 		action_button.disabled = paused or current == TimingManager.TIMING_ACTION
+
+
+func _update_paused_center_label(paused: bool) -> void:
+	if not paused:
+		if _paused_center_label != null and is_instance_valid(_paused_center_label):
+			_paused_center_label.visible = false
+		return
+	var canvas_node := get_node_or_null("Canvas")
+	if _paused_center_label == null or not is_instance_valid(_paused_center_label):
+		_paused_center_label = Label.new()
+		_paused_center_label.name = "PausedCenterLabel"
+		_paused_center_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		_paused_center_label.offset_left = -220
+		_paused_center_label.offset_right = 220
+		_paused_center_label.offset_top = -45
+		_paused_center_label.offset_bottom = 45
+		_paused_center_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_paused_center_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_paused_center_label.add_theme_font_size_override("font_size", 48)
+		_paused_center_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.42, 1.0))
+		_paused_center_label.add_theme_color_override("font_outline_color", Color(0.08, 0.03, 0.02, 0.98))
+		_paused_center_label.add_theme_constant_override("outline_size", 10)
+		_paused_center_label.z_index = 48
+		_paused_center_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if canvas_node != null:
+			canvas_node.add_child(_paused_center_label)
+		else:
+			add_child(_paused_center_label)
+	_paused_center_label.text = Loc.t("timing_paused")
+	_paused_center_label.visible = true
+
+
+func is_paused_banner_visible() -> bool:
+	return _paused_center_label != null and is_instance_valid(_paused_center_label) and _paused_center_label.visible
 
 
 func _setup_control_styles() -> void:
@@ -1258,13 +1366,13 @@ func _apply_play_button_mode(is_cancel_mode: bool, is_disabled: bool) -> void:
 	play_button.modulate = Color(0.85, 0.85, 0.85, 0.9) if is_disabled else Color.WHITE
 
 
-func _flash_puck_puck_banner() -> void:
+func _flash_puck_puck_banner(custom_text: String = "") -> void:
 	if puck_puck_banner == null:
 		return
 	if _banner_tween != null and _banner_tween.is_running():
 		_banner_tween.kill()
 	if banner_label != null:
-		banner_label.text = Loc.t("timing_puck_puck_time")
+		banner_label.text = custom_text if not custom_text.is_empty() else Loc.t("timing_puck_puck_time")
 	var half_w := 240.0
 	var slide_dist := 720.0
 	puck_puck_banner.visible = true
@@ -1272,18 +1380,18 @@ func _flash_puck_puck_banner() -> void:
 	puck_puck_banner.offset_left = -half_w - slide_dist
 	puck_puck_banner.offset_right = half_w - slide_dist
 	_banner_tween = create_tween()
-	# Slide in from left to middle (0.75s)
+	# Slower slide in from left to middle (1.15s)
 	_banner_tween.set_parallel(true)
-	_banner_tween.tween_property(puck_puck_banner, "offset_left", -half_w, 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_banner_tween.tween_property(puck_puck_banner, "offset_right", half_w, 0.75).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	_banner_tween.tween_property(puck_puck_banner, "modulate:a", 1.0, 0.35)
+	_banner_tween.tween_property(puck_puck_banner, "offset_left", -half_w, 1.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_banner_tween.tween_property(puck_puck_banner, "offset_right", half_w, 1.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_banner_tween.tween_property(puck_puck_banner, "modulate:a", 1.0, 0.55)
 	_banner_tween.set_parallel(false)
-	# Stay in the middle for 1.5s
-	_banner_tween.tween_interval(1.5)
-	# Slide out from middle to right and disappear (0.75s -> total 3.0s)
+	# Stay in the middle longer (2.6s) so players can easily read the message
+	_banner_tween.tween_interval(2.6)
+	# Slower slide out from middle to right and disappear (1.15s)
 	_banner_tween.set_parallel(true)
-	_banner_tween.tween_property(puck_puck_banner, "offset_left", -half_w + slide_dist, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_banner_tween.tween_property(puck_puck_banner, "offset_right", half_w + slide_dist, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_banner_tween.tween_property(puck_puck_banner, "modulate:a", 0.0, 0.65)
+	_banner_tween.tween_property(puck_puck_banner, "offset_left", -half_w + slide_dist, 1.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_banner_tween.tween_property(puck_puck_banner, "offset_right", half_w + slide_dist, 1.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_banner_tween.tween_property(puck_puck_banner, "modulate:a", 0.0, 0.95)
 	_banner_tween.set_parallel(false)
 	_banner_tween.tween_callback(func() -> void: puck_puck_banner.visible = false)

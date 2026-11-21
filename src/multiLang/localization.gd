@@ -73,6 +73,7 @@ const EN := {
 	timing_waiting = "Waiting",
 	timing_fast_play = "Fast Play",
 	timing_pause = "Pause",
+	timing_paused = "Paused",
 	timing_resume = "Resume",
 	timing_action = "Action",
 	timing_puck_puck_time = "Puck-puck Time!",
@@ -106,6 +107,8 @@ const EN := {
 	udd_cond_defeated = "Defeated",
 	pvp_player_a_win = "Player A win",
 	pvp_player_b_win = "Player B win",
+	pvp_return_in_sec = "return in {sec} second",
+	pvp_opponent_takes_play = "Opponent takes the play!",
 }
 
 const ZH := {
@@ -168,6 +171,7 @@ const ZH := {
 	timing_waiting = "等待中",
 	timing_fast_play = "加速",
 	timing_pause = "暂停",
+	timing_paused = "已暂停",
 	timing_resume = "继续",
 	timing_action = "敌方行动",
 	timing_puck_puck_time = "弹珠时间！",
@@ -201,6 +205,8 @@ const ZH := {
 	udd_cond_defeated = "已战败",
 	pvp_player_a_win = "Player A 获胜",
 	pvp_player_b_win = "Player B 获胜",
+	pvp_return_in_sec = "{sec} 秒后返回房间",
+	pvp_opponent_takes_play = "对手抢先行动！",
 }
 
 

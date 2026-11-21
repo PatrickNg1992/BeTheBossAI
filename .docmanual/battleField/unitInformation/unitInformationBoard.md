@@ -95,14 +95,13 @@ For intuitive class recognition on the Cue Table, both the **puck** and the **Un
 - **Mage**: **Purple**
 - **Boss Monster**: **Black**
 
-To distinguish between multiple pucks of the same Class across teams and free positions (`5` and `6`), thin **stripes** are added on the pucks:
-1. **Team Stripe** (to separate Adventurer Team 1 and Adventurer Team 2):
-   - **Adventurer Team 1 (`V, B, R, S, F, E`)**: No team stripe
-   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: Thin **Black** line stripe on **2 opposite sides** of the puck
-2. **Free-Position Stripe** (to identify free positions `5` and `6`):
-   - **Positions `1..4` (`V/v, B/b, R/r, S/s`)**: No free-position stripe
-   - **Position `5` (`F`/`f`)**: Thin **White** 4-sided stripe like an **X**
-   - **Position `6` (`E`/`e`)**: Thin **Black** 4-sided stripe like an **X**
+To distinguish between multiple pucks of the same Class across teams and free positions (`5` and `6`):
+1. **Team 4-Sided X Stripe** (to clearly separate Adventurer Team 1 and Adventurer Team 2):
+   - **Adventurer Team 1 (`V, B, R, S, F, E`)**: **White** 4-sided stripe like an **X**
+   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: **Black** 4-sided stripe like an **X**
+2. **Free-Position 8-Ball Circle** (to identify free positions `5` and `6` without extra stripes):
+   - **Positions `1..4` (`V/v, B/b, R/r, S/s`)**: No circle behind the letter
+   - **Positions `5` and `6` (`F`/`f`, `E`/`e`)**: A **white circle** behind the Reference Mark letter in the center of the puck (like an 8-ball)
 
 In addition, the **Reference Mark colour** itself differs by team:
 - **Adventurer Team 1 (`V, B, R, S, F, E`)**: **Deep Grey** Reference Mark colour

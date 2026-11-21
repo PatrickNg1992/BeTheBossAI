@@ -380,13 +380,15 @@ func register_puck(unit_id: String, puck: BasePuck) -> bool:
 	puck.set_slot_color(u.slot_color)
 	if puck.has_method("configure_puck_stripes"):
 		var has_team2_stripe := (u.unit_kind == "enemy_adventurer" and u.team_index == 2)
+		var team_x_mode := 0
 		var free_slot_x_mode := 0
 		if u.unit_kind == "enemy_adventurer":
+			team_x_mode = 2 if u.team_index == 2 else 1
 			if u.slot_index == 5:
 				free_slot_x_mode = 5
 			elif u.slot_index == 6:
 				free_slot_x_mode = 6
-		puck.call("configure_puck_stripes", has_team2_stripe, free_slot_x_mode)
+		puck.call("configure_puck_stripes", has_team2_stripe, free_slot_x_mode, team_x_mode)
 	u.mass = puck.mass
 	u.radius = puck.radius
 	if not puck.died.is_connected(_on_puck_died.bind(unit_id, puck)):

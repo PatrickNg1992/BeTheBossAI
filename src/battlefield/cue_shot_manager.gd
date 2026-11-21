@@ -194,6 +194,7 @@ func begin_drag(world_point: Vector3) -> bool:
 	var origin := _boss_origin()
 	var flat_offset := Vector3(world_point.x - origin.x, 0.0, world_point.z - origin.z)
 	if flat_offset.length() > boss_click_radius:
+		_check_wrong_puck_click_highlight(world_point)
 		return false
 	_dragging = true
 	_remote_aiming = false
@@ -204,6 +205,22 @@ func begin_drag(world_point: Vector3) -> bool:
 	_update_aim_line_visuals()
 	_notify_host_aim_update(true, MpTransport.UNRELIABLE_ORDERED)
 	return true
+
+
+## In Multiplayer Play Time, if the active player tries to click/drag another
+## puck (such as the opponent's Boss Monster or an Adventurer puck) instead of
+## their own Boss Monster puck, highlight their own Boss Monster puck for 1.0s!
+func _check_wrong_puck_click_highlight(world_point: Vector3) -> void:
+	var active_bp := _get_active_boss_puck() as BasePuck
+	if active_bp == null or not is_instance_valid(active_bp):
+		return
+	for other in _get_other_pucks():
+		if other == null or not is_instance_valid(other) or other.is_dead:
+			continue
+		var d := Vector2(world_point.x - other.global_position.x, world_point.z - other.global_position.z).length()
+		if d <= maxf(boss_click_radius, other.radius + 0.45):
+			active_bp.flash_highlight(1.0)
+			return
 
 
 func update_drag(world_point: Vector3) -> void:

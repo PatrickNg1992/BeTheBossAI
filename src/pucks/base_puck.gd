@@ -25,10 +25,12 @@ var _reference_mark_color: Color = Color(0.95, 0.85, 0.35, 1.0)
 var _slot_color: Color = Color(0.5, 0.5, 0.5, 1.0)
 var _ref_mark_label_3d: Label3D = null
 var _has_team2_stripe: bool = false
-var _free_slot_x_mode: int = 0 # 0 = none, 5 = White 4-side X stripe, 6 = Black 4-side X stripe
+var _team_x_stripe_mode: int = 0 # 0 = none (Boss), 1 = Team 1 White 4-side X stripe, 2 = Team 2 Black 4-side X stripe
+var _free_slot_x_mode: int = 0 # 0 = none, 5 or 6 = Free/Extra grey circle behind Reference Mark letter (8-ball style)
 var _stripes_root_3d: Node3D = null
 var _is_highlighted: bool = false
 var _highlight_ring_3d: MeshInstance3D = null
+var _highlight_timer_token: int = 0
 
 
 func set_unit_id(uid: String) -> void:
@@ -62,9 +64,13 @@ func get_slot_color() -> Color:
 	return _slot_color
 
 
-func configure_puck_stripes(has_team2_stripe: bool, free_slot_x_mode: int = 0) -> void:
+func configure_puck_stripes(has_team2_stripe: bool, free_slot_x_mode: int = 0, team_x_mode: int = -1) -> void:
 	_has_team2_stripe = has_team2_stripe
 	_free_slot_x_mode = free_slot_x_mode
+	if team_x_mode >= 0:
+		_team_x_stripe_mode = team_x_mode
+	else:
+		_team_x_stripe_mode = 2 if has_team2_stripe else 1
 	_update_puck_stripes_3d()
 
 
@@ -72,8 +78,27 @@ func has_team2_stripe() -> bool:
 	return _has_team2_stripe
 
 
+func get_team_x_stripe_mode() -> int:
+	return _team_x_stripe_mode
+
+
 func get_free_slot_x_mode() -> int:
 	return _free_slot_x_mode
+
+
+func has_free_slot_center_circle() -> bool:
+	return _free_slot_x_mode == 5 or _free_slot_x_mode == 6
+
+
+func flash_highlight(duration_sec: float = 1.0) -> void:
+	_highlight_timer_token += 1
+	var token := _highlight_timer_token
+	set_highlighted(true)
+	if is_inside_tree() and duration_sec > 0.0:
+		get_tree().create_timer(duration_sec).timeout.connect(func() -> void:
+			if is_instance_valid(self) and _highlight_timer_token == token:
+				set_highlighted(false)
+		)
 
 
 func set_highlighted(highlighted: bool) -> void:
@@ -117,7 +142,7 @@ func _update_puck_stripes_3d() -> void:
 		remove_child(_stripes_root_3d)
 		_stripes_root_3d.queue_free()
 		_stripes_root_3d = null
-	if not _has_team2_stripe and _free_slot_x_mode == 0:
+	if _team_x_stripe_mode == 0 and _free_slot_x_mode == 0:
 		return
 
 	_stripes_root_3d = Node3D.new()
@@ -136,20 +161,12 @@ func _update_puck_stripes_3d() -> void:
 	var tick_radial_center := cyl_r - tick_len * 0.5 + 0.015
 	var tick_width := 0.145
 
-	# 1. Team 2 stripe: Black line stripe on 2 opposite sides (0 deg and 180 deg along X axis)
-	if _has_team2_stripe:
-		var team2_mat := StandardMaterial3D.new()
-		team2_mat.albedo_color = Color(0.05, 0.04, 0.05, 1.0)
-		team2_mat.roughness = 0.25
-		team2_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		for angle_deg in [0.0, 180.0]:
-			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, team2_mat)
-
-	# 2. Free-position stripe (slots 5 and 6): 4-sided X stripe at 45, 135, 225, 315 deg
-	#    Slot 5 (F/f) = White; Slot 6 (E/e) = Black
-	if _free_slot_x_mode == 5 or _free_slot_x_mode == 6:
+	# 1. Team 4-sided X stripe (45, 135, 225, 315 deg):
+	#    Team 1 (_team_x_stripe_mode == 1) = White 4-sided X stripe
+	#    Team 2 (_team_x_stripe_mode == 2) = Black 4-sided X stripe
+	if _team_x_stripe_mode == 1 or _team_x_stripe_mode == 2:
 		var x_mat := StandardMaterial3D.new()
-		if _free_slot_x_mode == 5:
+		if _team_x_stripe_mode == 1:
 			x_mat.albedo_color = Color(0.98, 0.98, 0.99, 1.0)
 		else:
 			x_mat.albedo_color = Color(0.05, 0.04, 0.05, 1.0)
@@ -157,6 +174,24 @@ func _update_puck_stripes_3d() -> void:
 		x_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		for angle_deg in [45.0, 135.0, 225.0, 315.0]:
 			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, x_mat)
+
+	# 2. Free-position 8-ball style white circle behind the Reference Mark letter (slots 5 and 6: F/f and E/e)
+	if has_free_slot_center_circle():
+		var disc_mesh := CylinderMesh.new()
+		var disc_r := cyl_r * 0.56
+		disc_mesh.top_radius = disc_r
+		disc_mesh.bottom_radius = disc_r
+		disc_mesh.height = 0.022
+		var disc_mat := StandardMaterial3D.new()
+		disc_mat.albedo_color = Color(0.98, 0.98, 0.99, 1.0)
+		disc_mat.roughness = 0.25
+		disc_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var disc_inst := MeshInstance3D.new()
+		disc_inst.name = "FreePositionCenterCircle3D"
+		disc_inst.mesh = disc_mesh
+		disc_inst.material_override = disc_mat
+		disc_inst.position = Vector3(0.0, cyl_h * 0.5 + 0.014, 0.0)
+		_stripes_root_3d.add_child(disc_inst)
 
 
 func _add_stripe_tick(
@@ -250,7 +285,7 @@ func _ready() -> void:
 		_update_reference_mark_3d()
 	if _slot_color != Color(0.5, 0.5, 0.5, 1.0):
 		_apply_slot_color_to_mesh()
-	if _has_team2_stripe or _free_slot_x_mode != 0:
+	if _team_x_stripe_mode != 0 or _free_slot_x_mode != 0:
 		_update_puck_stripes_3d()
 
 

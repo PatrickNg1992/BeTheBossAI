@@ -90,12 +90,14 @@ func test_single_player_pve_layout_and_class_to_slot_mapping_with_uncompacted_ga
 	assert_eq(mgr.get_unit_at_grid("R21").reference_mark_color, mgr.COLOR_MARK_TEAM1_GREY, "Team 1 Reference Mark colour is Deep Grey")
 	assert_true(mgr.get_unit_at_grid("R22").avatar_path != mgr.get_unit_at_grid("R41").avatar_path, "Duplicate Warrior gets a distinct avatar image from the first Warrior")
 
-	# Verify Team 1 puck stripe rules: no team2 stripe; slot 1 has no X stripe, slot 5 (F) has White X stripe (5), slot 6 (E) has Black X stripe (6)
-	assert_false(puck_t1_k.has_team2_stripe(), "Team 1 puck has no Team 2 stripe")
-	assert_eq(puck_t1_k.get_free_slot_x_mode(), 0, "Slot 1 (V) has no free-position X stripe")
-	assert_false(puck_t1_dup1.has_team2_stripe(), "Team 1 slot 5 puck has no Team 2 stripe")
-	assert_eq(puck_t1_dup1.get_free_slot_x_mode(), 5, "Slot 5 (F) puck has White 4-sided X stripe (mode 5)")
-	assert_eq(puck_t1_dup2.get_free_slot_x_mode(), 6, "Slot 6 (E) puck has Black 4-sided X stripe (mode 6)")
+	# Verify Team 1 puck stripe & free-position 8-ball circle rules:
+	# Team 1 pucks have White 4-sided X stripe (team_x_stripe_mode == 1);
+	# slot 1 (V) has no center circle, while slots 5 (F) and 6 (E) have the grey 8-ball circle behind the letter!
+	assert_eq(puck_t1_k.get_team_x_stripe_mode(), 1, "Team 1 puck has White 4-sided X stripe (mode 1)")
+	assert_false(puck_t1_k.has_free_slot_center_circle(), "Slot 1 (V) has no free-position center circle")
+	assert_eq(puck_t1_dup1.get_team_x_stripe_mode(), 1, "Team 1 slot 5 puck has White 4-sided X stripe (mode 1)")
+	assert_true(puck_t1_dup1.has_free_slot_center_circle(), "Slot 5 (F) puck has grey 8-ball circle behind the letter")
+	assert_true(puck_t1_dup2.has_free_slot_center_circle(), "Slot 6 (E) puck has grey 8-ball circle behind the letter")
 
 	# Register Team 2 with a missing Warrior (slot 2) and missing Ranger (slot 3): only Knight, Mage, and a duplicate Mage!
 	# Missing class slots R62 (b) and R71 (r) must stay empty rather than compacting!
@@ -109,8 +111,8 @@ func test_single_player_pve_layout_and_class_to_slot_mapping_with_uncompacted_ga
 	assert_true(mgr.get_unit_at_grid("R61") != null, "Team 2 Knight is at R61 (v)")
 	assert_eq(mgr.get_unit_at_grid("R61").reference_mark, "v", "Team 2 Knight Reference Mark is small letter 'v'")
 	assert_eq(mgr.get_unit_at_grid("R61").reference_mark_color, mgr.COLOR_MARK_TEAM2_BROWN, "Team 2 Reference Mark colour is Deep Brown")
-	assert_true(puck_t2_k.has_team2_stripe(), "Team 2 puck has 2-sided White team stripe")
-	assert_eq(puck_t2_k.get_free_slot_x_mode(), 0, "Team 2 slot 1 (v) has no free-position X stripe")
+	assert_eq(puck_t2_k.get_team_x_stripe_mode(), 2, "Team 2 puck has Black 4-sided X stripe (mode 2)")
+	assert_false(puck_t2_k.has_free_slot_center_circle(), "Team 2 slot 1 (v) has no free-position center circle")
 	assert_true(mgr.get_unit_at_grid("R62") == null, "Missing Warrior leaves R62 (b) empty (not compacted)")
 	assert_true(mgr.get_unit_at_grid("R71") == null, "Missing Ranger leaves R71 (r) empty (not compacted)")
 	assert_true(mgr.get_unit_at_grid("R72") != null, "Team 2 Mage is at R72 (s)")
@@ -118,8 +120,8 @@ func test_single_player_pve_layout_and_class_to_slot_mapping_with_uncompacted_ga
 	assert_true(mgr.get_unit_at_grid("R81") != null, "Duplicate Mage takes first free position R81 (f)")
 	assert_eq(mgr.get_unit_at_grid("R81").reference_mark, "f", "Duplicate Mage Reference Mark is small letter 'f'")
 	assert_eq(mgr.get_unit_at_grid("R81").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Duplicate Mage in 'f' keeps Mage Purple colour")
-	assert_true(puck_t2_m2.has_team2_stripe(), "Team 2 duplicate Mage puck has 2-sided White team stripe")
-	assert_eq(puck_t2_m2.get_free_slot_x_mode(), 5, "Team 2 slot 5 (f) puck also has White 4-sided X stripe (mode 5)")
+	assert_eq(puck_t2_m2.get_team_x_stripe_mode(), 2, "Team 2 duplicate Mage puck has Black 4-sided X stripe (mode 2)")
+	assert_true(puck_t2_m2.has_free_slot_center_circle(), "Team 2 slot 5 (f) puck has grey 8-ball circle behind the letter")
 	assert_true(mgr.get_unit_at_grid("R82") == null, "Unused 6th slot R82 (e) stays empty")
 
 	puck_t1_k.free()
@@ -984,11 +986,47 @@ func test_multiplayer_pvp_setup_skeleton_boss_snooker_triangles_and_player_b_aim
 		"Player B Row 2 Ranger (r) is on -Z side nearer Player B Boss at (6, -3)")
 
 	# 4. Player B drag-and-aim controls Player B's Boss puck (PlayerB at (6, 1.8, -3)) and NOT Player A's Boss puck!
+	#    Also verify:
+	#    - When Player B takes the Playing Right, Player A (Host) sees the "Opponent takes the play!" banner notification!
+	#    - When Player B tries to click/drag Player A's Boss puck, Player B's own Boss puck highlights!
+	#    - Clicking Pause on Player B syncs pause state across both Host and Player B!
+	#    - Returning to Charging Time highlights/alerts the Play button!
 	bob_bf.play_button.emit_signal("pressed")
 	assert_eq(host_bf.active_player, "b", "Player B claims Playing Right")
-	var bob_boss_pos := (bob_bf.get_node("PlayerB") as Node3D).global_position
+	assert_true(host_bf.puck_puck_banner.visible and host_bf.banner_label.text == Loc.t("pvp_opponent_takes_play"),
+		"Opponent (Player A) sees 'Opponent takes the play!' banner when Player B claims Playing Right")
+
+	var bob_boss_puck := bob_bf.get_node("PlayerB") as BasePuck
+	var bob_boss_pos := bob_boss_puck.global_position
 	var alice_boss_pos := (bob_bf.get_node("Player") as Node3D).global_position
+	assert_false(bob_boss_puck.is_highlighted(), "Player B Boss puck is not highlighted before wrong click")
 	assert_false(bob_bf.cue_shot_manager.begin_drag(alice_boss_pos), "Player B cannot drag from Player A's Boss puck")
+	assert_true(bob_boss_puck.is_highlighted(), "Clicking opponent's Boss puck highlights Player B's own Boss puck for 1s")
+
+	# Test multiplayer Pause synchronization: Bob clicks Pause -> both Host and Bob pause & show "Paused" in the middle; Host clicks Pause -> both resume & hide "Paused"!
+	assert_false(host_bf.timing_manager.is_paused(), "Host starts unpaused")
+	assert_false(bob_bf.timing_manager.is_paused(), "Bob starts unpaused")
+	assert_false(host_bf.is_paused_banner_visible(), "Paused center message hidden when unpaused")
+	bob_bf.pause_button.emit_signal("pressed")
+	assert_true(host_bf.timing_manager.is_paused(), "Bob clicking Pause pauses Host TimingManager")
+	assert_true(bob_bf.timing_manager.is_paused(), "Bob clicking Pause pauses Bob TimingManager")
+	assert_true(host_bf.is_paused_banner_visible() and bob_bf.is_paused_banner_visible(),
+		"Both Host and Bob display 'Paused' message in the middle of the screen while paused")
+	host_bf.pause_button.emit_signal("pressed")
+	assert_false(host_bf.timing_manager.is_paused(), "Host clicking Resume unpauses Host")
+	assert_false(bob_bf.timing_manager.is_paused(), "Host clicking Resume unpauses Bob")
+	assert_false(host_bf.is_paused_banner_visible() or bob_bf.is_paused_banner_visible(),
+		"'Paused' center message hides on both Host and Bob when resumed")
+
+	# Cancel Play back to Charging Time -> Play button alert triggers on both Host and Bob, then re-enter Play Time to shoot
+	var host_alerts_before: int = host_bf.get_play_button_alert_count()
+	var bob_alerts_before: int = bob_bf.get_play_button_alert_count()
+	bob_bf.play_button.emit_signal("pressed") # Cancel Play
+	assert_eq(host_bf.timing_manager.get_current_timing(), TimingManager.TIMING_CHARGING, "Returned to Charging Time on Cancel")
+	assert_true(host_bf.get_play_button_alert_count() > host_alerts_before, "Host Play button highlighted on returning to Charging Time")
+	assert_true(bob_bf.get_play_button_alert_count() > bob_alerts_before, "Bob Play button highlighted on returning to Charging Time")
+
+	bob_bf.play_button.emit_signal("pressed")
 	assert_true(bob_bf.cue_shot_manager.begin_drag(bob_boss_pos), "Player B begins drag from Player B's Boss puck at (6, -3)")
 	bob_bf.cue_shot_manager.update_drag(bob_boss_pos + Vector3(2.65, 0.0, 0.0)) # Aiming -X with cost 3.0
 	assert_true(bob_bf.cue_shot_manager.release_drag(), "Player B launches Player B's Boss puck")
@@ -1149,11 +1187,18 @@ func test_multiplayer_pvp_collision_rules_unit_info_sync_and_victory_return_to_w
 	assert_eq(host_bf.pvp_winner_seat, "a", "Host declares Player A the winner when all 6 of Player B's Adventurers are defeated")
 	assert_eq(bob_bf.pvp_winner_seat, "a", "Peer (Bob) receives synced winner seat 'a'")
 	assert_true(host_bf.get_win_banner_text().contains("Player A"), "Host displays 'Player A win' message")
+	assert_true(host_bf.get_win_banner_text().contains("5"), "Host win banner displays 'return in 5 second' countdown")
 	assert_true(bob_bf.get_win_banner_text().contains("Player A"), "Peer (Bob) displays 'Player A win' message")
+	assert_true(bob_bf.get_win_banner_text().contains("5"), "Peer (Bob) win banner displays 'return in 5 second' countdown")
 	assert_true(host_mgr.battlefield != null, "Battlefield stays open during the 5-second victory display")
 
-	# Advance 5.0 seconds on Host -> automatically finishes battle and returns all Peers to the Waiting Room!
-	host_bf._process(5.1)
+	# Advance 2.0 seconds -> countdown updates to 3 seconds remaining
+	host_bf._process(2.0)
+	bob_bf._process(2.0)
+	assert_true(host_bf.get_win_banner_text().contains("3"), "Countdown updates to 'return in 3 second' after 2.0s")
+
+	# Advance remaining 3.1 seconds on Host -> automatically finishes battle and returns all Peers to the Waiting Room!
+	host_bf._process(3.1)
 	assert_true(host_mgr.battlefield == null and host_mgr.waiting_room.visible,
 		"Host returns to the Waiting Room after 5 seconds")
 	assert_true(bob_mgr.battlefield == null and bob_mgr.waiting_room.visible,
