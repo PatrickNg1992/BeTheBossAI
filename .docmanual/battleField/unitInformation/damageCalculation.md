@@ -30,6 +30,8 @@ Hit Level adjusts damage based on special conditions. Every unit (Boss monsters,
 
 - The monster hits a unit puck that is charging an attack
 
+- When an enemy adventurer puck hits a cushion block during "Puck-puck time!", its Hit Level increases by `+1` (handled inside `PuckVelocityManager`)
+
 - The pucks collide with special cushion blocks
 
 - Type Effectiveness Effects
@@ -56,6 +58,6 @@ After Damage Settlement, the Damage stack translates to the actual integer Damag
 
 ## Visual Effect (Count and HP Trailing)
 
-Whenever a unit takes damage, the Unit Display notify the player with visual effects. On the left of the HP bar, a small circle mark shows the Damage Stack count of the unit. It is invisible when the count is 0. The middle of the mark is a number that shows the count. The mark shakes briefly whenever the unit takes damage. A harder hit creates a larger shake.
+Whenever any unit (including Boss Monsters, Minions, and Enemy Adventurers) takes damage, its Unit Display (and the upper-left Boss Monster HUD for the local seated player's Boss Monster) notifies the player with visual effects. On the left of the HP bar, a subtle circle mark with a large, bold number shows the Damage Stack count of the unit. It is invisible when the count is 0. The mark shakes briefly whenever the unit takes damage. A harder hit creates a larger shake.
 
-The HP trailing does not consider the Frenzy Power and only considers the Damage Stack and Hit Level. A visual effect that spreads the Frenzy Power to the opponents' HP when the Damage Settlement starts.
+The HP bar is deep green when full and gradually shifts to greenish-yellow as HP gets lower, while the Ghost HP bar (HP trailing) uses a distinct blood-red colour so it never blends with the low-HP bar colour. The HP trailing does not consider the Frenzy Power and only considers the Damage Stack and Hit Level. A visual effect spreads the Frenzy Power to the opponents' HP when the Damage Settlement starts, and a large negative HP change number (e.g. `-567`) is displayed on the unit's box and stays visible long enough to read clearly.

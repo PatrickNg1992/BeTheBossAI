@@ -40,7 +40,8 @@ var is_focusing: bool = false
 var is_pocketed: bool = false
 var pocket_return_turns: int = 0
 var is_dead: bool = false
-var action_tag_turns: Array[int] = []
+var next_action_turns: int = 3
+var action_tag_turns: Array[int] = [3]
 var skills: Array = []
 var statuses: Array = []
 
@@ -83,3 +84,20 @@ func get_preview_ghost_hp() -> int:
 	if is_dead:
 		return 0
 	return maxi(0, current_hp - get_preview_damage())
+
+
+func get_display_action_turns_text() -> String:
+	if is_dead or unit_kind == "boss":
+		return ""
+	if is_pocketed:
+		return str(maxi(1, pocket_return_turns))
+	if not action_tag_turns.is_empty():
+		var parts: Array[String] = []
+		for t in action_tag_turns:
+			if int(t) > 0:
+				parts.append(str(int(t)))
+		if not parts.is_empty():
+			return " / ".join(parts)
+	if next_action_turns > 0:
+		return str(next_action_turns)
+	return ""

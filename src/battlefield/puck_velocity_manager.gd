@@ -342,6 +342,9 @@ func _resolve_puck_cushion_collision(puck: BasePuck) -> void:
 
 
 func _apply_cushion_or_fallback(puck: BasePuck, inward_normal: Vector3) -> void:
+	_resolve_references()
+	if unit_information_manager != null:
+		unit_information_manager.handle_puck_cushion_collision(puck)
 	if battlefield != null:
 		var cushion := battlefield.get_cushion_block_for_normal(puck.global_position, inward_normal)
 		if cushion != null:

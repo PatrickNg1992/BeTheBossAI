@@ -15,6 +15,7 @@ signal unit_damage_pushed(unit_do: UnitInformationDO, damage_do: DamageDO)
 signal unit_collision_impulse_received(unit_do: UnitInformationDO, impulse_magnitude: float)
 signal frenzy_power_spread_started(settled_records: Dictionary)
 signal damage_settled(settled_records: Dictionary)
+signal unit_skill_triggered(unit_do: UnitInformationDO, skill_text: String)
 
 const MODE_SINGLE_PLAYER := "single_player"
 const MODE_TWO_PLAYER_COOP := "two_player_coop"
@@ -161,6 +162,12 @@ func register_boss(unit_id: String, seat: String, config: Dictionary = {}) -> Un
 	u.mass = float(config.get("mass", 3.2))
 	u.radius = float(config.get("radius", 0.8))
 	u.frenzy_power = float(config.get("frenzy_power", 1.0))
+	u.next_action_turns = 0
+	u.action_tag_turns.clear()
+	if config.has("skills") and config["skills"] is Array:
+		u.skills = (config["skills"] as Array).duplicate()
+	if config.has("statuses") and config["statuses"] is Array:
+		u.statuses = (config["statuses"] as Array).duplicate()
 
 	_store_unit(u)
 	if config.has("puck") and config["puck"] is BasePuck:
@@ -324,6 +331,17 @@ func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> Uni
 	u.power = int(d.get("power", cls_cfg.get("damage", 100)))
 	u.mass = float(d.get("mass", cls_cfg.get("mass", 1.5)))
 	u.radius = float(d.get("radius", cls_cfg.get("radius", 0.6)))
+	u.next_action_turns = int(d.get("next_action_turns", 3))
+	u.action_tag_turns.clear()
+	if d.has("action_tag_turns") and d["action_tag_turns"] is Array:
+		for t in d["action_tag_turns"]:
+			u.action_tag_turns.append(int(t))
+	elif u.next_action_turns > 0:
+		u.action_tag_turns.append(u.next_action_turns)
+	if d.has("skills") and d["skills"] is Array:
+		u.skills = (d["skills"] as Array).duplicate()
+	if d.has("statuses") and d["statuses"] is Array:
+		u.statuses = (d["statuses"] as Array).duplicate()
 
 	_store_unit(u)
 	if d.has("puck") and d["puck"] is BasePuck:
@@ -685,6 +703,71 @@ func heal_unit(unit_id: String, amount: int) -> void:
 			if p is BaseBossMonster:
 				(p as BaseBossMonster).bars_changed.emit(u.bars_remaining, u.current_hp, u.max_hp)
 	unit_updated.emit(u)
+
+
+## Called by `PuckVelocityManager` when a puck hits a Cushion during "Puck-puck Time!":
+## When an Enemy Adventurer puck collides with a Cushion, its Hit Level increases by +1.
+func handle_puck_cushion_collision(puck: BasePuck) -> int:
+	if puck == null:
+		return 0
+	var uid := puck.get_unit_id()
+	if uid.is_empty():
+		return 0
+	var u := get_unit(uid)
+	if u == null or u.is_dead:
+		return 0
+	if u.unit_kind == "enemy_adventurer":
+		return modify_hit_level(uid, 1)
+	return u.hit_level
+
+
+# ----- Ticket 04 & 05: Action Tag Turns, Pocketed/Defeated States, Skill Popups & Hover Highlight -----
+
+
+func set_unit_action_turns(unit_id: String, turns_list: Array) -> void:
+	var u := get_unit(unit_id)
+	if u == null:
+		return
+	u.action_tag_turns.clear()
+	for t in turns_list:
+		var val := int(t)
+		if val > 0:
+			u.action_tag_turns.append(val)
+	u.next_action_turns = u.action_tag_turns[0] if not u.action_tag_turns.is_empty() else 0
+	unit_updated.emit(u)
+
+
+func set_unit_pocketed(unit_id: String, pocketed: bool, return_turns: int = 5) -> void:
+	var u := get_unit(unit_id)
+	if u == null or u.is_dead:
+		return
+	u.is_pocketed = pocketed
+	u.pocket_return_turns = maxi(1, return_turns) if pocketed else 0
+	unit_updated.emit(u)
+
+
+func set_unit_focusing(unit_id: String, focusing: bool) -> void:
+	var u := get_unit(unit_id)
+	if u == null or u.is_dead:
+		return
+	u.is_focusing = focusing
+	unit_updated.emit(u)
+
+
+func trigger_unit_skill_popup(unit_id: String, skill_text: String) -> void:
+	var u := get_unit(unit_id)
+	if u == null or u.is_dead:
+		return
+	unit_skill_triggered.emit(u, skill_text)
+
+
+func set_unit_highlighted(unit_id: String, highlighted: bool) -> void:
+	var u := get_unit(unit_id)
+	if u == null:
+		return
+	for p in u.pucks:
+		if is_instance_valid(p) and p.has_method("set_highlighted"):
+			p.call("set_highlighted", highlighted)
 
 
 static func calculate_linear_collision_damage(impulse_scalar: float) -> float:

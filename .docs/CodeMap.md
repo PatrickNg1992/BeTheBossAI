@@ -70,7 +70,8 @@ src/
 │
 ├── canvas/
 │   ├── canvas.gd               # HUD: boss multi-bar HP, UnitInformationBoard mount, warnings
-│   ├── unit_display.gd         # UnitDisplay: medieval 1- or 2-cell unit card (portrait, Reference Mark, Class Mark, Frenzy Power, HP bar)
+│   ├── unit_display.gd         # UnitDisplay: medieval 1- or 2-cell unit card (portrait, Reference Mark, Class Mark, Frenzy Power, HP bar, Action Tag turns, Defeated/Pocketed states)
+│   ├── unit_detail_display.gd  # UnitDetailDisplay: click-to-inspect popup showing localized Name, Class, numeric HP/Max HP, Power, Mass, Radius, Hit Level, Frenzy Power, Condition, Skills & Statuses
 │   ├── unit_information_board.gd # UnitInformationBoard: left & right 2×8 grids ({L|R}{1..8}{1..2}) driven by UnitInformationManager
 │   ├── card_canvas.gd          # Card UI: hand, selection, casting area + CD, deck/discard windows
 │   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, tag arrows (dumb view)

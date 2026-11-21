@@ -679,5 +679,205 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	warrior.velocity = Vector3(-4.0, 0.0, -4.0)
 	assert_false(pvm.resolve_puck_puck_collision(warrior, mage), "A puck falling in a Pocket Area has its collider disabled and never blocks a second puck entering the same hole")
 
+	# 9. Enemy Adventurer hitting a Cushion during Puck-puck Time! increases its Hit Level by +1 in PuckVelocityManager:
+	assert_eq(warrior_do.hit_level, 0, "Warrior Hit Level starts at 0 after Settle Time")
+	warrior.global_position = Vector3(14.8, 1.675, 0.0) # Past right Cushion boundary (15.0 - 0.6 = 14.4)
+	warrior.velocity = Vector3(5.0, 0.0, 0.0)
+	pvm.step_velocities(0.05, 1.0)
+	assert_eq(warrior_do.hit_level, 1, "Enemy Adventurer hitting a Cushion in PuckVelocityManager increases Hit Level by +1")
+
 	tree.root.remove_child(root)
 	root.free()
+
+
+# ----- Ticket 04: Action Tag Turn Countdowns, Defeated & Pocketed Unit Display States, and Skill Popups -----
+
+
+func test_action_tag_turns_default_3_pocketed_return_countdown_defeated_red_cross_and_skill_popup() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mgr := _new_manager()
+	var board := _new_board()
+	if mgr == null or board == null:
+		return
+	tree.root.add_child(mgr)
+	tree.root.add_child(board)
+
+	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
+	mgr.register_boss("boss_a", "a", {"max_hp": 1000, "current_hp": 1000, "bars_remaining": 15, "max_bars": 15})
+	mgr.register_adventurer_team(1, [
+		{"unit_id": "adv_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT},
+		{"unit_id": "adv_warrior", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR},
+	])
+	board.bind_manager(mgr)
+	board.set_local_role("a")
+
+	# 1. Default next_action_turns variable in UnitInformationDO is 3 and displayed on the lower-right of the Unit Display
+	var knight_do = mgr.get_unit("adv_knight")
+	assert_eq(knight_do.next_action_turns, 3, "UnitInformationDO next_action_turns defaults to 3")
+	var cell_k: Dictionary = board.get_cell_info("R21")
+	assert_true(cell_k.get("action_turns_visible", false), "Active Adventurer displays Action Tag turn countdown")
+	assert_eq(cell_k.get("action_turns_text"), "3", "Active Adventurer displays default turn countdown '3' on lower-right")
+	assert_false(cell_k.get("is_greyed", true), "Active unit is not greyed out")
+	assert_false(cell_k.get("red_cross_visible", true), "Active unit does not show red cross")
+
+	# Boss Monster does not show an Action Tag turn countdown
+	var cell_boss: Dictionary = board.get_cell_info("L11")
+	assert_false(cell_boss.get("action_turns_visible", true), "Boss Monster does not show Action Tag turn countdown")
+
+	# Updating action tag turns (e.g. basic action 2 + active skill 5) updates the Unit Display
+	mgr.set_unit_action_turns("adv_knight", [2, 5])
+	cell_k = board.get_cell_info("R21")
+	assert_eq(cell_k.get("action_turns_text"), "2 / 5", "Unit Display renders basic and skill Action Tag turn integers")
+
+	# 2. Pocketed state: unit turns grey, HP bar remains visible, and pocket return turn countdown (5..1) is shown instead of normal action turns
+	mgr.set_unit_pocketed("adv_knight", true, 5)
+	cell_k = board.get_cell_info("R21")
+	assert_true(cell_k.get("is_greyed", false), "Pocketed unit Unit Display turns grey")
+	assert_true(cell_k.get("hp_bar_visible", false), "Pocketed unit keeps its HP bar visible")
+	assert_false(cell_k.get("red_cross_visible", true), "Pocketed unit does NOT show red cross mark")
+	assert_true(cell_k.get("action_turns_visible", false), "Pocketed unit shows return turn countdown")
+	assert_eq(cell_k.get("action_turns_text"), "5", "Pocketed unit shows return countdown '5' in place of normal Action Tag turns")
+
+	# Returning from pocket restores active colour and normal next_action_turns
+	mgr.set_unit_pocketed("adv_knight", false, 0)
+	mgr.set_unit_action_turns("adv_knight", [3])
+	cell_k = board.get_cell_info("R21")
+	assert_false(cell_k.get("is_greyed", true), "Returned unit is no longer greyed out")
+	assert_eq(cell_k.get("action_turns_text"), "3", "Returned unit shows normal Action Tag turn countdown again")
+
+	# 3. Skill trigger popup on Unit Display
+	mgr.trigger_unit_skill_popup("adv_knight", "Shield Wall")
+	cell_k = board.get_cell_info("R21")
+	assert_eq(cell_k.get("last_skill_popup_text"), "Shield Wall", "Unit Display briefly pops up triggered skill icon/badge")
+
+	# 4. Defeated state (applied at Settle Time):
+	#    Unit Display turns grey, displays a red cross mark over the portrait, and hides its HP bar,
+	#    Damage Stack count badge, and all Action Tag turn numbers while remaining in its grid cell!
+	mgr.push_damage("adv_warrior", 5000.0, "boss_a", "boss_a", "collision")
+	assert_true(board.get_cell_info("R22").get("damage_badge_visible", false), "Warrior shows Damage Stack badge before Settle Time")
+	mgr.settle_all_damage()
+
+	var warrior_do = mgr.get_unit("adv_warrior")
+	assert_true(warrior_do.is_dead, "Warrior is defeated after Settle Time")
+	var cell_w: Dictionary = board.get_cell_info("R22")
+	assert_true(cell_w.get("occupied", false), "Defeated unit remains in its grid cell R22 until the Wave ends")
+	assert_true(cell_w.get("is_greyed", false), "Defeated unit Unit Display turns grey")
+	assert_true(cell_w.get("red_cross_visible", false), "Defeated unit displays red cross mark over portrait")
+	assert_false(cell_w.get("hp_bar_visible", true), "Defeated unit hides its HP bar")
+	assert_false(cell_w.get("damage_badge_visible", true), "Defeated unit hides its Damage Stack count badge")
+	assert_false(cell_w.get("action_turns_visible", true), "Defeated unit hides all Action Tag turn numbers")
+
+	tree.root.remove_child(board)
+	tree.root.remove_child(mgr)
+	board.free()
+	mgr.free()
+
+
+# ----- Ticket 05: Hover Puck Highlighting & Click-to-Inspect Unit Detail Display Popup -----
+
+
+func test_hover_highlights_zero_to_n_pucks_and_click_opens_localized_unit_detail_display() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mgr := _new_manager()
+	var board := _new_board()
+	if mgr == null or board == null:
+		return
+	tree.root.add_child(mgr)
+	tree.root.add_child(board)
+
+	var boss_puck := DragonPlayer.new()
+	var ranger_puck_1 := EnemyAdventurer.new()
+	var ranger_puck_2 := EnemyAdventurer.new()
+	tree.root.add_child(boss_puck)
+	tree.root.add_child(ranger_puck_1)
+	tree.root.add_child(ranger_puck_2)
+
+	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
+	mgr.register_boss("boss_a", "a", {
+		"max_hp": 1000,
+		"current_hp": 850,
+		"bars_remaining": 14,
+		"max_bars": 15,
+		"power": 45,
+		"frenzy_power": 1.25,
+		"puck": boss_puck,
+	})
+	mgr.register_adventurer_team(1, [
+		{
+			"unit_id": "adv_ranger",
+			"adventurer_class": EnemyAdventurer.AdventurerClass.RANGER,
+			"max_hp": 2200,
+			"current_hp": 1650,
+			"power": 110,
+			"skills": ["Rapid Shot", "Evasion"],
+			"statuses": ["Haste"],
+		},
+	])
+	mgr.register_puck("adv_ranger", ranger_puck_1)
+	mgr.register_puck("adv_ranger", ranger_puck_2)
+	mgr.set_hit_level("adv_ranger", 2)
+
+	board.bind_manager(mgr)
+	board.set_local_role("a")
+
+	# 1. Hovering a Unit Display highlights all 0..N active pucks linked to that unit; hovering alone does NOT open Unit Detail Display
+	assert_false(ranger_puck_1.is_highlighted(), "Ranger puck 1 is not highlighted initially")
+	assert_false(ranger_puck_2.is_highlighted(), "Ranger puck 2 is not highlighted initially")
+	assert_false(board.is_detail_display_open(), "Unit Detail Display is closed initially")
+
+	board.simulate_cell_hover("R31", true)
+	assert_true(ranger_puck_1.is_highlighted(), "Hovering R31 highlights Ranger puck 1")
+	assert_true(ranger_puck_2.is_highlighted(), "Hovering R31 highlights Ranger puck 2 (multi-puck unit)")
+	assert_true(board.get_cell_info("R31").get("is_hover_highlighted", false), "Hovering R31 highlights the Unit Display box")
+	var hovered_scale: Vector2 = board.get_cell_info("R31").get("scale", Vector2.ONE)
+	assert_true(hovered_scale.x > 1.05, "Hovering R31 slightly magnifies the Unit Display box")
+	assert_false(boss_puck.is_highlighted(), "Boss puck is not highlighted when hovering R31")
+	assert_false(board.is_detail_display_open(), "Hovering alone does NOT open Unit Detail Display")
+
+	board.simulate_cell_hover("R31", false)
+	assert_false(ranger_puck_1.is_highlighted(), "Moving mouse off R31 clears highlight on Ranger puck 1")
+	assert_false(ranger_puck_2.is_highlighted(), "Moving mouse off R31 clears highlight on Ranger puck 2")
+	assert_false(board.get_cell_info("R31").get("is_hover_highlighted", true), "Moving mouse off R31 un-highlights the Unit Display box")
+
+	# 2. Clicking a Unit Display opens the Unit Detail Display popup with full localized stats and numeric HP / Max HP
+	board.simulate_cell_click("R31")
+	assert_true(board.is_detail_display_open(), "Clicking R31 opens Unit Detail Display")
+	var detail_r31: Dictionary = board.get_detail_display_info()
+	assert_eq(detail_r31.get("unit_id"), "adv_ranger", "Detail Display inspects adv_ranger")
+	assert_eq(detail_r31.get("hp_text"), "1650 / 2200", "Detail Display HP bar shows numeric '1650 / 2200'")
+	assert_true(detail_r31.get("class_visible", false), "Adventurer Detail Display shows detailed Class name and Class Mark icon")
+	assert_eq(detail_r31.get("power_value"), 110, "Detail Display shows Attack Power 110")
+	assert_true(absf(float(detail_r31.get("mass_value", 0.0)) - ranger_puck_1.mass) < 0.02, "Detail Display shows Puck Mass")
+	assert_true(absf(float(detail_r31.get("radius_value", 0.0)) - ranger_puck_1.radius) < 0.01, "Detail Display shows Puck Radius")
+	assert_eq(detail_r31.get("hit_level_value"), 2, "Detail Display shows current Hit Level 2")
+	assert_true(str(detail_r31.get("skills_text", "")).contains("Rapid Shot"), "Detail Display lists unit skills")
+	assert_true(str(detail_r31.get("statuses_text", "")).contains("Haste"), "Detail Display lists unit statuses")
+
+	# 3. Clicking a different Unit Display (Boss Monster at L11) switches the Unit Detail Display to inspect Boss
+	board.simulate_cell_click("L11")
+	assert_true(board.is_detail_display_open(), "Unit Detail Display stays open when switching to L11")
+	var detail_boss: Dictionary = board.get_detail_display_info()
+	assert_eq(detail_boss.get("unit_id"), "boss_a", "Detail Display switched to boss_a")
+	assert_true(str(detail_boss.get("hp_text", "")).contains("850 / 1000"), "Boss Detail Display shows numeric HP '850 / 1000'")
+	assert_true(str(detail_boss.get("bars_text", "")).contains("14"), "Boss Detail Display shows remaining Health Bar count x14")
+	assert_eq(detail_boss.get("frenzy_text"), "125.0%", "Boss Detail Display shows Frenzy Power 125.0%")
+
+	# 4. Clicking the same Unit Display again (or clicking outside) closes the Unit Detail Display
+	board.simulate_cell_click("L11")
+	assert_false(board.is_detail_display_open(), "Re-clicking the same Unit Display closes Unit Detail Display")
+
+	board.simulate_cell_click("R31")
+	assert_true(board.is_detail_display_open(), "Clicking R31 re-opens Unit Detail Display")
+	board.close_detail_display()
+	assert_false(board.is_detail_display_open(), "Clicking elsewhere closes Unit Detail Display")
+
+	tree.root.remove_child(boss_puck)
+	tree.root.remove_child(ranger_puck_1)
+	tree.root.remove_child(ranger_puck_2)
+	tree.root.remove_child(board)
+	tree.root.remove_child(mgr)
+	boss_puck.free()
+	ranger_puck_1.free()
+	ranger_puck_2.free()
+	board.free()
+	mgr.free()

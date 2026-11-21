@@ -27,6 +27,8 @@ var _ref_mark_label_3d: Label3D = null
 var _has_team2_stripe: bool = false
 var _free_slot_x_mode: int = 0 # 0 = none, 5 = White 4-side X stripe, 6 = Black 4-side X stripe
 var _stripes_root_3d: Node3D = null
+var _is_highlighted: bool = false
+var _highlight_ring_3d: MeshInstance3D = null
 
 
 func set_unit_id(uid: String) -> void:
@@ -72,6 +74,42 @@ func has_team2_stripe() -> bool:
 
 func get_free_slot_x_mode() -> int:
 	return _free_slot_x_mode
+
+
+func set_highlighted(highlighted: bool) -> void:
+	_is_highlighted = highlighted
+	_update_highlight_ring_3d()
+
+
+func is_highlighted() -> bool:
+	return _is_highlighted
+
+
+func _update_highlight_ring_3d() -> void:
+	if not _is_highlighted:
+		if _highlight_ring_3d != null and is_instance_valid(_highlight_ring_3d):
+			_highlight_ring_3d.visible = false
+		return
+	if _highlight_ring_3d == null or not is_instance_valid(_highlight_ring_3d):
+		_highlight_ring_3d = get_node_or_null("HoverHighlightRing3D") as MeshInstance3D
+		if _highlight_ring_3d == null:
+			_highlight_ring_3d = MeshInstance3D.new()
+			_highlight_ring_3d.name = "HoverHighlightRing3D"
+			var ring_mat := StandardMaterial3D.new()
+			ring_mat.albedo_color = Color(1.0, 0.94, 0.32, 0.96)
+			ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_highlight_ring_3d.material_override = ring_mat
+			add_child(_highlight_ring_3d)
+	var cyl_r := maxf(radius, 0.5)
+	var col_shape := get_node_or_null("CollisionShape3D") as CollisionShape3D
+	if col_shape != null and col_shape.shape is CylinderShape3D:
+		cyl_r = (col_shape.shape as CylinderShape3D).radius
+	var torus := TorusMesh.new()
+	torus.inner_radius = cyl_r + 0.04
+	torus.outer_radius = cyl_r + 0.16
+	_highlight_ring_3d.mesh = torus
+	_highlight_ring_3d.position = Vector3(0.0, 0.02, 0.0)
+	_highlight_ring_3d.visible = true
 
 
 func _update_puck_stripes_3d() -> void:

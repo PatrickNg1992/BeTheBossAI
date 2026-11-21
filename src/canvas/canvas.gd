@@ -88,7 +88,7 @@ func _on_uim_unit_updated(u: UnitInformationDO) -> void:
 		player_hp_damage.visible = true
 		player_hp_damage.offset_left = ghost_right
 		player_hp_damage.offset_right = cur_right
-		player_hp_damage.color = Color(0.95, 0.55, 0.16, 0.92)
+		player_hp_damage.color = Color(0.68, 0.08, 0.10, 0.96)
 
 
 func _find_unit_information_manager() -> UnitInformationManager:

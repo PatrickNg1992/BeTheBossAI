@@ -18,7 +18,7 @@ Each cell shows the unit's image. Below the cell is the unit's HP bar. In the up
 
 The Unit Display for boss monsters spans 2 horizontal cells, which looks greater. On the right side of a boss monster's 2-cell Unit Display, its current *Frenzy Power* is displayed (each boss monster has its own Frenzy Power, supporting 2-player modes). For the local seated player's own boss monster (Player A's boss monster for Player A and Spectators; Player B's boss monster for Player B), its Unit Display omits the HP bar because that information appears in the upper-left corner of the screen. All other boss monsters on the board (the co-op partner's boss monster or the opponent's boss monster) show their current HP bar and remaining HP bar count (`x N`) inside their 2-cell Unit Display.
 
-If the unit is an enemy adventurer, a *Class Mark* appears in the upper-right corner to tell what class the unit is.
+If the unit is an enemy adventurer, a *Class Mark* icon appears directly in the upper-right corner (without a background square) to tell what class the unit is. In the upper-left corner, the *Reference Mark* sits inside a compact square just slightly larger than the letter.
 
 When a player hovers the mouse over a Unit Display, the corresponding puck on the table will be highlighted so they can spot the puck easily. When a player clicks on the Unit Display, a small pop-up window named *Unit Detail Display* will appear to the side.
 
