@@ -136,14 +136,14 @@ func _update_puck_stripes_3d() -> void:
 	var tick_radial_center := cyl_r - tick_len * 0.5 + 0.015
 	var tick_width := 0.145
 
-	# 1. Team 2 stripe: White line stripe on 2 opposite sides (0 deg and 180 deg along X axis)
+	# 1. Team 2 stripe: Black line stripe on 2 opposite sides (0 deg and 180 deg along X axis)
 	if _has_team2_stripe:
-		var white_mat := StandardMaterial3D.new()
-		white_mat.albedo_color = Color(0.98, 0.98, 0.99, 1.0)
-		white_mat.roughness = 0.25
-		white_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var team2_mat := StandardMaterial3D.new()
+		team2_mat.albedo_color = Color(0.05, 0.04, 0.05, 1.0)
+		team2_mat.roughness = 0.25
+		team2_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		for angle_deg in [0.0, 180.0]:
-			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, white_mat)
+			_add_stripe_tick(_stripes_root_3d, angle_deg, tick_radial_center, top_y, cyl_h, tick_len, tick_width, team2_mat)
 
 	# 2. Free-position stripe (slots 5 and 6): 4-sided X stripe at 45, 135, 225, 315 deg
 	#    Slot 5 (F/f) = White; Slot 6 (E/e) = Black

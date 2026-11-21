@@ -255,8 +255,9 @@ func release_drag() -> bool:
 		parent.call("action_cue_shot", dir, spent)
 	else:
 		_notify_host_aim_update(false, MpTransport.RELIABLE)
-		if boss_puck is BasePuck:
-			(boss_puck as BasePuck).apply_impulse(dir * impulse_mag)
+		var active_bp := _get_active_boss_puck()
+		if active_bp is BasePuck:
+			(active_bp as BasePuck).apply_impulse(dir * impulse_mag)
 		if timing_manager != null:
 			var seat := _get_aiming_seat()
 			if seat == "b":
@@ -388,21 +389,41 @@ func _raycast_horizontal_plane(screen_pos: Vector2, plane_y: float) -> Dictionar
 
 
 func _boss_origin() -> Vector3:
-	if boss_puck != null and is_instance_valid(boss_puck):
-		return boss_puck.global_position
+	var bp := _get_active_boss_puck()
+	if bp != null and is_instance_valid(bp):
+		return bp.global_position
 	return Vector3.ZERO
 
 
 func _boss_radius() -> float:
-	if boss_puck is BasePuck:
-		return maxf((boss_puck as BasePuck).radius, 0.2)
+	var bp := _get_active_boss_puck()
+	if bp is BasePuck:
+		return maxf((bp as BasePuck).radius, 0.2)
 	return 0.75
 
 
 func _boss_mass() -> float:
-	if boss_puck is BasePuck:
-		return maxf((boss_puck as BasePuck).mass, 0.1)
+	var bp := _get_active_boss_puck()
+	if bp is BasePuck:
+		return maxf((bp as BasePuck).mass, 0.1)
 	return 3.0
+
+
+func _get_active_boss_puck() -> Node3D:
+	var parent := get_parent()
+	if parent != null and parent.has_method("get_local_role"):
+		var seat := _get_aiming_seat()
+		if seat == "b":
+			var pb := parent.get_node_or_null("PlayerB") as Node3D
+			if pb != null and is_instance_valid(pb):
+				return pb
+		elif seat == "a":
+			var pa := parent.get_node_or_null("Player") as Node3D
+			if pa != null and is_instance_valid(pa):
+				return pa
+	if boss_puck != null and is_instance_valid(boss_puck):
+		return boss_puck
+	return null
 
 
 func _boss_restitution() -> float:
@@ -579,17 +600,22 @@ func _predict_first_hit(origin: Vector3, dir: Vector3, max_reach: float, impulse
 
 
 func _get_other_pucks() -> Array[BasePuck]:
+	var active_bp := _get_active_boss_puck()
+	if _remote_aiming:
+		var parent_node := get_parent()
+		if parent_node != null:
+			active_bp = parent_node.get_node_or_null("PlayerB" if _remote_player_seat == "b" else "Player")
 	var list: Array[BasePuck] = []
 	var parent := get_parent()
 	if parent != null:
 		for child in parent.get_children():
-			if child is BasePuck and child != boss_puck and is_instance_valid(child) and not (child as BasePuck).is_dead:
+			if child is BasePuck and child != active_bp and is_instance_valid(child) and not (child as BasePuck).is_dead:
 				list.append(child as BasePuck)
 		if not list.is_empty():
 			return list
 	if is_inside_tree():
 		for node in get_tree().get_nodes_in_group("pucks"):
-			if node is BasePuck and node != boss_puck and is_instance_valid(node) and not (node as BasePuck).is_dead:
+			if node is BasePuck and node != active_bp and is_instance_valid(node) and not (node as BasePuck).is_dead:
 				list.append(node as BasePuck)
 	return list
 

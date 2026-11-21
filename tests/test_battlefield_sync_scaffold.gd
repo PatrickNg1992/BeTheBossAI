@@ -574,16 +574,17 @@ func test_live_aiming_sync_renders_3d_line_and_energy_preview_on_all_peers_and_c
 	assert_eq(int(carol_bf.sync_receive_counts.get("aiming", 0)), count_before,
 		"Host ignores action_aim_update from non-active player and Spectators")
 
-	# 2. Bob (active_player) drags from Boss Monster at origin toward Enemy1 at (6, 1.675, 3):
+	# 2. Bob (active_player) drags from Player B's Boss Monster (PlayerB at (6, 1.8, -3)) toward PvP_B_1 at (4.75, 1.7, 3.0):
 	#    Verify action_aim_update is sent UNRELIABLE_ORDERED and Host broadcasts sync_aiming UNRELIABLE_ORDERED,
 	#    rendering the 3D first-rebound aiming line and Time Board Energy cost preview on Host, Bob, and Carol!
 	bob_fake.clear_sent_records()
 	host_fake.clear_sent_records()
-	assert_true(bob_bf.cue_shot_manager.begin_drag(Vector3(0.0, 1.75, 0.0)), "Bob begins drag in Play Time")
-	var enemy1_pos: Vector3 = (bob_bf.get_node("Enemy1") as Node3D).global_position
-	var to_enemy := Vector3(enemy1_pos.x, 0.0, enemy1_pos.z).normalized()
+	var bob_boss_origin: Vector3 = (bob_bf.get_node("PlayerB") as Node3D).global_position
+	assert_true(bob_bf.cue_shot_manager.begin_drag(bob_boss_origin), "Bob begins drag from Player B's Boss Monster in Play Time")
+	var target_puck_pos: Vector3 = (bob_bf.get_node("PvP_B_1") as Node3D).global_position
+	var to_enemy := Vector3(target_puck_pos.x - bob_boss_origin.x, 0.0, target_puck_pos.z - bob_boss_origin.z).normalized()
 	# Drag distance 2.65 (= 0.65 deadzone + 2.0) -> cost 1.0 + 2.0 = 3.0 Energy (affordable for Bob's 5.0 Energy)
-	bob_bf.cue_shot_manager.update_drag(-to_enemy * 2.65 + Vector3(0.0, 1.5, 0.0))
+	bob_bf.cue_shot_manager.update_drag(Vector3(bob_boss_origin.x, 1.5, bob_boss_origin.z) - to_enemy * 2.65)
 
 	assert_eq(bob_fake.last_transfer_mode, MpTransport.UNRELIABLE_ORDERED,
 		"Client sends action_aim_update with UNRELIABLE_ORDERED while dragging")
@@ -600,7 +601,7 @@ func test_live_aiming_sync_renders_3d_line_and_energy_preview_on_all_peers_and_c
 
 	# 3. Bob over-drags to 7.0 Energy (distance 6.65 = 0.65 deadzone + 6.0 -> 1.0 + 6.0 = 7.0 > Bob's 5.0 Energy):
 	#    All Peers see the 3D aiming line turn red and the Time Board preview turn red for slots 5..6!
-	bob_bf.cue_shot_manager.update_drag(-to_enemy * 6.65 + Vector3(0.0, 1.5, 0.0))
+	bob_bf.cue_shot_manager.update_drag(Vector3(bob_boss_origin.x, 1.5, bob_boss_origin.z) - to_enemy * 6.65)
 	for peer_bf in [host_bf, bob_bf, carol_bf]:
 		var aim_state_red: Dictionary = peer_bf.cue_shot_manager.get_aim_line_state()
 		assert_true(aim_state_red.get("visible", false), "Over-dragged 3D aiming line is visible on all Peers")
@@ -683,18 +684,19 @@ func test_authoritative_cue_shot_launch_and_puck_positions_sync_across_all_peers
 		"All invalid action_cue_shot requests are rejected and game remains in Play Time")
 	assert_eq(host_bf.get_player_energy("b"), 5.0, "No Energy deducted on rejected action_cue_shot")
 
-	# 2. Bob drags and releases a valid Cue-Shot toward Enemy1 at (6, 1.675, 3) with cost 3.5 Energy:
-	var host_boss := host_bf.get_node("Player") as BasePuck
-	var bob_boss := bob_bf.get_node("Player") as BasePuck
-	var carol_boss := carol_bf.get_node("Player") as BasePuck
-	var host_enemy1 := host_bf.get_node("Enemy1") as BasePuck
-	var bob_enemy1 := bob_bf.get_node("Enemy1") as BasePuck
-	var carol_enemy1 := carol_bf.get_node("Enemy1") as BasePuck
+	# 2. Bob drags and releases a valid Cue-Shot from PlayerB toward PvP_B_1 with cost 3.5 Energy:
+	var host_boss := host_bf.get_node("PlayerB") as BasePuck
+	var bob_boss := bob_bf.get_node("PlayerB") as BasePuck
+	var carol_boss := carol_bf.get_node("PlayerB") as BasePuck
+	var host_enemy1 := host_bf.get_node("PvP_B_1") as BasePuck
+	var bob_enemy1 := bob_bf.get_node("PvP_B_1") as BasePuck
+	var carol_enemy1 := carol_bf.get_node("PvP_B_1") as BasePuck
 
-	var to_enemy := Vector3(host_enemy1.global_position.x, 0.0, host_enemy1.global_position.z).normalized()
-	assert_true(bob_bf.cue_shot_manager.begin_drag(Vector3(0.0, 1.75, 0.0)), "Bob begins drag")
+	var start_boss_pos := host_boss.global_position
+	var to_enemy := Vector3(host_enemy1.global_position.x - start_boss_pos.x, 0.0, host_enemy1.global_position.z - start_boss_pos.z).normalized()
+	assert_true(bob_bf.cue_shot_manager.begin_drag(start_boss_pos), "Bob begins drag from PlayerB")
 	# Distance 3.15 = 0.65 deadzone + 2.5 -> 1.0 + 2.5 = 3.5 Energy
-	bob_bf.cue_shot_manager.update_drag(-to_enemy * 3.15 + Vector3(0.0, 1.5, 0.0))
+	bob_bf.cue_shot_manager.update_drag(Vector3(start_boss_pos.x, 1.5, start_boss_pos.z) - to_enemy * 3.15)
 	assert_eq(bob_bf.cue_shot_manager.get_required_energy(), 3.5, "Bob selected 3.5 Energy")
 
 	bob_fake.clear_sent_records()
@@ -746,8 +748,8 @@ func test_authoritative_cue_shot_launch_and_puck_positions_sync_across_all_peers
 	assert_true(saw_unreliable_puck_sync,
 		"Host streams sync_puck_positions using UNRELIABLE_ORDERED during Puck-puck Time! motion")
 
-	# Verify Bob and Carol updated their 3D Boss and Enemy1 positions to match the Host!
-	assert_true(host_boss.global_position.distance_to(Vector3(0.0, 1.75, 0.0)) > 1.5,
+	# Verify Bob and Carol updated their 3D Boss and target puck positions to match the Host!
+	assert_true(host_boss.global_position.distance_to(start_boss_pos) > 1.5,
 		"Host Boss Monster moved across the table")
 	assert_true(bob_boss.global_position.is_equal_approx(host_boss.global_position),
 		"Player B Boss Monster 3D position matches Host during motion")

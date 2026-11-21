@@ -81,6 +81,7 @@ const EN := {
 	uib_frenzy_label = "Frenzy",
 	uib_frenzy_format = "{pct}%",
 	uib_boss_dragon = "Fire Dragon",
+	uib_boss_skeleton = "Skeleton King",
 	uib_class_knight = "Knight",
 	uib_class_warrior = "Warrior",
 	uib_class_ranger = "Ranger",
@@ -103,6 +104,8 @@ const EN := {
 	udd_cond_focusing = "Focusing",
 	udd_cond_pocketed = "Pocketed ({turns}T)",
 	udd_cond_defeated = "Defeated",
+	pvp_player_a_win = "Player A win",
+	pvp_player_b_win = "Player B win",
 }
 
 const ZH := {
@@ -173,6 +176,7 @@ const ZH := {
 	uib_frenzy_label = "狂热",
 	uib_frenzy_format = "{pct}%",
 	uib_boss_dragon = "炎龙魔王",
+	uib_boss_skeleton = "骷髅魔王",
 	uib_class_knight = "骑士",
 	uib_class_warrior = "战士",
 	uib_class_ranger = "游侠",
@@ -195,6 +199,8 @@ const ZH := {
 	udd_cond_focusing = "蓄力中",
 	udd_cond_pocketed = "落袋 ({turns}回合)",
 	udd_cond_defeated = "已战败",
+	pvp_player_a_win = "Player A 获胜",
+	pvp_player_b_win = "Player B 获胜",
 }
 
 

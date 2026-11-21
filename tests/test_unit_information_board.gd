@@ -881,3 +881,286 @@ func test_hover_highlights_zero_to_n_pucks_and_click_opens_localized_unit_detail
 	ranger_puck_2.free()
 	board.free()
 	mgr.free()
+
+
+# ----- Ticket 07 & 08: Multiplayer 2-Player Versus Setup, Snooker Triangles, Player B Aiming, PvP Collision Rules, Unit Sync & Victory Flow -----
+
+
+func test_multiplayer_pvp_setup_skeleton_boss_snooker_triangles_and_player_b_aiming() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mp_packed := ResourceLoader.load("res://src/multiplayer_scene.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	assert_true(mp_packed != null, "Multiplayer scene loads")
+	if mp_packed == null:
+		return
+
+	var host_mgr := mp_packed.instantiate()
+	tree.root.add_child(host_mgr)
+	var host_fake := FakeTransport.create_host()
+	host_mgr.transport = host_fake
+	host_mgr.role_selector.host_button.emit_signal("pressed")
+	host_mgr.waiting_room.host_name_edit.text = "Alice"
+	host_mgr.waiting_room.host_name_edit.emit_signal("text_changed", "Alice")
+	host_mgr.waiting_room.capacity_spin.value = 4
+	host_mgr.waiting_room.confirm_button.emit_signal("pressed")
+
+	var bob_mgr := mp_packed.instantiate()
+	tree.root.add_child(bob_mgr)
+	var bob_fake := FakeTransport.create_peer()
+	bob_mgr.transport = bob_fake
+	bob_mgr.role_selector.join_button.emit_signal("pressed")
+	bob_mgr.role_selector.name_edit.text = "Bob"
+	bob_mgr.role_selector.ip_edit.text = "127.0.0.1"
+	bob_mgr.role_selector.port_edit.text = "8910"
+	bob_mgr.role_selector.join_form_button.emit_signal("pressed")
+
+	host_mgr.waiting_room.start_game_button.emit_signal("pressed")
+
+	var host_bf: Node = host_mgr.battlefield
+	var bob_bf: Node = bob_mgr.battlefield
+	var uim: UnitInformationManager = host_bf.get_node("UnitInformationManager") as UnitInformationManager
+	assert_eq(uim.game_mode, UnitInformationManager.MODE_TWO_PLAYER_VS, "Multiplayer battlefield runs in MODE_TWO_PLAYER_VS")
+
+	# 1. Single-player Enemy1..Enemy10 are removed; Player A Boss at (-6, 3) in L1, Player B Skeleton Boss at (6, -3) in R1
+	assert_true(host_bf.get_node_or_null("Enemy1") == null, "Single-player Enemy1 removed in Multiplayer PvP")
+	var player_a_puck := host_bf.get_node_or_null("Player") as BasePuck
+	var player_b_puck := host_bf.get_node_or_null("PlayerB") as BasePuck
+	assert_true(player_a_puck != null and player_b_puck != null, "Both Player A and Player B Boss Monster pucks exist")
+	assert_true(Vector2(player_a_puck.global_position.x - (-6.0), player_a_puck.global_position.z - 3.0).length() < 0.05,
+		"Player A Boss Monster puck is at original Enemy2 position (-6, 3)")
+	assert_true(Vector2(player_b_puck.global_position.x - 6.0, player_b_puck.global_position.z - (-3.0)).length() < 0.05,
+		"Player B Boss Monster puck is at original Enemy3 position (6, -3)")
+
+	var boss_a_do := uim.get_unit_at_grid("L11")
+	var boss_b_do := uim.get_unit_at_grid("R11")
+	assert_true(boss_a_do != null and boss_b_do != null, "L11 holds Player A Boss and R11 holds Player B Boss")
+	assert_eq(boss_a_do.reference_mark, "Ω", "Player A Boss mark is Ω")
+	assert_eq(boss_b_do.reference_mark, "Ψ", "Player B Boss mark is Ψ")
+	assert_true(boss_b_do.avatar_path.ends_with("avatar_boss_skeleton.png"), "Player B Boss uses Skeleton Boss avatar")
+
+	# 2. Verify 6 Adventurers for Player A in L6-L8 (V, B, R, S, F=Warrior, E=Ranger) and 6 for Player B in R6-R8 (v, b, r, s, f=Warrior, e=Ranger)
+	var exp_a_marks := {"L61": "V", "L62": "B", "L71": "R", "L72": "S", "L81": "F", "L82": "E"}
+	for gid in exp_a_marks.keys():
+		var u := uim.get_unit_at_grid(gid)
+		assert_true(u != null, "Player A Adventurer slot %s is occupied" % gid)
+		if u != null:
+			assert_eq(u.reference_mark, exp_a_marks[gid], "Player A %s has mark %s" % [gid, exp_a_marks[gid]])
+			assert_eq(u.owner_seat, "a", "Player A Adventurer owner_seat is 'a'")
+	assert_eq(uim.get_unit_at_grid("L81").adventurer_class, EnemyAdventurer.AdventurerClass.WARRIOR, "Player A Free slot (F) is Warrior")
+	assert_eq(uim.get_unit_at_grid("L82").adventurer_class, EnemyAdventurer.AdventurerClass.RANGER, "Player A Extra slot (E) is Ranger")
+
+	var exp_b_marks := {"R61": "v", "R62": "b", "R71": "r", "R72": "s", "R81": "f", "R82": "e"}
+	for gid in exp_b_marks.keys():
+		var u := uim.get_unit_at_grid(gid)
+		assert_true(u != null, "Player B Adventurer slot %s is occupied" % gid)
+		if u != null:
+			assert_eq(u.reference_mark, exp_b_marks[gid], "Player B %s has mark %s" % [gid, exp_b_marks[gid]])
+			assert_eq(u.owner_seat, "b", "Player B Adventurer owner_seat is 'b'")
+	assert_eq(uim.get_unit_at_grid("R81").adventurer_class, EnemyAdventurer.AdventurerClass.WARRIOR, "Player B Free slot (f) is Warrior")
+	assert_eq(uim.get_unit_at_grid("R82").adventurer_class, EnemyAdventurer.AdventurerClass.RANGER, "Player B Extra slot (e) is Ranger")
+
+	# 3. Verify 3D Snooker Triangle geometry:
+	#    Player A triangle centered around (-6, -3) facing +X (Vanguard V has largest X; Row 2 Ranger R is on +Z side nearer Player A Boss at (-6, +3))
+	var puck_a_v := uim.get_unit_at_grid("L61").pucks[0]
+	var puck_a_b := uim.get_unit_at_grid("L62").pucks[0]
+	var puck_a_r := uim.get_unit_at_grid("L71").pucks[0]
+	var puck_a_s := uim.get_unit_at_grid("L72").pucks[0]
+	var puck_a_f := uim.get_unit_at_grid("L81").pucks[0]
+	var puck_a_e := uim.get_unit_at_grid("L82").pucks[0]
+	assert_true(puck_a_v.global_position.x > puck_a_b.global_position.x and puck_a_b.global_position.x > puck_a_s.global_position.x,
+		"Player A triangle faces +X: Row 1 (V) > Row 2 (B, R) > Row 3 (F, S, E)")
+	assert_true(puck_a_r.global_position.z > puck_a_b.global_position.z,
+		"Player A Row 2 Ranger (R) is on +Z side nearer Player A Boss at (-6, +3)")
+	assert_true(puck_a_e.global_position.z > puck_a_s.global_position.z and puck_a_s.global_position.z > puck_a_f.global_position.z,
+		"Player A Row 3 has Extra (E, Ranger) on +Z side, Spell (S, Mage) in middle, and Free (F, Warrior) on -Z side")
+
+	#    Player B triangle centered around (6, 3) facing -X (Vanguard v has smallest X; Row 2 Ranger r is on -Z side nearer Player B Boss at (6, -3))
+	var puck_b_v := uim.get_unit_at_grid("R61").pucks[0]
+	var puck_b_b := uim.get_unit_at_grid("R62").pucks[0]
+	var puck_b_r := uim.get_unit_at_grid("R71").pucks[0]
+	var puck_b_s := uim.get_unit_at_grid("R72").pucks[0]
+	assert_true(puck_b_v.global_position.x < puck_b_b.global_position.x and puck_b_b.global_position.x < puck_b_s.global_position.x,
+		"Player B triangle faces -X: Row 1 (v) < Row 2 (b, r) < Row 3 (f, s, e)")
+	assert_true(puck_b_r.global_position.z < puck_b_b.global_position.z,
+		"Player B Row 2 Ranger (r) is on -Z side nearer Player B Boss at (6, -3)")
+
+	# 4. Player B drag-and-aim controls Player B's Boss puck (PlayerB at (6, 1.8, -3)) and NOT Player A's Boss puck!
+	bob_bf.play_button.emit_signal("pressed")
+	assert_eq(host_bf.active_player, "b", "Player B claims Playing Right")
+	var bob_boss_pos := (bob_bf.get_node("PlayerB") as Node3D).global_position
+	var alice_boss_pos := (bob_bf.get_node("Player") as Node3D).global_position
+	assert_false(bob_bf.cue_shot_manager.begin_drag(alice_boss_pos), "Player B cannot drag from Player A's Boss puck")
+	assert_true(bob_bf.cue_shot_manager.begin_drag(bob_boss_pos), "Player B begins drag from Player B's Boss puck at (6, -3)")
+	bob_bf.cue_shot_manager.update_drag(bob_boss_pos + Vector3(2.65, 0.0, 0.0)) # Aiming -X with cost 3.0
+	assert_true(bob_bf.cue_shot_manager.release_drag(), "Player B launches Player B's Boss puck")
+	assert_true(player_b_puck.velocity.length() > 1.0, "Host launched Player B's Boss puck")
+	assert_true(player_a_puck.velocity.is_zero_approx(), "Player A's Boss puck remained stationary")
+
+	tree.root.remove_child(bob_mgr)
+	tree.root.remove_child(host_mgr)
+	bob_mgr.free()
+	host_mgr.free()
+	FakeTransport.reset_registry()
+
+
+func test_multiplayer_pvp_collision_rules_unit_info_sync_and_victory_return_to_waiting_room() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var mp_packed := ResourceLoader.load("res://src/multiplayer_scene.tscn", "", ResourceLoader.CACHE_MODE_IGNORE) as PackedScene
+	if mp_packed == null:
+		return
+
+	var host_mgr := mp_packed.instantiate()
+	tree.root.add_child(host_mgr)
+	var host_fake := FakeTransport.create_host()
+	host_mgr.transport = host_fake
+	host_mgr.role_selector.host_button.emit_signal("pressed")
+	host_mgr.waiting_room.host_name_edit.text = "Alice"
+	host_mgr.waiting_room.host_name_edit.emit_signal("text_changed", "Alice")
+	host_mgr.waiting_room.capacity_spin.value = 4
+	host_mgr.waiting_room.confirm_button.emit_signal("pressed")
+
+	var bob_mgr := mp_packed.instantiate()
+	tree.root.add_child(bob_mgr)
+	var bob_fake := FakeTransport.create_peer()
+	bob_mgr.transport = bob_fake
+	bob_mgr.role_selector.join_button.emit_signal("pressed")
+	bob_mgr.role_selector.name_edit.text = "Bob"
+	bob_mgr.role_selector.ip_edit.text = "127.0.0.1"
+	bob_mgr.role_selector.port_edit.text = "8910"
+	bob_mgr.role_selector.join_form_button.emit_signal("pressed")
+
+	host_mgr.waiting_room.start_game_button.emit_signal("pressed")
+
+	var host_bf: Node = host_mgr.battlefield
+	var bob_bf: Node = bob_mgr.battlefield
+	var host_uim: UnitInformationManager = host_bf.get_node("UnitInformationManager") as UnitInformationManager
+	var bob_uim: UnitInformationManager = bob_bf.get_node("UnitInformationManager") as UnitInformationManager
+	var host_pvm: PuckVelocityManager = host_bf.puck_velocity_manager
+
+	var boss_a_do := host_uim.get_unit_at_grid("L11")
+	var boss_b_do := host_uim.get_unit_at_grid("R11")
+	var boss_a_puck := boss_a_do.pucks[0]
+	var boss_b_puck := boss_b_do.pucks[0]
+
+	# Move all adventurer pucks out of the way first so we can test isolated collisions cleanly
+	for u in host_uim.get_all_units():
+		if u.unit_kind == "enemy_adventurer" and not u.pucks.is_empty():
+			u.pucks[0].global_position = Vector3(-13.0, 1.675, -8.5)
+
+	# 1. Friendly fire vs. Opponent collision damage:
+	#    Player A Boss (Frenzy = 150%) hits:
+	#      (a) Friendly Player A Warrior (L62) at speed 6.0 -> deals 1/4 (0.25x) damage, skips Frenzy change (stays 150%),
+	#          and settles with 100% Frenzy (no 1.5x multiplier!).
+	#      (b) Opponent Player B Warrior (R62) at the exact same speed 6.0 -> deals full (1.0x) damage,
+	#          increases Player A Boss Frenzy by +10% (to 160%), and settles with Player A Boss's Frenzy multiplier!
+	host_uim.set_frenzy_power(boss_a_do.unit_id, 1.50)
+	var friendly_w_do := host_uim.get_unit_at_grid("L62")
+	var opponent_w_do := host_uim.get_unit_at_grid("R62")
+	var friendly_w_puck := friendly_w_do.pucks[0]
+	var opponent_w_puck := opponent_w_do.pucks[0]
+
+	boss_a_puck.global_position = Vector3(0.0, 1.8, 0.0)
+	friendly_w_puck.global_position = Vector3(1.35, 1.675, 0.0)
+	boss_a_puck.velocity = Vector3(6.0, 0.0, 0.0)
+	friendly_w_puck.velocity = Vector3.ZERO
+	assert_true(host_pvm.resolve_puck_puck_collision(boss_a_puck, friendly_w_puck), "Boss A hits friendly Warrior")
+	assert_true(is_equal_approx(boss_a_do.frenzy_power, 1.50), "Friendly hit skips Frenzy Power change (stays 150%)")
+	var friendly_dmg_val: float = friendly_w_do.damage_stack[0].value
+	assert_eq(friendly_w_do.damage_stack[0].owner_boss_unit_id, "", "Friendly DamageDO uses 100% baseline Frenzy (empty owner_boss_unit_id)")
+
+	friendly_w_puck.global_position = Vector3(-13.0, 1.675, -8.5)
+	friendly_w_puck.velocity = Vector3.ZERO
+	boss_a_puck.global_position = Vector3(0.0, 1.8, 0.0)
+	opponent_w_puck.global_position = Vector3(1.35, 1.675, 0.0)
+	boss_a_puck.velocity = Vector3(6.0, 0.0, 0.0)
+	opponent_w_puck.velocity = Vector3.ZERO
+	assert_true(host_pvm.resolve_puck_puck_collision(boss_a_puck, opponent_w_puck), "Boss A hits opponent Warrior")
+	assert_true(is_equal_approx(boss_a_do.frenzy_power, 1.60), "Opponent non-Knight hit increases Boss A Frenzy Power by +10% to 160%")
+	var opponent_dmg_val: float = opponent_w_do.damage_stack[0].value
+	assert_true(absf(friendly_dmg_val - opponent_dmg_val * 0.25) < 0.05,
+		"Friendly collision damage is exactly 1/4 of opponent collision damage (%.2f vs %.2f)" % [friendly_dmg_val, opponent_dmg_val])
+
+	# 2. Player B's Boss puck deals full damage to Player A's Adventurer even during a Puck-puck Time! triggered by Player A!
+	opponent_w_puck.global_position = Vector3(-13.0, 1.675, -8.5)
+	opponent_w_puck.velocity = Vector3.ZERO
+	host_bf.active_player = "a"
+	boss_b_puck.global_position = Vector3(0.0, 1.8, 4.0)
+	friendly_w_puck.global_position = Vector3(1.35, 1.675, 4.0)
+	boss_b_puck.velocity = Vector3(6.0, 0.0, 0.0)
+	friendly_w_puck.velocity = Vector3.ZERO
+	assert_true(host_pvm.resolve_puck_puck_collision(boss_b_puck, friendly_w_puck), "Boss B hits Player A's Warrior during Player A's turn")
+	assert_eq(friendly_w_do.damage_stack.size(), 2, "Player A's Warrior receives a 2nd DamageDO from Boss B")
+	assert_true(absf(friendly_w_do.damage_stack[1].value - opponent_dmg_val) < 0.05,
+		"Boss B deals full 1.0x damage to Player A's Warrior even on Player A's turn")
+
+	# 3. Boss Monster vs. Opponent Boss Monster collision:
+	#    - 0 damage to both Boss Monsters
+	#    - Both Boss pucks' post-collision velocities are multiplied by 20% (0.2x)
+	#    - Opponent gains +3 Energy at most ONCE per Puck-puck Time!
+	friendly_w_puck.global_position = Vector3(-13.0, 1.675, -8.5)
+	friendly_w_puck.velocity = Vector3.ZERO
+	host_bf.set_player_energy("a", 10.0)
+	host_bf.set_player_energy("b", 10.0)
+	host_bf.active_player = "a"
+	host_pvm.reset_puck_puck_turn_state()
+
+	boss_a_puck.global_position = Vector3(0.0, 1.8, 0.0)
+	boss_b_puck.global_position = Vector3(1.55, 1.8, 0.0) # combined radius = 0.8 + 0.8 = 1.6
+	boss_a_puck.velocity = Vector3(10.0, 0.0, 0.0)
+	boss_b_puck.velocity = Vector3.ZERO
+	assert_true(host_pvm.resolve_puck_puck_collision(boss_a_puck, boss_b_puck), "Boss A collides with Boss B")
+	assert_eq(boss_a_do.damage_stack.size(), 0, "Boss A takes 0 damage from Boss-vs-Boss collision")
+	assert_eq(boss_b_do.damage_stack.size(), 0, "Boss B takes 0 damage from Boss-vs-Boss collision")
+	# Without 20% damping, equal-mass collision at v1=10, e=0.85 would give v2f = 9.25; with * 0.20 damping, both speeds are < 2.0!
+	assert_true(boss_a_puck.velocity.length() < 2.0 and boss_b_puck.velocity.length() < 2.0,
+		"Both Boss pucks lose 80% velocity (multiplied by 20%) immediately after Boss-vs-Boss collision")
+	assert_true(is_equal_approx(host_bf.get_player_energy("b"), 13.0),
+		"Opponent (Player B) gained +3 Energy (10.0 -> 13.0) from Boss-vs-Boss collision")
+
+	# Colliding a second time in the SAME Puck-puck Time! does NOT grant +3 Energy a second time
+	boss_a_puck.global_position = Vector3(0.0, 1.8, 0.0)
+	boss_b_puck.global_position = Vector3(1.55, 1.8, 0.0)
+	boss_a_puck.velocity = Vector3(8.0, 0.0, 0.0)
+	boss_b_puck.velocity = Vector3.ZERO
+	assert_true(host_pvm.resolve_puck_puck_collision(boss_a_puck, boss_b_puck), "2nd Boss-vs-Boss collision in same Puck-puck Time!")
+	assert_true(is_equal_approx(host_bf.get_player_energy("b"), 13.0),
+		"Opponent Energy bonus (+3) triggers at most once per Puck-puck Time! (stays 13.0)")
+
+	# 4. Unit Information synchronization from Host to Peer (Bob):
+	#    Verify Bob's UnitInformationManager and UnitInformationBoard reflect the staged Damage Stack and settled HP!
+	host_bf.sync_units()
+	host_bf.sync_boss_stats()
+	assert_eq(bob_uim.get_unit_at_grid("R62").get_damage_stack_count(), 1, "Peer (Bob) synced Damage Stack count 1 on R62")
+	assert_true(is_equal_approx(bob_uim.get_unit_at_grid("L11").frenzy_power, 1.60), "Peer (Bob) synced Boss A Frenzy Power 160.0%")
+
+	host_uim.settle_all_damage()
+	host_bf.sync_units()
+	host_bf.sync_boss_stats()
+	assert_eq(bob_uim.get_unit_at_grid("R62").current_hp, opponent_w_do.current_hp,
+		"Peer (Bob) synced settled HP on R62 (%d)" % opponent_w_do.current_hp)
+
+	# 5. Multiplayer Victory Flow:
+	#    Knock out all 6 of Player B's Adventurers (R61..R82) on the Host and settle ->
+	#    "Player A win" message is shown on both Host and Bob, and after 5 seconds everyone returns to the Waiting Room!
+	for gid in ["R61", "R62", "R71", "R72", "R81", "R82"]:
+		var u_b := host_uim.get_unit_at_grid(gid)
+		host_uim.push_damage(u_b.unit_id, 9999.0, boss_a_do.unit_id, boss_a_do.unit_id, "collision")
+	host_bf.resolve_settle_and_check_pvp_winner()
+
+	assert_eq(host_bf.pvp_winner_seat, "a", "Host declares Player A the winner when all 6 of Player B's Adventurers are defeated")
+	assert_eq(bob_bf.pvp_winner_seat, "a", "Peer (Bob) receives synced winner seat 'a'")
+	assert_true(host_bf.get_win_banner_text().contains("Player A"), "Host displays 'Player A win' message")
+	assert_true(bob_bf.get_win_banner_text().contains("Player A"), "Peer (Bob) displays 'Player A win' message")
+	assert_true(host_mgr.battlefield != null, "Battlefield stays open during the 5-second victory display")
+
+	# Advance 5.0 seconds on Host -> automatically finishes battle and returns all Peers to the Waiting Room!
+	host_bf._process(5.1)
+	assert_true(host_mgr.battlefield == null and host_mgr.waiting_room.visible,
+		"Host returns to the Waiting Room after 5 seconds")
+	assert_true(bob_mgr.battlefield == null and bob_mgr.waiting_room.visible,
+		"Peer (Bob) returns to the Waiting Room after 5 seconds")
+
+	tree.root.remove_child(bob_mgr)
+	tree.root.remove_child(host_mgr)
+	bob_mgr.free()
+	host_mgr.free()
+	FakeTransport.reset_registry()

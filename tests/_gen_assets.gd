@@ -687,6 +687,7 @@ func _fill_rect_outlined(img: Image, x0: int, y0: int, rw: int, rh: int, col: Co
 
 func _make_unit_avatars_and_class_marks() -> void:
 	_make_avatar_boss_dragon()
+	_make_avatar_boss_skeleton()
 	_make_avatar_knight()
 	_make_avatar_knight_variant("avatar_knight_2.png", Color(0.88, 0.22, 0.20), Color(0.72, 0.76, 0.84), true)
 	_make_avatar_knight_variant("avatar_knight_3.png", Color(0.95, 0.78, 0.22), Color(0.54, 0.58, 0.66), false)
@@ -763,6 +764,48 @@ func _make_avatar_boss_dragon() -> void:
 	_fill_circle(img, 20, 51, 7.0, Color(1.0, 0.55, 0.12), Color(0.95, 0.22, 0.06), 1.8)
 	_fill_circle(img, 76, 51, 7.0, Color(1.0, 0.55, 0.12), Color(0.95, 0.22, 0.06), 1.8)
 	_save(img, "avatar_boss_dragon.png")
+
+
+## 96x64 Cartoon Skeleton King Boss Monster avatar: necromantic teal/purple aura,
+## golden spiked crown, large bone skull filling the frame, and glowing cyan eyes.
+func _make_avatar_boss_skeleton() -> void:
+	var w := 96
+	var h := 64
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	_paint_avatar_backdrop(img, Color(0.10, 0.22, 0.28), Color(0.05, 0.08, 0.14))
+	var outline := Color(0.06, 0.06, 0.09, 1.0)
+
+	# Glowing necromantic soul-fire backdrop
+	_fill_circle(img, 18, 38, 17, Color(0.18, 0.82, 0.76, 0.75))
+	_fill_circle(img, 78, 38, 17, Color(0.18, 0.82, 0.76, 0.75))
+	_fill_circle(img, 48, 34, 27, Color(0.32, 0.96, 0.88, 0.65))
+
+	# Dark royal cloak shoulders
+	_fill_ellipse(img, 48, 57, 30, 10, Color(0.24, 0.12, 0.34), outline, 2.0)
+
+	# Bone skull cranium & jawbone filling the frame
+	var bone_col := Color(0.92, 0.90, 0.84)
+	var bone_shade := Color(0.78, 0.75, 0.68)
+	_fill_ellipse(img, 48, 32, 23, 18, bone_col, outline, 2.2)
+	_fill_rect_outlined(img, 34, 42, 28, 14, bone_shade, outline, 2)
+	# Teeth vertical lines
+	for tx in [40, 45, 50, 55]:
+		_fill_rect_outlined(img, tx, 45, 2, 9, outline, outline, 0)
+
+	# Golden crown with ruby gem on top of skull
+	_fill_rect_outlined(img, 27, 13, 42, 7, Color(0.96, 0.78, 0.22), outline, 2)
+	_fill_circle(img, 31, 10, 4.0, Color(0.96, 0.80, 0.24), outline, 1.5)
+	_fill_circle(img, 48, 8, 5.0, Color(0.98, 0.84, 0.28), outline, 1.5)
+	_fill_circle(img, 65, 10, 4.0, Color(0.96, 0.80, 0.24), outline, 1.5)
+	_fill_circle(img, 48, 16, 3.2, Color(0.92, 0.16, 0.20), outline, 1.0)
+
+	# Deep dark eye sockets with glowing cyan pupils + nasal cavity
+	_fill_circle(img, 38, 32, 6.5, outline)
+	_fill_circle(img, 58, 32, 6.5, outline)
+	_fill_circle(img, 38, 32, 3.0, Color(0.35, 0.98, 1.0))
+	_fill_circle(img, 58, 32, 3.0, Color(0.35, 0.98, 1.0))
+	_fill_ellipse(img, 48, 39, 3.2, 4.0, outline)
+	_save(img, "avatar_boss_skeleton.png")
 
 
 ## 64x64 Cartoon Knight avatar: royal blue crest plume, silver great-helm with gold cross visor.

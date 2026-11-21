@@ -68,13 +68,13 @@ On the right side, up to 2 Adventurer Teams, and each team consists of at most 6
 
 ## 2-player vs game
 
-Each side shows one player's boss monster and the minions. The left side shows player A and the right side shows player B.
+Each side shows one player's boss monster, minions, and 6 adventurers (target pucks to defeat). The left side shows Player A and the right side shows Player B.
 
-Rows L1 and R1 hold each side's boss monster. 
-
-Row L5 and R5 are left empty. Rows L6-8 and R6-8 show the 6 *Target Pucks* to defeat (TBC). 
+Rows L1 and R1 hold each side's boss monster (`Ω` Fire Dragon for Player A; `Ψ` Skeleton for Player B).
 
 Rows L2-4 and R2-4 show up to 6 minions of each side.
+
+Row L5 and R5 hold each side's Adventurer Team header (or are left empty). Rows L6-8 (`L61..L82`) show Player A's 6 Adventurers (`V, B, R, S, F, E`), and Rows R6-8 (`R61..R82`) show Player B's 6 Adventurers (`v, b, r, s, f, e`).
 
 ## 2-player cooperative game
 
@@ -98,7 +98,7 @@ For intuitive class recognition on the Cue Table, both the **puck** and the **Un
 To distinguish between multiple pucks of the same Class across teams and free positions (`5` and `6`), thin **stripes** are added on the pucks:
 1. **Team Stripe** (to separate Adventurer Team 1 and Adventurer Team 2):
    - **Adventurer Team 1 (`V, B, R, S, F, E`)**: No team stripe
-   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: Thin **White** line stripe on **2 opposite sides** of the puck
+   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: Thin **Black** line stripe on **2 opposite sides** of the puck
 2. **Free-Position Stripe** (to identify free positions `5` and `6`):
    - **Positions `1..4` (`V/v, B/b, R/r, S/s`)**: No free-position stripe
    - **Position `5` (`F`/`f`)**: Thin **White** 4-sided stripe like an **X**

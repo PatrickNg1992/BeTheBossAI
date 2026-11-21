@@ -23,6 +23,7 @@ var unit_information_manager: UnitInformationManager = null
 var _tick_accumulator: float = 0.0
 var _in_puck_puck_time: bool = false
 var _clock_paused: bool = false
+var _boss_collision_energy_awarded_this_turn: bool = false
 
 
 func _ready() -> void:
@@ -61,6 +62,12 @@ func _bind_timing_signals() -> void:
 func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	_in_puck_puck_time = new_timing == TimingManager.TIMING_PUCK_PUCK
 	_tick_accumulator = 0.0
+	if _in_puck_puck_time:
+		reset_puck_puck_turn_state()
+
+
+func reset_puck_puck_turn_state() -> void:
+	_boss_collision_energy_awarded_this_turn = false
 
 
 func _on_pause_changed(paused: bool) -> void:
@@ -292,11 +299,42 @@ func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
 	apply_impulse_to_puck(p1, impulse_vec)
 	apply_impulse_to_puck(p2, -impulse_vec)
 	_resolve_references()
+	# In Multiplayer PvP, when a Boss Monster collides with the opponent Boss Monster:
+	# - 0 damage is dealt to both Boss Monsters
+	# - Both Boss pucks' post-collision velocities are immediately multiplied by 20% (0.2x)
+	# - The non-active opponent gains +3 Energy (at most once per Puck-puck Time!)
+	if p1 is BaseBossMonster and p2 is BaseBossMonster:
+		p1.velocity.x *= 0.20
+		p1.velocity.z *= 0.20
+		p2.velocity.x *= 0.20
+		p2.velocity.z *= 0.20
+		_award_boss_collision_opponent_energy_once()
 	if unit_information_manager != null:
 		unit_information_manager.handle_puck_collision(p1, p2, j_mag)
 		if timing_manager != null and j_mag > 0.0001:
 			timing_manager.record_settle_event({"type": "collision", "impulse": j_mag})
 	return true
+
+
+func _award_boss_collision_opponent_energy_once() -> void:
+	if _boss_collision_energy_awarded_this_turn:
+		return
+	_boss_collision_energy_awarded_this_turn = true
+	var parent := get_parent()
+	var shooter_seat := "a"
+	if parent != null and "active_player" in parent:
+		var act := str(parent.get("active_player"))
+		if act == "a" or act == "b":
+			shooter_seat = act
+	var opponent_seat := "b" if shooter_seat == "a" else "a"
+	if parent != null and parent.has_method("get_player_energy") and parent.has_method("set_player_energy"):
+		var cur_e := float(parent.call("get_player_energy", opponent_seat))
+		parent.call("set_player_energy", opponent_seat, minf(TimingManager.MAX_ENERGY, cur_e + 3.0))
+		if parent.has_method("sync_time_board") and ("is_host" in parent and bool(parent.get("is_host"))):
+			parent.call("sync_time_board", {}, MpTransport.RELIABLE)
+	elif timing_manager != null:
+		var cur_e := timing_manager.get_player_energy(opponent_seat)
+		timing_manager.set_player_energy(opponent_seat, minf(TimingManager.MAX_ENERGY, cur_e + 3.0))
 
 
 func are_all_pucks_at_rest() -> bool:
@@ -403,6 +441,13 @@ func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 	for puck in pucks:
 		if puck == null or puck.is_dead or not _is_puck_pocketed(puck):
 			continue
+		if unit_information_manager != null:
+			var uid := puck.get_unit_id()
+			if not uid.is_empty():
+				var u_do := unit_information_manager.get_unit(uid)
+				if u_do != null and (u_do.is_dead or u_do.get_preview_ghost_hp() <= 0):
+					# Lethal pocket fall -> will be defeated at Settle Time; do not respawn!
+					continue
 		var middle_candidates: Array[TableBlock] = []
 		var fallback_candidates: Array[TableBlock] = []
 		for child in blocks_root.get_children():

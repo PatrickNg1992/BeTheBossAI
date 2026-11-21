@@ -57,6 +57,7 @@ const COLOR_MARK_TEAM1_GREY := Color(0.24, 0.25, 0.28, 1.0)
 const COLOR_MARK_TEAM2_BROWN := Color(0.38, 0.22, 0.11, 1.0)
 
 const AVATAR_BOSS_DRAGON := "res://src/resource/battlefield/avatar_boss_dragon.png"
+const AVATAR_BOSS_SKELETON := "res://src/resource/battlefield/avatar_boss_skeleton.png"
 const AVATAR_KNIGHT := "res://src/resource/battlefield/avatar_knight.png"
 const AVATAR_KNIGHT_2 := "res://src/resource/battlefield/avatar_knight_2.png"
 const AVATAR_KNIGHT_3 := "res://src/resource/battlefield/avatar_knight_3.png"
@@ -152,8 +153,10 @@ func register_boss(unit_id: String, seat: String, config: Dictionary = {}) -> Un
 	u.col = 1
 	u.grid_id = "%s%d%d" % [u.side, u.row, u.col]
 	u.slot_color = COLOR_SLOT_BOSS_BLACK
-	u.name_key = str(config.get("name_key", "uib_boss_dragon"))
-	u.avatar_path = str(config.get("avatar_path", AVATAR_BOSS_DRAGON))
+	var default_boss_name := "uib_boss_skeleton" if seat == "b" else "uib_boss_dragon"
+	var default_boss_avatar := AVATAR_BOSS_SKELETON if seat == "b" else AVATAR_BOSS_DRAGON
+	u.name_key = str(config.get("name_key", default_boss_name))
+	u.avatar_path = str(config.get("avatar_path", default_boss_avatar))
 	u.max_hp = int(config.get("max_hp", 1000))
 	u.current_hp = int(config.get("current_hp", u.max_hp))
 	u.max_bars = int(config.get("max_bars", 15))
@@ -304,12 +307,20 @@ func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> Uni
 	var u := UnitInformationDO.new()
 	u.unit_id = str(d.get("unit_id", "team%d_slot%d" % [team_index, slot_num]))
 	u.unit_kind = "enemy_adventurer"
-	u.owner_seat = "enemy"
+	var default_owner := "enemy"
+	if game_mode == MODE_TWO_PLAYER_VS:
+		default_owner = "a" if team_index == 1 else "b"
+	u.owner_seat = str(d.get("owner_seat", default_owner))
 	u.team_index = team_index
 	u.slot_index = slot_num
 	u.span_cols = 1
-	u.side = "R"
-	var base_row := 2 if team_index == 1 else 6
+	var base_row := 2
+	if game_mode == MODE_TWO_PLAYER_VS:
+		u.side = "L" if team_index == 1 else "R"
+		base_row = 6
+	else:
+		u.side = "R"
+		base_row = 2 if team_index == 1 else 6
 	@warning_ignore("integer_division")
 	u.row = base_row + (slot_num - 1) / 2
 	u.col = 1 + ((slot_num - 1) % 2)
@@ -416,22 +427,28 @@ func _on_puck_died(unit_id: String, puck: BasePuck) -> void:
 # ----- Ticket 02: Damage Stack, Hit Level, Frenzy Power & Ghost HP Trailing Pipeline -----
 
 
-func _resolve_owner_boss_unit_id(source_unit_id: String, explicit_boss_unit_id: String = "") -> String:
+func _resolve_owner_boss_unit_id(source_unit_id: String, explicit_boss_unit_id: String = "", target: UnitInformationDO = null) -> String:
+	var candidate_id := ""
 	if not explicit_boss_unit_id.is_empty():
 		var b := get_unit(explicit_boss_unit_id)
 		if b != null and b.unit_kind == "boss":
-			return b.unit_id
-	if not source_unit_id.is_empty():
+			candidate_id = b.unit_id
+	elif not source_unit_id.is_empty():
 		var src := get_unit(source_unit_id)
 		if src != null:
 			if src.unit_kind == "boss":
-				return src.unit_id
-			if src.owner_seat == "a" or src.owner_seat == "b":
+				candidate_id = src.unit_id
+			elif src.owner_seat == "a" or src.owner_seat == "b":
 				for u in _units_by_id.values():
 					var cand := u as UnitInformationDO
 					if cand != null and cand.unit_kind == "boss" and cand.owner_seat == src.owner_seat:
-						return cand.unit_id
-	return ""
+						candidate_id = cand.unit_id
+						break
+	if not candidate_id.is_empty() and target != null:
+		var boss_u := get_unit(candidate_id)
+		if boss_u != null and _are_units_friendly(boss_u, target):
+			return ""
+	return candidate_id
 
 
 ## Appends a DamageDO in time order to `target_unit_id`'s Damage Stack during
@@ -450,7 +467,7 @@ func push_damage(
 	var target := get_unit(target_unit_id)
 	if target == null or target.is_dead:
 		return null
-	var resolved_boss_id := "" if is_fixed else _resolve_owner_boss_unit_id(source_unit_id, owner_boss_unit_id)
+	var resolved_boss_id := "" if is_fixed else _resolve_owner_boss_unit_id(source_unit_id, owner_boss_unit_id, target)
 	var dmg_do := DamageDO.new(amount, source_unit_id, resolved_boss_id, damage_type, is_fixed)
 	target.damage_stack.append(dmg_do)
 	unit_damage_pushed.emit(target, dmg_do)
@@ -779,10 +796,14 @@ static func calculate_linear_collision_damage(impulse_scalar: float) -> float:
 ## Handles a physical Puck–Puck collision resolved in `PuckVelocityManager`:
 ## 1. Notifies both units of the collision Impulse scalar `j_mag` so their Unit Displays shake.
 ## 2. Calculates decimal linear collision damage `j_mag * COLLISION_DAMAGE_PER_IMPULSE` (~50..200 range).
-## 3. Enforces the collision matrix:
-##    - Enemy Adventurers suffer collision damage from any impact, EXCEPT impacts with an allied Knight.
-##    - Boss Monsters only suffer collision damage when colliding with a Knight.
-## 4. Updates Boss Monster Frenzy Power (+10% vs non-Knight Adventurer, -20% vs Knight, floor 50%).
+## 3. Enforces the collision matrix (including 2-Player Versus friendly vs. opponent rules):
+##    - Boss Monster vs. Boss Monster: 0 damage to both Boss Monsters.
+##    - Boss Monster vs. Friendly Adventurer (same owner_seat): 1/4 (0.25x) collision damage to the Adventurer,
+##      skips Frenzy Power adjustment, and settles at 100% baseline Frenzy Power (friendly Knight does not hurt its own Boss).
+##    - Boss Monster vs. Opponent Adventurer: full (1.0x) collision damage attributed to the hitting Boss Monster,
+##      adjusts the hitting Boss Monster's Frenzy Power (+10% vs non-Knight, -20% vs Knight, floor 50%),
+##      and an opponent Knight deals collision damage back to the Boss Monster.
+##    - Adventurer vs. Adventurer: Knight collision protection (0 damage) applies only between Adventurers on the same team.
 func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 	if p1 == null or p2 == null or j_mag <= 0.0001:
 		return
@@ -801,34 +822,56 @@ func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 	if u1 == null or u2 == null:
 		return
 
-	# Frenzy Power adjustment when a Boss Monster collides with an Enemy Adventurer
-	if u1.unit_kind == "boss" and u2.unit_kind == "enemy_adventurer":
-		record_boss_collision_frenzy(u1.unit_id, u2.unit_id)
-	elif u2.unit_kind == "boss" and u1.unit_kind == "enemy_adventurer":
-		record_boss_collision_frenzy(u2.unit_id, u1.unit_id)
+	# Boss vs. Boss: 0 damage and no Frenzy change
+	if u1.unit_kind == "boss" and u2.unit_kind == "boss":
+		return
 
-	var dmg := calculate_linear_collision_damage(j_mag)
-	if dmg <= 0.0:
+	# Frenzy Power adjustment ONLY when a Boss Monster collides with an OPPONENT Enemy Adventurer
+	if u1.unit_kind == "boss" and u2.unit_kind == "enemy_adventurer":
+		if not _are_units_friendly(u1, u2):
+			record_boss_collision_frenzy(u1.unit_id, u2.unit_id)
+	elif u2.unit_kind == "boss" and u1.unit_kind == "enemy_adventurer":
+		if not _are_units_friendly(u2, u1):
+			record_boss_collision_frenzy(u2.unit_id, u1.unit_id)
+
+	var base_dmg := calculate_linear_collision_damage(j_mag)
+	if base_dmg <= 0.0:
 		return
 
 	# Check whether u1 takes collision damage from u2, and whether u2 takes collision damage from u1
 	if _does_unit_take_collision_damage_from(u1, u2):
+		var mult_u1 := 0.25 if (u2.unit_kind == "boss" and _are_units_friendly(u1, u2)) else 1.0
 		var boss_owner_for_u1 := _resolve_collision_boss_owner(u2, u1)
-		push_damage(u1.unit_id, dmg, u2.unit_id, boss_owner_for_u1, "collision")
+		push_damage(u1.unit_id, base_dmg * mult_u1, u2.unit_id, boss_owner_for_u1, "collision")
 	if _does_unit_take_collision_damage_from(u2, u1):
+		var mult_u2 := 0.25 if (u1.unit_kind == "boss" and _are_units_friendly(u2, u1)) else 1.0
 		var boss_owner_for_u2 := _resolve_collision_boss_owner(u1, u2)
-		push_damage(u2.unit_id, dmg, u1.unit_id, boss_owner_for_u2, "collision")
+		push_damage(u2.unit_id, base_dmg * mult_u2, u1.unit_id, boss_owner_for_u2, "collision")
+
+
+func _are_units_friendly(a: UnitInformationDO, b: UnitInformationDO) -> bool:
+	if a == null or b == null:
+		return false
+	if a.owner_seat != "enemy" and b.owner_seat != "enemy":
+		return a.owner_seat == b.owner_seat
+	if a.unit_kind == "enemy_adventurer" and b.unit_kind == "enemy_adventurer":
+		return a.team_index == b.team_index
+	return false
 
 
 func _does_unit_take_collision_damage_from(victim: UnitInformationDO, hitter: UnitInformationDO) -> bool:
 	if victim == null or hitter == null or victim.is_dead:
 		return false
 	if victim.unit_kind == "boss":
-		# Only a Knight's impacts damage a Boss Monster, whoever initiated the collision
+		if hitter.unit_kind == "boss":
+			return false
+		# Only an OPPONENT Knight's impacts damage a Boss Monster (a friendly Knight never hurts its own Boss)
+		if _are_units_friendly(victim, hitter):
+			return false
 		return hitter.unit_kind == "enemy_adventurer" and hitter.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT
 	if victim.unit_kind == "enemy_adventurer":
-		# Knight protects its allies: no collision damage when an Adventurer collides with an allied Knight
-		if hitter.unit_kind == "enemy_adventurer":
+		# Knight protects its allies on the SAME team: no collision damage when colliding with a same-team Knight
+		if hitter.unit_kind == "enemy_adventurer" and _are_units_friendly(victim, hitter):
 			if victim.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT or hitter.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT:
 				return false
 		return true
@@ -836,14 +879,17 @@ func _does_unit_take_collision_damage_from(victim: UnitInformationDO, hitter: Un
 	return true
 
 
-func _resolve_collision_boss_owner(hitter: UnitInformationDO, _victim: UnitInformationDO) -> String:
-	if hitter == null:
+func _resolve_collision_boss_owner(hitter: UnitInformationDO, victim: UnitInformationDO) -> String:
+	if hitter == null or victim == null:
+		return ""
+	# If the damage source belongs to the same friendly team as the victim, always use 100% baseline Frenzy ("").
+	if _are_units_friendly(hitter, victim):
 		return ""
 	if hitter.unit_kind == "boss":
 		return hitter.unit_id
 	if hitter.owner_seat == "a" or hitter.owner_seat == "b":
 		return _resolve_owner_boss_unit_id(hitter.unit_id)
-	# If an Enemy Adventurer was knocked into another Enemy Adventurer during a shot, attribute to Player A Boss if present
+	# In Single-Player / Co-op where enemy adventurers have owner_seat == "enemy", attribute chain collisions to Player A Boss
 	for u in _units_by_id.values():
 		var cand := u as UnitInformationDO
 		if cand != null and cand.unit_kind == "boss" and cand.owner_seat == "a":
@@ -863,6 +909,151 @@ static func get_class_default_max_hp(adv_class: int) -> int:
 			return 1500
 		_:
 			return 2200
+
+
+func export_boss_stats_snapshot() -> Dictionary:
+	var bosses: Array[Dictionary] = []
+	for u in _units_by_id.values():
+		var unit_do := u as UnitInformationDO
+		if unit_do == null or unit_do.unit_kind != "boss":
+			continue
+		var stack_arr: Array[Dictionary] = []
+		for d in unit_do.damage_stack:
+			if d != null:
+				stack_arr.append({
+					"value": d.value,
+					"source_unit_id": d.source_unit_id,
+					"owner_boss_unit_id": d.owner_boss_unit_id,
+					"damage_type": d.damage_type,
+					"is_fixed": d.is_fixed,
+				})
+		bosses.append({
+			"unit_id": unit_do.unit_id,
+			"owner_seat": unit_do.owner_seat,
+			"current_hp": unit_do.current_hp,
+			"max_hp": unit_do.max_hp,
+			"bars_remaining": unit_do.bars_remaining,
+			"max_bars": unit_do.max_bars,
+			"frenzy_power": unit_do.frenzy_power,
+			"hit_level": unit_do.hit_level,
+			"is_dead": unit_do.is_dead,
+			"damage_stack": stack_arr,
+		})
+	return {"bosses": bosses}
+
+
+func apply_boss_stats_snapshot(payload: Dictionary) -> void:
+	for item in payload.get("bosses", []):
+		if not item is Dictionary:
+			continue
+		var d := item as Dictionary
+		var uid := str(d.get("unit_id", ""))
+		var u := get_unit(uid)
+		if u == null:
+			continue
+		u.current_hp = int(d.get("current_hp", u.current_hp))
+		u.max_hp = int(d.get("max_hp", u.max_hp))
+		u.bars_remaining = int(d.get("bars_remaining", u.bars_remaining))
+		u.max_bars = int(d.get("max_bars", u.max_bars))
+		u.frenzy_power = float(d.get("frenzy_power", u.frenzy_power))
+		u.hit_level = int(d.get("hit_level", u.hit_level))
+		u.is_dead = bool(d.get("is_dead", u.is_dead))
+		if d.has("damage_stack") and d["damage_stack"] is Array:
+			u.damage_stack.clear()
+			for sd in d["damage_stack"]:
+				if sd is Dictionary:
+					u.damage_stack.append(DamageDO.new(
+						float(sd.get("value", 0.0)),
+						str(sd.get("source_unit_id", "")),
+						str(sd.get("owner_boss_unit_id", "")),
+						str(sd.get("damage_type", "collision")),
+						bool(sd.get("is_fixed", false))
+					))
+		for p in u.pucks:
+			if is_instance_valid(p) and p is BaseBossMonster:
+				var bp := p as BaseBossMonster
+				bp.health_changed.emit(u.current_hp, u.max_hp)
+				bp.bars_changed.emit(u.bars_remaining, u.current_hp, u.max_hp)
+		unit_updated.emit(u)
+
+
+func export_units_snapshot() -> Dictionary:
+	var units_arr: Array[Dictionary] = []
+	for u in _units_by_id.values():
+		var unit_do := u as UnitInformationDO
+		if unit_do == null or unit_do.unit_kind == "boss":
+			continue
+		var stack_arr: Array[Dictionary] = []
+		for d in unit_do.damage_stack:
+			if d != null:
+				stack_arr.append({
+					"value": d.value,
+					"source_unit_id": d.source_unit_id,
+					"owner_boss_unit_id": d.owner_boss_unit_id,
+					"damage_type": d.damage_type,
+					"is_fixed": d.is_fixed,
+				})
+		units_arr.append({
+			"unit_id": unit_do.unit_id,
+			"grid_id": unit_do.grid_id,
+			"owner_seat": unit_do.owner_seat,
+			"team_index": unit_do.team_index,
+			"slot_index": unit_do.slot_index,
+			"adventurer_class": unit_do.adventurer_class,
+			"current_hp": unit_do.current_hp,
+			"max_hp": unit_do.max_hp,
+			"hit_level": unit_do.hit_level,
+			"is_focusing": unit_do.is_focusing,
+			"is_pocketed": unit_do.is_pocketed,
+			"pocket_return_turns": unit_do.pocket_return_turns,
+			"is_dead": unit_do.is_dead,
+			"next_action_turns": unit_do.next_action_turns,
+			"action_tag_turns": unit_do.action_tag_turns.duplicate(),
+			"damage_stack": stack_arr,
+		})
+	return {"units": units_arr}
+
+
+func apply_units_snapshot(payload: Dictionary) -> void:
+	for item in payload.get("units", []):
+		if not item is Dictionary:
+			continue
+		var d := item as Dictionary
+		var uid := str(d.get("unit_id", ""))
+		var u := get_unit(uid)
+		if u == null and d.has("grid_id"):
+			u = get_unit_at_grid(str(d["grid_id"]))
+		if u == null:
+			continue
+		var was_dead := u.is_dead
+		u.current_hp = int(d.get("current_hp", u.current_hp))
+		u.max_hp = int(d.get("max_hp", u.max_hp))
+		u.hit_level = int(d.get("hit_level", u.hit_level))
+		u.is_focusing = bool(d.get("is_focusing", u.is_focusing))
+		u.is_pocketed = bool(d.get("is_pocketed", u.is_pocketed))
+		u.pocket_return_turns = int(d.get("pocket_return_turns", u.pocket_return_turns))
+		u.is_dead = bool(d.get("is_dead", u.is_dead))
+		u.next_action_turns = int(d.get("next_action_turns", u.next_action_turns))
+		if d.has("action_tag_turns") and d["action_tag_turns"] is Array:
+			u.action_tag_turns.clear()
+			for t in d["action_tag_turns"]:
+				u.action_tag_turns.append(int(t))
+		if d.has("damage_stack") and d["damage_stack"] is Array:
+			u.damage_stack.clear()
+			for sd in d["damage_stack"]:
+				if sd is Dictionary:
+					u.damage_stack.append(DamageDO.new(
+						float(sd.get("value", 0.0)),
+						str(sd.get("source_unit_id", "")),
+						str(sd.get("owner_boss_unit_id", "")),
+						str(sd.get("damage_type", "collision")),
+						bool(sd.get("is_fixed", false))
+					))
+		if u.is_dead and not was_dead:
+			for p in u.pucks.duplicate():
+				if is_instance_valid(p) and not p.is_dead:
+					p.die()
+		unit_updated.emit(u)
 
 
 static func default_slot_for_class(adv_class: int) -> int:

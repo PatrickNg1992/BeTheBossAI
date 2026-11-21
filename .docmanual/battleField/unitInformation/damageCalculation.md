@@ -46,7 +46,7 @@ Damage taken by Adventurer:
 
 (Sum over Damage Stack of (Damage DO value x Source Boss Frenzy Power)) x 1.1^(Hit Level)
 
-where Source Boss Frenzy Power refers to the Frenzy Power of the opponent's Boss Monster that dealt (or owns the source of) that Damage DO (defaults to 100% if no Boss Monster source applies).
+where Source Boss Frenzy Power refers to the Frenzy Power of the opponent's Boss Monster that dealt (or owns the source of) that Damage DO (defaults to 100% if no Boss Monster source applies, or if the damage source belongs to the same friendly team as the damaged Adventurer). In 2-player PvP mode, when a Boss Monster collides with its own friendly Adventurer, it deals `1/4` (`0.25x`) collision damage, skips Frenzy Power changes, and settles at `100%` Frenzy Power; when two Boss Monsters collide, `0` damage is dealt, both Boss pucks' post-collision velocities are multiplied by `20%`, and the opponent gains `+3` Energy (at most once per "Puck-puck time!").
 
 Damage taken by Boss Monster and Minions:
 

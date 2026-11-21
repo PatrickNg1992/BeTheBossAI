@@ -44,6 +44,10 @@ var player_a_peer_id: int = 1
 var player_b_peer_id: int = 0
 var spectator_peer_ids: Array[int] = []
 var active_player: String = ""
+var last_shot_player: String = "a"
+var pvp_winner_seat: String = ""
+var _pvp_win_elapsed: float = 0.0
+var _pvp_win_label: Label = null
 var stage_index: int = 0
 var wave_index: int = 0
 var ready_players: Array[String] = []
@@ -170,8 +174,11 @@ func _ready() -> void:
 		"charge": timing_manager.get_charge_progress(),
 		"tags": {},
 	})
+	_bind_unit_info_sync_signals()
 	if is_host:
 		sync_time_board({}, MpTransport.RELIABLE)
+		sync_boss_stats()
+		sync_units()
 	_setup_control_styles()
 	_update_ui_labels()
 	_refresh_controls()
@@ -203,6 +210,12 @@ func _apply_role_and_authority_mode() -> void:
 
 func _process(delta: float) -> void:
 	if not is_host:
+		return
+	if not pvp_winner_seat.is_empty():
+		_pvp_win_elapsed += delta
+		if _pvp_win_elapsed >= 5.0 - 0.0001:
+			_pvp_win_elapsed = 0.0
+			battle_finished.emit()
 		return
 	if timing_manager == null or timing_manager.is_paused():
 		return
@@ -378,6 +391,7 @@ func _handle_host_action(sender_peer_id: int, action_name: String, payload: Dict
 				var imp_per_e := cue_shot_manager.impulse_per_energy if cue_shot_manager != null else 7.2
 				boss.apply_impulse(dir.normalized() * (imp_per_e * cost))
 			if timing_manager.fire_cue_shot(0.0):
+				last_shot_player = sender_role
 				active_player = ""
 				sync_aiming({"active": false}, MpTransport.RELIABLE)
 				if cost <= 0.0:
@@ -441,6 +455,8 @@ func sync_boss_stats(payload: Dictionary = {}) -> void:
 	if not is_host:
 		return
 	var data := payload.duplicate(true)
+	if not data.has("bosses") and unit_information_manager != null:
+		data.merge(unit_information_manager.export_boss_stats_snapshot(), true)
 	_dispatch_sync("boss_stats", data, MpTransport.RELIABLE)
 
 
@@ -448,6 +464,8 @@ func sync_units(payload: Dictionary = {}) -> void:
 	if not is_host:
 		return
 	var data := payload.duplicate(true)
+	if not data.has("units") and unit_information_manager != null:
+		data.merge(unit_information_manager.export_units_snapshot(), true)
 	_dispatch_sync("units", data, MpTransport.RELIABLE)
 
 
@@ -582,6 +600,14 @@ func _apply_sync(category: String, payload: Dictionary) -> void:
 		"aiming":
 			if cue_shot_manager != null and cue_shot_manager.has_method("apply_synced_aiming"):
 				cue_shot_manager.apply_synced_aiming(payload)
+		"boss_stats":
+			if not is_host and unit_information_manager != null:
+				unit_information_manager.apply_boss_stats_snapshot(payload)
+		"units":
+			if not is_host and unit_information_manager != null:
+				unit_information_manager.apply_units_snapshot(payload)
+		"effect_trigger":
+			_apply_synced_effect_trigger(payload)
 		"puck_positions":
 			if not is_host:
 				for item in payload.get("pucks", []):
@@ -614,10 +640,14 @@ func _setup_demo_unit_information() -> void:
 	if unit_information_manager == null:
 		return
 	unit_information_manager.clear_all()
-	var mode := UnitInformationManager.MODE_TWO_PLAYER_COOP if has_player_b() else UnitInformationManager.MODE_SINGLE_PLAYER
-	unit_information_manager.configure_mode(mode)
 
-	# 1. Register Player A Boss Monster (and Player B Boss Monster if present)
+	if has_player_b():
+		_setup_multiplayer_pvp_battlefield()
+		return
+
+	unit_information_manager.configure_mode(UnitInformationManager.MODE_SINGLE_PLAYER)
+
+	# 1. Register Player A Boss Monster
 	if _player is BaseBossMonster:
 		var boss_a := _player as BaseBossMonster
 		unit_information_manager.register_boss("boss_a", "a", {
@@ -628,17 +658,6 @@ func _setup_demo_unit_information() -> void:
 			"mass": boss_a.mass,
 			"radius": boss_a.radius,
 			"puck": boss_a,
-		})
-	var player_b := get_node_or_null("PlayerB") as BaseBossMonster
-	if player_b != null:
-		unit_information_manager.register_boss("boss_b", "b", {
-			"max_hp": 1000,
-			"current_hp": 1000,
-			"bars_remaining": 15,
-			"max_bars": 15,
-			"mass": player_b.mass,
-			"radius": player_b.radius,
-			"puck": player_b,
 		})
 
 	# 2. Register Adventurer Team 1 (6 members: Enemy1..Enemy6, with ?5 and ?6 assigned random distinct classes)
@@ -698,6 +717,171 @@ func _setup_demo_unit_information() -> void:
 		canvas_node.call("set_local_role", get_local_role())
 
 
+func _setup_multiplayer_pvp_battlefield() -> void:
+	unit_information_manager.configure_mode(UnitInformationManager.MODE_TWO_PLAYER_VS)
+
+	# 1. Remove the single-player demo Enemy1..Enemy10 pucks
+	for idx in range(1, 11):
+		var old_en := get_node_or_null("Enemy%d" % idx)
+		if old_en != null:
+			remove_child(old_en)
+			old_en.free()
+
+	# 2. Move Player A's Boss Monster puck to original Enemy2 position (-6, 1.8, 3)
+	if _player is BaseBossMonster:
+		var boss_a := _player as BaseBossMonster
+		boss_a.global_position = Vector3(-6.0, 1.8, 3.0)
+		boss_a.velocity = Vector3.ZERO
+		unit_information_manager.register_boss("boss_a", "a", {
+			"name_key": "uib_boss_dragon",
+			"avatar_path": UnitInformationManager.AVATAR_BOSS_DRAGON,
+			"max_hp": 1000,
+			"current_hp": 1000,
+			"bars_remaining": 15,
+			"max_bars": 15,
+			"mass": boss_a.mass,
+			"radius": boss_a.radius,
+			"puck": boss_a,
+		})
+
+	# 3. Create Player B's Skeleton Boss Monster puck at original Enemy3 position (6, 1.8, -3)
+	var player_b := get_node_or_null("PlayerB") as BaseBossMonster
+	if player_b == null:
+		player_b = _spawn_boss_puck_node("PlayerB", Vector3(6.0, 1.8, -3.0))
+	else:
+		player_b.global_position = Vector3(6.0, 1.8, -3.0)
+		player_b.velocity = Vector3.ZERO
+	unit_information_manager.register_boss("boss_b", "b", {
+		"name_key": "uib_boss_skeleton",
+		"avatar_path": UnitInformationManager.AVATAR_BOSS_SKELETON,
+		"max_hp": 1000,
+		"current_hp": 1000,
+		"bars_remaining": 15,
+		"max_bars": 15,
+		"mass": player_b.mass,
+		"radius": player_b.radius,
+		"puck": player_b,
+	})
+
+	# 4. Spawn 6-Adventurer snooker triangle for Player A around original Enemy4 (-6, -3) facing +X,
+	#    and for Player B around original Enemy1 (6, 3) facing -X.
+	#    Front line (apex): Vanguard (Knight)
+	#    Second line: Brawler (Warrior) and Ranger (Ranger on the side nearer its own Boss Monster)
+	#    Third line: Free (Warrior on outer side), Spell (Mage in middle), and Extra (Ranger on side nearer Boss)
+	var team_a_members := _spawn_pvp_adventurer_triangle("a", 1, Vector3(-6.0, 0.0, -3.0), 1.0, 1.0)
+	unit_information_manager.register_adventurer_team(1, team_a_members)
+
+	var team_b_members := _spawn_pvp_adventurer_triangle("b", 2, Vector3(6.0, 0.0, 3.0), -1.0, -1.0)
+	unit_information_manager.register_adventurer_team(2, team_b_members)
+
+	var canvas_node := get_node_or_null("Canvas")
+	if canvas_node != null and canvas_node.has_method("set_local_role"):
+		canvas_node.call("set_local_role", get_local_role())
+
+
+func _spawn_boss_puck_node(node_name: String, world_pos: Vector3) -> DragonPlayer:
+	var bp := DragonPlayer.new()
+	bp.name = node_name
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var cyl_shape := CylinderShape3D.new()
+	cyl_shape.radius = 0.8
+	cyl_shape.height = 0.6
+	col.shape = cyl_shape
+	bp.add_child(col)
+
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.name = "PuckMesh"
+	var cyl_mesh := CylinderMesh.new()
+	cyl_mesh.top_radius = 0.8
+	cyl_mesh.bottom_radius = 0.8
+	cyl_mesh.height = 0.6
+	mesh_inst.mesh = cyl_mesh
+	bp.add_child(mesh_inst)
+
+	add_child(bp)
+	bp.global_position = world_pos
+	return bp
+
+
+func _spawn_pvp_adventurer_triangle(
+	owner_seat: String,
+	team_index: int,
+	center_xz: Vector3,
+	facing_x_sign: float,
+	boss_side_z_sign: float
+) -> Array:
+	var row_dx := 1.25
+	var col_dz := 0.72
+	# Specs for slots 1..6:
+	# 1 (V/v): Knight at Front line (center_x + facing_x_sign * row_dx, center_z)
+	# 2 (B/b): Warrior at Second line, outer Z (center_x, center_z - boss_side_z_sign * col_dz)
+	# 3 (R/r): Ranger at Second line, inner Z nearer Boss (center_x, center_z + boss_side_z_sign * col_dz)
+	# 4 (S/s): Mage at Third line, middle Z (center_x - facing_x_sign * row_dx, center_z)
+	# 5 (F/f): Warrior at Third line, outer Z (center_x - facing_x_sign * row_dx, center_z - boss_side_z_sign * col_dz * 2.0)
+	# 6 (E/e): Ranger at Third line, inner Z nearer Boss (center_x - facing_x_sign * row_dx, center_z + boss_side_z_sign * col_dz * 2.0)
+	var specs := [
+		{"slot": 1, "class": EnemyAdventurer.AdventurerClass.KNIGHT, "pos": Vector3(center_xz.x + facing_x_sign * row_dx, 1.70, center_xz.z)},
+		{"slot": 2, "class": EnemyAdventurer.AdventurerClass.WARRIOR, "pos": Vector3(center_xz.x, 1.675, center_xz.z - boss_side_z_sign * col_dz)},
+		{"slot": 3, "class": EnemyAdventurer.AdventurerClass.RANGER, "pos": Vector3(center_xz.x, 1.675, center_xz.z + boss_side_z_sign * col_dz)},
+		{"slot": 4, "class": EnemyAdventurer.AdventurerClass.MAGE, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z)},
+		{"slot": 5, "class": EnemyAdventurer.AdventurerClass.WARRIOR, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z - boss_side_z_sign * col_dz * 2.0)},
+		{"slot": 6, "class": EnemyAdventurer.AdventurerClass.RANGER, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z + boss_side_z_sign * col_dz * 2.0)},
+	]
+
+	var members: Array = []
+	for sp in specs:
+		var slot_num: int = int(sp["slot"])
+		var adv_cls: int = int(sp["class"])
+		var pos: Vector3 = sp["pos"] as Vector3
+		var node_name := "PvP_%s_%d" % [owner_seat.to_upper(), slot_num]
+		var puck := _spawn_adventurer_puck_node(node_name, adv_cls, pos)
+		members.append({
+			"unit_id": "pvp_%s_%d" % [owner_seat, slot_num],
+			"owner_seat": owner_seat,
+			"slot_override": slot_num,
+			"adventurer_class": adv_cls,
+			"mass": puck.mass,
+			"radius": puck.radius,
+			"puck": puck,
+		})
+	return members
+
+
+func _spawn_adventurer_puck_node(node_name: String, adv_cls: int, world_pos: Vector3) -> EnemyAdventurer:
+	var cfg: Dictionary = EnemyAdventurer.CLASS_CONFIG.get(adv_cls, EnemyAdventurer.CLASS_CONFIG[EnemyAdventurer.AdventurerClass.WARRIOR])
+	var r: float = float(cfg.get("radius", 0.6))
+	var h: float = 0.40 if adv_cls == EnemyAdventurer.AdventurerClass.KNIGHT else 0.35
+
+	var en := EnemyAdventurer.new()
+	en.name = node_name
+	en.adventurer_class = adv_cls as EnemyAdventurer.AdventurerClass
+
+	var col := CollisionShape3D.new()
+	col.name = "CollisionShape3D"
+	var cyl_shape := CylinderShape3D.new()
+	cyl_shape.radius = r
+	cyl_shape.height = h
+	col.shape = cyl_shape
+	en.add_child(col)
+
+	var mesh_inst := MeshInstance3D.new()
+	mesh_inst.name = "MeshInstance3D"
+	var cyl_mesh := CylinderMesh.new()
+	cyl_mesh.top_radius = r
+	cyl_mesh.bottom_radius = r
+	cyl_mesh.height = h
+	mesh_inst.mesh = cyl_mesh
+	en.add_child(mesh_inst)
+
+	add_child(en)
+	en.global_position = world_pos
+	if not is_host:
+		en.set_physics_process(false)
+		en.set_process(false)
+	return en
+
+
 func _on_all_pucks_at_rest() -> void:
 	if is_host:
 		sync_puck_positions({}, MpTransport.RELIABLE)
@@ -729,8 +913,8 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	elif new_timing == TimingManager.TIMING_ACTION:
 		_action_elapsed = 0.0
 	elif new_timing == TimingManager.TIMING_SETTLE:
-		if is_host and unit_information_manager != null:
-			unit_information_manager.settle_all_damage()
+		if is_host:
+			resolve_settle_and_check_pvp_winner()
 	if is_host and (new_timing == TimingManager.TIMING_SETTLE or new_timing == TimingManager.TIMING_PREPARE):
 		sync_puck_positions({}, MpTransport.RELIABLE)
 	if is_host and new_timing == TimingManager.TIMING_CHARGING and _old_timing != TimingManager.TIMING_PLAY:
@@ -739,6 +923,156 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	_refresh_controls()
 	if is_host:
 		sync_timing()
+
+
+func _bind_unit_info_sync_signals() -> void:
+	if unit_information_manager == null:
+		return
+	if not unit_information_manager.unit_damage_pushed.is_connected(_on_host_unit_damage_pushed):
+		unit_information_manager.unit_damage_pushed.connect(_on_host_unit_damage_pushed)
+	if not unit_information_manager.unit_collision_impulse_received.is_connected(_on_host_unit_collision_impulse):
+		unit_information_manager.unit_collision_impulse_received.connect(_on_host_unit_collision_impulse)
+
+
+func _on_host_unit_damage_pushed(u: UnitInformationDO, dmg_do: DamageDO) -> void:
+	if not is_host or u == null or dmg_do == null:
+		return
+	sync_boss_stats()
+	sync_units()
+	sync_effect_trigger({
+		"kind": "damage_pushed",
+		"unit_id": u.unit_id,
+		"grid_id": u.grid_id,
+		"value": dmg_do.value,
+	})
+
+
+func _on_host_unit_collision_impulse(u: UnitInformationDO, impulse_mag: float) -> void:
+	if not is_host or u == null:
+		return
+	sync_effect_trigger({
+		"kind": "collision_impulse",
+		"unit_id": u.unit_id,
+		"grid_id": u.grid_id,
+		"impulse": impulse_mag,
+	})
+
+
+func resolve_settle_and_check_pvp_winner() -> void:
+	if not is_host or unit_information_manager == null:
+		return
+	var res: Dictionary = unit_information_manager.settle_all_damage()
+	var settled_map: Dictionary = res.get("settled_damage", {})
+	sync_boss_stats()
+	sync_units()
+	if not settled_map.is_empty():
+		sync_effect_trigger({
+			"kind": "damage_settled",
+			"settled_damage": settled_map,
+			"frenzy_spread": bool(res.get("frenzy_spread_triggered", false)),
+		})
+	if has_player_b() and pvp_winner_seat.is_empty():
+		_check_multiplayer_pvp_winner()
+
+
+func _check_multiplayer_pvp_winner() -> void:
+	if not is_host or not has_player_b() or unit_information_manager == null:
+		return
+	var alive_a := 0
+	var alive_b := 0
+	var total_a := 0
+	var total_b := 0
+	for u in unit_information_manager.get_all_units():
+		if u.unit_kind != "enemy_adventurer":
+			continue
+		if u.owner_seat == "a":
+			total_a += 1
+			if not u.is_dead:
+				alive_a += 1
+		elif u.owner_seat == "b":
+			total_b += 1
+			if not u.is_dead:
+				alive_b += 1
+	if total_a == 0 or total_b == 0:
+		return
+	var winner := ""
+	if alive_a == 0 and alive_b == 0:
+		winner = last_shot_player if (last_shot_player == "a" or last_shot_player == "b") else "a"
+	elif alive_b == 0:
+		winner = "a"
+	elif alive_a == 0:
+		winner = "b"
+	if not winner.is_empty():
+		pvp_winner_seat = winner
+		_pvp_win_elapsed = 0.0
+		_show_pvp_win_banner(winner)
+		sync_effect_trigger({
+			"kind": "pvp_winner",
+			"winner_seat": winner,
+		})
+
+
+func _apply_synced_effect_trigger(payload: Dictionary) -> void:
+	var kind := str(payload.get("kind", ""))
+	var canvas_node := get_node_or_null("Canvas")
+	var board: UnitInformationBoard = canvas_node.get("unit_information_board") if canvas_node != null and "unit_information_board" in canvas_node else null
+	match kind:
+		"damage_pushed":
+			if not is_host and board != null:
+				var gid := str(payload.get("grid_id", ""))
+				var cell := board.get_unit_display(gid)
+				if cell != null:
+					cell.trigger_damage_badge_shake(float(payload.get("value", 0.0)))
+		"collision_impulse":
+			if not is_host and board != null:
+				var gid := str(payload.get("grid_id", ""))
+				var cell := board.get_unit_display(gid)
+				if cell != null:
+					cell.trigger_collision_impulse_shake(float(payload.get("impulse", 0.0)))
+		"damage_settled":
+			if not is_host and board != null:
+				var settled_map: Dictionary = payload.get("settled_damage", {})
+				if bool(payload.get("frenzy_spread", false)):
+					board._on_frenzy_power_spread_started(settled_map)
+				board._on_damage_settled(settled_map)
+		"pvp_winner":
+			var w_seat := str(payload.get("winner_seat", ""))
+			if not w_seat.is_empty():
+				pvp_winner_seat = w_seat
+				_pvp_win_elapsed = 0.0
+				_show_pvp_win_banner(w_seat)
+
+
+func _show_pvp_win_banner(winner_seat: String) -> void:
+	var msg := Loc.t("pvp_player_b_win") if winner_seat == "b" else Loc.t("pvp_player_a_win")
+	var canvas_node := get_node_or_null("Canvas")
+	if _pvp_win_label == null or not is_instance_valid(_pvp_win_label):
+		_pvp_win_label = Label.new()
+		_pvp_win_label.name = "PvPWinBannerLabel"
+		_pvp_win_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+		_pvp_win_label.offset_left = -260
+		_pvp_win_label.offset_right = 260
+		_pvp_win_label.offset_top = -50
+		_pvp_win_label.offset_bottom = 50
+		_pvp_win_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_pvp_win_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_pvp_win_label.add_theme_font_size_override("font_size", 46)
+		_pvp_win_label.add_theme_color_override("font_color", Color(1.0, 0.90, 0.28, 1.0))
+		_pvp_win_label.add_theme_color_override("font_outline_color", Color(0.10, 0.04, 0.02, 0.98))
+		_pvp_win_label.add_theme_constant_override("outline_size", 10)
+		_pvp_win_label.z_index = 50
+		if canvas_node != null:
+			canvas_node.add_child(_pvp_win_label)
+		else:
+			add_child(_pvp_win_label)
+	_pvp_win_label.text = msg
+	_pvp_win_label.visible = true
+
+
+func get_win_banner_text() -> String:
+	if _pvp_win_label != null and is_instance_valid(_pvp_win_label) and _pvp_win_label.visible:
+		return _pvp_win_label.text
+	return ""
 
 
 func _on_charge_slot_completed(_new_energy: float) -> void:
