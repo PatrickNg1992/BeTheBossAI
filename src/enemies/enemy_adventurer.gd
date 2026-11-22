@@ -1,15 +1,24 @@
 class_name EnemyAdventurer
 extends BaseEnemy
 
-enum AdventurerClass { WARRIOR, KNIGHT, MAGE, RANGER }
+enum AdventurerClass {
+	BRAWLER = 0,
+	GUARD = 1,
+	ACOLYTE = 2,
+	SCOUT = 3,
+	WARRIOR = 0,
+	KNIGHT = 1,
+	MAGE = 2,
+	RANGER = 3,
+}
 
-@export var adventurer_class: AdventurerClass = AdventurerClass.WARRIOR
+@export var adventurer_class: AdventurerClass = AdventurerClass.BRAWLER
 
 const CLASS_CONFIG := {
-	AdventurerClass.WARRIOR: {"hp": 2200, "damage": 120, "speed": 2.5, "mass": 1.5, "radius": 0.6, "color": Color(0.8, 0.2, 0.2)},
-	AdventurerClass.KNIGHT: {"hp": 3000, "damage": 80, "speed": 2.0, "mass": 1.75, "radius": 0.65, "color": Color(0.2, 0.2, 0.8)},
-	AdventurerClass.MAGE: {"hp": 1500, "damage": 150, "speed": 2.0, "mass": 1.25, "radius": 0.55, "color": Color(0.6, 0.2, 0.8)},
-	AdventurerClass.RANGER: {"hp": 2200, "damage": 100, "speed": 3.0, "mass": 1.35, "radius": 0.57, "color": Color(0.2, 0.7, 0.3)},
+	AdventurerClass.BRAWLER: {"hp": 2200, "damage": 120, "speed": 2.5, "mass": 1.5, "radius": 0.6, "color": Color(0.8, 0.2, 0.2)},
+	AdventurerClass.GUARD: {"hp": 3000, "damage": 80, "speed": 2.0, "mass": 1.75, "radius": 0.65, "color": Color(0.2, 0.2, 0.8)},
+	AdventurerClass.ACOLYTE: {"hp": 1500, "damage": 150, "speed": 2.0, "mass": 1.25, "radius": 0.55, "color": Color(0.6, 0.2, 0.8)},
+	AdventurerClass.SCOUT: {"hp": 2200, "damage": 100, "speed": 3.0, "mass": 1.35, "radius": 0.57, "color": Color(0.2, 0.7, 0.3)},
 }
 
 

@@ -400,13 +400,13 @@ func test_aiming_line_at_y_1_55_red_on_deadzone_or_overdrag_and_mass_dependent_i
 func test_default_relative_masses_and_radii_per_puck_type() -> void:
 	var boss := DragonPlayer.new()
 	var knight := EnemyAdventurer.new()
-	knight.adventurer_class = EnemyAdventurer.AdventurerClass.KNIGHT
+	knight.adventurer_class = EnemyAdventurer.AdventurerClass.GUARD
 	var warrior := EnemyAdventurer.new()
-	warrior.adventurer_class = EnemyAdventurer.AdventurerClass.WARRIOR
+	warrior.adventurer_class = EnemyAdventurer.AdventurerClass.BRAWLER
 	var ranger := EnemyAdventurer.new()
-	ranger.adventurer_class = EnemyAdventurer.AdventurerClass.RANGER
+	ranger.adventurer_class = EnemyAdventurer.AdventurerClass.SCOUT
 	var mage := EnemyAdventurer.new()
-	mage.adventurer_class = EnemyAdventurer.AdventurerClass.MAGE
+	mage.adventurer_class = EnemyAdventurer.AdventurerClass.ACOLYTE
 
 	for p in [boss, knight, warrior, ranger, mage]:
 		_root.add_child(p)
@@ -687,7 +687,7 @@ func test_first_rebound_aiming_preview_for_open_table_cushion_and_enemy_puck() -
 	# From ticket 03 equations: v1f = 2.2 along +X, v2f = 5.4 along +X
 	_cue_mgr.update_drag(Vector3(-1.6, 1.5, 0.0))
 	var state_puck := _cue_mgr.get_aim_line_state()
-	assert_eq(state_puck.get("hit_type"), "puck", "Detects Enemy Hero Puck hit within reach")
+	assert_eq(state_puck.get("hit_type"), "puck", "Detects Enemy Adventurer Puck hit within reach")
 	assert_true(state_puck.get("has_contact_ring", false), "Renders ghost contact ring at Puck impact point")
 	assert_true(is_equal_approx(float(state_puck.get("primary_length", 0.0)), 2.0),
 		"Primary aiming line stops at swept contact center x = 2.0 (3.2 - (0.75 + 0.45))")

@@ -62,66 +62,70 @@ func test_single_player_pve_layout_and_class_to_slot_mapping_with_uncompacted_ga
 	assert_eq(m3.grid_id, "L31", "Player A Minion 3 is at L31")
 	assert_eq(m3.reference_mark, "ω3", "Player A Minion 3 Reference Mark is ω3")
 
-	# Register Team 1 (full 6 members: Knight, Warrior, Ranger, Mage + 2 distinct duplicate classes at ?5 and ?6)
+	# Register Team 1 (full 6 members: Guard, Brawler, Scout, Acolyte + 2 distinct duplicate classes at ?5 and ?6)
 	var puck_t1_k := EnemyAdventurer.new()
 	var puck_t1_dup1 := EnemyAdventurer.new()
 	var puck_t1_dup2 := EnemyAdventurer.new()
 	var team1_units: Array = mgr.register_adventurer_team(1, [
-		{"unit_id": "t1_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t1_k},
-		{"unit_id": "t1_w", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR},
-		{"unit_id": "t1_r", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
-		{"unit_id": "t1_m", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
-		{"unit_id": "t1_dup1", "adventurer_class": EnemyAdventurer.AdventurerClass.WARRIOR, "puck": puck_t1_dup1},
-		{"unit_id": "t1_dup2", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t1_dup2},
+		{"unit_id": "t1_k", "adventurer_class": EnemyAdventurer.AdventurerClass.GUARD, "puck": puck_t1_k},
+		{"unit_id": "t1_w", "adventurer_class": EnemyAdventurer.AdventurerClass.BRAWLER},
+		{"unit_id": "t1_r", "adventurer_class": EnemyAdventurer.AdventurerClass.SCOUT},
+		{"unit_id": "t1_m", "adventurer_class": EnemyAdventurer.AdventurerClass.ACOLYTE},
+		{"unit_id": "t1_dup1", "adventurer_class": EnemyAdventurer.AdventurerClass.BRAWLER, "puck": puck_t1_dup1},
+		{"unit_id": "t1_dup2", "adventurer_class": EnemyAdventurer.AdventurerClass.GUARD, "puck": puck_t1_dup2},
 	])
 	assert_eq(team1_units.size(), 6, "Team 1 registered 6 adventurers")
-	assert_eq(mgr.get_unit_at_grid("R21").reference_mark, "V", "Knight maps to slot 1 -> V (Vanguard) at R21")
-	assert_eq(mgr.get_unit_at_grid("R21").slot_color, mgr.COLOR_SLOT_1_BLUE, "Knight colour is Blue")
-	assert_eq(mgr.get_unit_at_grid("R22").reference_mark, "B", "Warrior maps to slot 2 -> B (Brawler) at R22")
-	assert_eq(mgr.get_unit_at_grid("R22").slot_color, mgr.COLOR_SLOT_2_RED, "Warrior colour is Red")
-	assert_eq(mgr.get_unit_at_grid("R31").reference_mark, "R", "Ranger maps to slot 3 -> R (Ranger) at R31")
-	assert_eq(mgr.get_unit_at_grid("R31").slot_color, mgr.COLOR_SLOT_5_GREEN, "Ranger colour is Green")
-	assert_eq(mgr.get_unit_at_grid("R32").reference_mark, "S", "Mage maps to slot 4 -> S (Spell) at R32")
-	assert_eq(mgr.get_unit_at_grid("R32").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Mage colour is Purple")
+	assert_eq(mgr.get_unit_at_grid("R21").reference_mark, "G", "Guard maps to slot 1 -> G (Guard) at R21")
+	assert_eq(mgr.get_unit_at_grid("R21").name_key, "uib_class_guard", "Guard localization key is uib_class_guard")
+	assert_eq(mgr.get_unit_at_grid("R21").slot_color, mgr.COLOR_SLOT_1_BLUE, "Guard colour is Blue")
+	assert_eq(mgr.get_unit_at_grid("R22").reference_mark, "B", "Brawler maps to slot 2 -> B (Brawler) at R22")
+	assert_eq(mgr.get_unit_at_grid("R22").name_key, "uib_class_brawler", "Brawler localization key is uib_class_brawler")
+	assert_eq(mgr.get_unit_at_grid("R22").slot_color, mgr.COLOR_SLOT_2_RED, "Brawler colour is Red")
+	assert_eq(mgr.get_unit_at_grid("R31").reference_mark, "S", "Scout maps to slot 3 -> S (Scout) at R31")
+	assert_eq(mgr.get_unit_at_grid("R31").name_key, "uib_class_scout", "Scout localization key is uib_class_scout")
+	assert_eq(mgr.get_unit_at_grid("R31").slot_color, mgr.COLOR_SLOT_5_GREEN, "Scout colour is Green")
+	assert_eq(mgr.get_unit_at_grid("R32").reference_mark, "A", "Acolyte maps to slot 4 -> A (Acolyte) at R32")
+	assert_eq(mgr.get_unit_at_grid("R32").name_key, "uib_class_acolyte", "Acolyte localization key is uib_class_acolyte")
+	assert_eq(mgr.get_unit_at_grid("R32").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Acolyte colour is Purple")
 	assert_eq(mgr.get_unit_at_grid("R41").reference_mark, "F", "1st duplicate maps to slot 5 -> F (Free) at R41")
-	assert_eq(mgr.get_unit_at_grid("R41").slot_color, mgr.COLOR_SLOT_2_RED, "Duplicate Warrior in F keeps Warrior Red colour")
+	assert_eq(mgr.get_unit_at_grid("R41").slot_color, mgr.COLOR_SLOT_2_RED, "Duplicate Brawler in F keeps Brawler Red colour")
 	assert_eq(mgr.get_unit_at_grid("R42").reference_mark, "E", "2nd duplicate maps to slot 6 -> E (Extra) at R42")
-	assert_eq(mgr.get_unit_at_grid("R42").slot_color, mgr.COLOR_SLOT_1_BLUE, "Duplicate Knight in E keeps Knight Blue colour!")
+	assert_eq(mgr.get_unit_at_grid("R42").slot_color, mgr.COLOR_SLOT_1_BLUE, "Duplicate Guard in E keeps Guard Blue colour!")
 	assert_eq(mgr.get_unit_at_grid("R21").reference_mark_color, mgr.COLOR_MARK_TEAM1_GREY, "Team 1 Reference Mark colour is Deep Grey")
-	assert_true(mgr.get_unit_at_grid("R22").avatar_path != mgr.get_unit_at_grid("R41").avatar_path, "Duplicate Warrior gets a distinct avatar image from the first Warrior")
+	assert_true(mgr.get_unit_at_grid("R22").avatar_path != mgr.get_unit_at_grid("R41").avatar_path, "Duplicate Brawler gets a distinct avatar image from the first Brawler")
 
 	# Verify Team 1 puck stripe & free-position 8-ball circle rules:
 	# Team 1 pucks have White 4-sided X stripe (team_x_stripe_mode == 1);
-	# slot 1 (V) has no center circle, while slots 5 (F) and 6 (E) have the grey 8-ball circle behind the letter!
+	# slot 1 (G) has no center circle, while slots 5 (F) and 6 (E) have the white 8-ball circle behind the letter!
 	assert_eq(puck_t1_k.get_team_x_stripe_mode(), 1, "Team 1 puck has White 4-sided X stripe (mode 1)")
-	assert_false(puck_t1_k.has_free_slot_center_circle(), "Slot 1 (V) has no free-position center circle")
+	assert_false(puck_t1_k.has_free_slot_center_circle(), "Slot 1 (G) has no free-position center circle")
 	assert_eq(puck_t1_dup1.get_team_x_stripe_mode(), 1, "Team 1 slot 5 puck has White 4-sided X stripe (mode 1)")
-	assert_true(puck_t1_dup1.has_free_slot_center_circle(), "Slot 5 (F) puck has grey 8-ball circle behind the letter")
-	assert_true(puck_t1_dup2.has_free_slot_center_circle(), "Slot 6 (E) puck has grey 8-ball circle behind the letter")
+	assert_true(puck_t1_dup1.has_free_slot_center_circle(), "Slot 5 (F) puck has 8-ball circle behind the letter")
+	assert_true(puck_t1_dup2.has_free_slot_center_circle(), "Slot 6 (E) puck has 8-ball circle behind the letter")
 
-	# Register Team 2 with a missing Warrior (slot 2) and missing Ranger (slot 3): only Knight, Mage, and a duplicate Mage!
-	# Missing class slots R62 (b) and R71 (r) must stay empty rather than compacting!
+	# Register Team 2 with a missing Brawler (slot 2) and missing Scout (slot 3): only Guard, Acolyte, and a duplicate Acolyte!
+	# Missing class slots R62 (b) and R71 (s) must stay empty rather than compacting!
 	var puck_t2_k := EnemyAdventurer.new()
 	var puck_t2_m2 := EnemyAdventurer.new()
 	mgr.register_adventurer_team(2, [
-		{"unit_id": "t2_k", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT, "puck": puck_t2_k},
-		{"unit_id": "t2_m", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
-		{"unit_id": "t2_m2", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "puck": puck_t2_m2},
+		{"unit_id": "t2_k", "adventurer_class": EnemyAdventurer.AdventurerClass.GUARD, "puck": puck_t2_k},
+		{"unit_id": "t2_m", "adventurer_class": EnemyAdventurer.AdventurerClass.ACOLYTE},
+		{"unit_id": "t2_m2", "adventurer_class": EnemyAdventurer.AdventurerClass.ACOLYTE, "puck": puck_t2_m2},
 	])
-	assert_true(mgr.get_unit_at_grid("R61") != null, "Team 2 Knight is at R61 (v)")
-	assert_eq(mgr.get_unit_at_grid("R61").reference_mark, "v", "Team 2 Knight Reference Mark is small letter 'v'")
+	assert_true(mgr.get_unit_at_grid("R61") != null, "Team 2 Guard is at R61 (g)")
+	assert_eq(mgr.get_unit_at_grid("R61").reference_mark, "g", "Team 2 Guard Reference Mark is small letter 'g'")
 	assert_eq(mgr.get_unit_at_grid("R61").reference_mark_color, mgr.COLOR_MARK_TEAM2_BROWN, "Team 2 Reference Mark colour is Deep Brown")
 	assert_eq(puck_t2_k.get_team_x_stripe_mode(), 2, "Team 2 puck has Black 4-sided X stripe (mode 2)")
-	assert_false(puck_t2_k.has_free_slot_center_circle(), "Team 2 slot 1 (v) has no free-position center circle")
-	assert_true(mgr.get_unit_at_grid("R62") == null, "Missing Warrior leaves R62 (b) empty (not compacted)")
-	assert_true(mgr.get_unit_at_grid("R71") == null, "Missing Ranger leaves R71 (r) empty (not compacted)")
-	assert_true(mgr.get_unit_at_grid("R72") != null, "Team 2 Mage is at R72 (s)")
-	assert_eq(mgr.get_unit_at_grid("R72").reference_mark, "s", "Team 2 Mage Reference Mark is small letter 's'")
-	assert_true(mgr.get_unit_at_grid("R81") != null, "Duplicate Mage takes first free position R81 (f)")
-	assert_eq(mgr.get_unit_at_grid("R81").reference_mark, "f", "Duplicate Mage Reference Mark is small letter 'f'")
-	assert_eq(mgr.get_unit_at_grid("R81").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Duplicate Mage in 'f' keeps Mage Purple colour")
-	assert_eq(puck_t2_m2.get_team_x_stripe_mode(), 2, "Team 2 duplicate Mage puck has Black 4-sided X stripe (mode 2)")
-	assert_true(puck_t2_m2.has_free_slot_center_circle(), "Team 2 slot 5 (f) puck has grey 8-ball circle behind the letter")
+	assert_false(puck_t2_k.has_free_slot_center_circle(), "Team 2 slot 1 (g) has no free-position center circle")
+	assert_true(mgr.get_unit_at_grid("R62") == null, "Missing Brawler leaves R62 (b) empty (not compacted)")
+	assert_true(mgr.get_unit_at_grid("R71") == null, "Missing Scout leaves R71 (s) empty (not compacted)")
+	assert_true(mgr.get_unit_at_grid("R72") != null, "Team 2 Acolyte is at R72 (a)")
+	assert_eq(mgr.get_unit_at_grid("R72").reference_mark, "a", "Team 2 Acolyte Reference Mark is small letter 'a'")
+	assert_true(mgr.get_unit_at_grid("R81") != null, "Duplicate Acolyte takes first free position R81 (f)")
+	assert_eq(mgr.get_unit_at_grid("R81").reference_mark, "f", "Duplicate Acolyte Reference Mark is small letter 'f'")
+	assert_eq(mgr.get_unit_at_grid("R81").slot_color, mgr.COLOR_SLOT_4_PURPLE, "Duplicate Acolyte in 'f' keeps Acolyte Purple colour")
+	assert_eq(puck_t2_m2.get_team_x_stripe_mode(), 2, "Team 2 duplicate Acolyte puck has Black 4-sided X stripe (mode 2)")
+	assert_true(puck_t2_m2.has_free_slot_center_circle(), "Team 2 slot 5 (f) puck has 8-ball circle behind the letter")
 	assert_true(mgr.get_unit_at_grid("R82") == null, "Unused 6th slot R82 (e) stays empty")
 
 	puck_t1_k.free()
@@ -138,16 +142,16 @@ func test_custom_stage_override_and_2p_coop_and_2p_versus_layouts() -> void:
 	if mgr == null:
 		return
 
-	# 1. Custom stage override: explicitly place a Mage in slot 1 (V / R21)
+	# 1. Custom stage override: explicitly place an Acolyte in slot 1 (G / R21)
 	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
 	mgr.register_adventurer_team(1, [
-		{"unit_id": "custom_mage_slot1", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE, "slot_override": 1},
+		{"unit_id": "custom_mage_slot1", "adventurer_class": EnemyAdventurer.AdventurerClass.ACOLYTE, "slot_override": 1},
 	])
 	var custom_u = mgr.get_unit_at_grid("R21")
-	assert_true(custom_u != null, "Custom stage override places Mage in slot 1 (R21)")
-	assert_eq(custom_u.reference_mark, "V", "Custom slot 1 unit gets V Reference Mark")
-	assert_eq(custom_u.adventurer_class, EnemyAdventurer.AdventurerClass.MAGE, "Custom slot 1 unit keeps Mage class")
-	assert_eq(custom_u.slot_color, mgr.COLOR_SLOT_4_PURPLE, "Custom slot 1 Mage unit gets Mage Purple border/puck colour")
+	assert_true(custom_u != null, "Custom stage override places Acolyte in slot 1 (R21)")
+	assert_eq(custom_u.reference_mark, "G", "Custom slot 1 unit gets G Reference Mark")
+	assert_eq(custom_u.adventurer_class, EnemyAdventurer.AdventurerClass.ACOLYTE, "Custom slot 1 unit keeps Acolyte class")
+	assert_eq(custom_u.slot_color, mgr.COLOR_SLOT_4_PURPLE, "Custom slot 1 Acolyte unit gets Acolyte Purple border/puck colour")
 
 	# 2. 2-Player Co-op layout: L1 = Player A Boss (Ω), L2-L4 = Player A Minions (ω1..6),
 	#    L5 = Player B Boss (Ψ), L6-L8 = Player B Minions (ψ1..6)
@@ -191,7 +195,7 @@ func test_multi_puck_registration_links_zero_to_n_pucks_with_same_reference_mark
 		return
 	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
 	mgr.register_adventurer_team(1, [
-		{"unit_id": "ranger_a3", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
+		{"unit_id": "ranger_a3", "adventurer_class": EnemyAdventurer.AdventurerClass.SCOUT},
 	])
 	var unit_do = mgr.get_unit("ranger_a3")
 	assert_eq(unit_do.pucks.size(), 0, "Unit starts with 0 pucks before pucks are linked")
@@ -201,10 +205,10 @@ func test_multi_puck_registration_links_zero_to_n_pucks_with_same_reference_mark
 	mgr.register_puck("ranger_a3", puck1)
 	mgr.register_puck("ranger_a3", puck2)
 	assert_eq(unit_do.pucks.size(), 2, "Unit holds 2 active pucks simultaneously")
-	assert_eq(puck1.get_reference_mark(), "R", "Puck 1 carries unit Reference Mark R")
-	assert_eq(puck2.get_reference_mark(), "R", "Puck 2 carries unit Reference Mark R")
-	assert_eq(puck1.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 1 receives Ranger Green colour")
-	assert_eq(puck2.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 2 receives Ranger Green colour")
+	assert_eq(puck1.get_reference_mark(), "S", "Puck 1 carries unit Reference Mark S")
+	assert_eq(puck2.get_reference_mark(), "S", "Puck 2 carries unit Reference Mark S")
+	assert_eq(puck1.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 1 receives Scout Green colour")
+	assert_eq(puck2.get_slot_color(), mgr.COLOR_SLOT_5_GREEN, "Puck 2 receives Scout Green colour")
 
 	mgr.unregister_puck("ranger_a3", puck1)
 	assert_eq(unit_do.pucks.size(), 1, "Unregistering a puck leaves 1 active puck")
@@ -260,12 +264,12 @@ func test_board_view_renders_2x8_grids_frenzy_power_and_role_based_boss_hp_visib
 	assert_eq(cell_l1.get("bars_text"), "x12", "When viewed by Player B, Player A's Boss shows x12")
 	assert_false(cell_l5.get("hp_bar_visible", true), "When viewed by Player B, Player B's own Boss at L51 omits HP bar")
 
-	# 3. Verify Team 1 Header at R11 and Adventurer cells at R21 (V) & R22 (B), and empty R31
+	# 3. Verify Team 1 Header at R11 and Adventurer cells at R21 (G) & R22 (B), and empty R31
 	var cell_r1: Dictionary = board.get_cell_info("R11")
 	assert_true(cell_r1.get("is_team_header", false), "R11 is Adventurer Team 1 header span")
 	var cell_r21: Dictionary = board.get_cell_info("R21")
-	assert_true(cell_r21.get("occupied", false), "R21 is occupied by V Knight")
-	assert_eq(cell_r21.get("reference_mark"), "V", "R21 shows V")
+	assert_true(cell_r21.get("occupied", false), "R21 is occupied by G Guard")
+	assert_eq(cell_r21.get("reference_mark"), "G", "R21 shows G")
 	assert_true(cell_r21.get("class_mark_visible", false), "Enemy Adventurer shows Class Mark in upper-right")
 	assert_true(cell_r21.get("hp_bar_visible", false), "Enemy Adventurer shows HP bar")
 	var cell_r31: Dictionary = board.get_cell_info("R31")
@@ -939,26 +943,26 @@ func test_multiplayer_pvp_setup_skeleton_boss_snooker_triangles_and_player_b_aim
 	assert_eq(boss_b_do.reference_mark, "Ψ", "Player B Boss mark is Ψ")
 	assert_true(boss_b_do.avatar_path.ends_with("avatar_boss_skeleton.png"), "Player B Boss uses Skeleton Boss avatar")
 
-	# 2. Verify 6 Adventurers for Player A in L6-L8 (V, B, R, S, F=Warrior, E=Ranger) and 6 for Player B in R6-R8 (v, b, r, s, f=Warrior, e=Ranger)
-	var exp_a_marks := {"L61": "V", "L62": "B", "L71": "R", "L72": "S", "L81": "F", "L82": "E"}
+	# 2. Verify 6 Adventurers for Player A in L6-L8 (G, B, S, A, F=Brawler, E=Scout) and 6 for Player B in R6-R8 (g, b, s, a, f=Brawler, e=Scout)
+	var exp_a_marks := {"L61": "G", "L62": "B", "L71": "S", "L72": "A", "L81": "F", "L82": "E"}
 	for gid in exp_a_marks.keys():
 		var u := uim.get_unit_at_grid(gid)
 		assert_true(u != null, "Player A Adventurer slot %s is occupied" % gid)
 		if u != null:
 			assert_eq(u.reference_mark, exp_a_marks[gid], "Player A %s has mark %s" % [gid, exp_a_marks[gid]])
 			assert_eq(u.owner_seat, "a", "Player A Adventurer owner_seat is 'a'")
-	assert_eq(uim.get_unit_at_grid("L81").adventurer_class, EnemyAdventurer.AdventurerClass.WARRIOR, "Player A Free slot (F) is Warrior")
-	assert_eq(uim.get_unit_at_grid("L82").adventurer_class, EnemyAdventurer.AdventurerClass.RANGER, "Player A Extra slot (E) is Ranger")
+	assert_eq(uim.get_unit_at_grid("L81").adventurer_class, EnemyAdventurer.AdventurerClass.BRAWLER, "Player A Free slot (F) is Brawler")
+	assert_eq(uim.get_unit_at_grid("L82").adventurer_class, EnemyAdventurer.AdventurerClass.SCOUT, "Player A Extra slot (E) is Scout")
 
-	var exp_b_marks := {"R61": "v", "R62": "b", "R71": "r", "R72": "s", "R81": "f", "R82": "e"}
+	var exp_b_marks := {"R61": "g", "R62": "b", "R71": "s", "R72": "a", "R81": "f", "R82": "e"}
 	for gid in exp_b_marks.keys():
 		var u := uim.get_unit_at_grid(gid)
 		assert_true(u != null, "Player B Adventurer slot %s is occupied" % gid)
 		if u != null:
 			assert_eq(u.reference_mark, exp_b_marks[gid], "Player B %s has mark %s" % [gid, exp_b_marks[gid]])
 			assert_eq(u.owner_seat, "b", "Player B Adventurer owner_seat is 'b'")
-	assert_eq(uim.get_unit_at_grid("R81").adventurer_class, EnemyAdventurer.AdventurerClass.WARRIOR, "Player B Free slot (f) is Warrior")
-	assert_eq(uim.get_unit_at_grid("R82").adventurer_class, EnemyAdventurer.AdventurerClass.RANGER, "Player B Extra slot (e) is Ranger")
+	assert_eq(uim.get_unit_at_grid("R81").adventurer_class, EnemyAdventurer.AdventurerClass.BRAWLER, "Player B Free slot (f) is Brawler")
+	assert_eq(uim.get_unit_at_grid("R82").adventurer_class, EnemyAdventurer.AdventurerClass.SCOUT, "Player B Extra slot (e) is Scout")
 
 	# 3. Verify 3D Snooker Triangle geometry:
 	#    Player A triangle centered around (-6, -3) facing +X (Vanguard V has largest X; Row 2 Ranger R is on +Z side nearer Player A Boss at (-6, +3))

@@ -249,10 +249,10 @@ func register_target_puck(unit_id: String, seat: String, slot_index: int, config
 	return u
 
 
-## Registers an Enemy Adventurer Team (team_index 1 -> R2..R4 with A1..A6;
-## team_index 2 -> R6..R8 with B1..B6).
+## Registers an Enemy Adventurer Team (team_index 1 -> R2..R4 with G, B, S, A, F, E;
+## team_index 2 -> R6..R8 with g, b, s, a, f, e).
 ## In normal random Adventurer Team generation:
-##   ?1 = Knight, ?2 = Warrior, ?3 = Ranger, ?4 = Mage, ?5..6 = free positions for duplicate classes.
+##   ?1 (G/g) = Guard, ?2 (B/b) = Brawler, ?3 (S/s) = Scout, ?4 (A/a) = Acolyte, ?5..6 (F/f, E/e) = free positions for duplicate classes.
 ##   Missing classes leave their numbers and grid cells empty (never compacted).
 ## Customized stage compositions can pass `"slot_override": 1..6` on any member dictionary.
 func register_adventurer_team(team_index: int, members: Array) -> Array[UnitInformationDO]:
@@ -270,14 +270,14 @@ func register_adventurer_team(team_index: int, members: Array) -> Array[UnitInfo
 			var u := _create_adventurer_do(team_index, slot_num, d)
 			registered.append(u)
 
-	# Pass 2: normal class-to-slot rule (?1 Knight, ?2 Warrior, ?3 Ranger, ?4 Mage, ?5..6 duplicates)
+	# Pass 2: normal class-to-slot rule (?1 Guard, ?2 Brawler, ?3 Scout, ?4 Acolyte, ?5..6 duplicates)
 	for entry in members:
 		if not entry is Dictionary:
 			continue
 		var d := entry as Dictionary
 		if d.has("slot_override"):
 			continue
-		var adv_class := int(d.get("adventurer_class", EnemyAdventurer.AdventurerClass.WARRIOR))
+		var adv_class := int(d.get("adventurer_class", EnemyAdventurer.AdventurerClass.BRAWLER))
 		var preferred_slot := default_slot_for_class(adv_class)
 		var chosen_slot := 0
 		if not occupied_slots.has(preferred_slot):
@@ -303,7 +303,7 @@ func register_adventurer_team(team_index: int, members: Array) -> Array[UnitInfo
 
 
 func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> UnitInformationDO:
-	var adv_class := int(d.get("adventurer_class", EnemyAdventurer.AdventurerClass.WARRIOR))
+	var adv_class := int(d.get("adventurer_class", EnemyAdventurer.AdventurerClass.BRAWLER))
 	var u := UnitInformationDO.new()
 	u.unit_id = str(d.get("unit_id", "team%d_slot%d" % [team_index, slot_num]))
 	u.unit_kind = "enemy_adventurer"
@@ -548,8 +548,8 @@ func modify_frenzy_power(boss_unit_id: String, delta: float) -> float:
 
 
 ## Adjusts a Boss Monster's Frenzy Power when colliding with an Enemy Adventurer puck:
-##   - Non-Knight Adventurer: +10% (DEFAULT_FRENZY_GAIN_NON_KNIGHT)
-##   - Knight Adventurer: -20% (DEFAULT_FRENZY_LOSS_KNIGHT), clamped to >= 50% floor
+##   - Non-Guard Adventurer: +10% (DEFAULT_FRENZY_GAIN_NON_KNIGHT)
+##   - Guard Adventurer: -20% (DEFAULT_FRENZY_LOSS_KNIGHT), clamped to >= 50% floor
 func record_boss_collision_frenzy(boss_unit_id: String, struck_unit_id: String) -> float:
 	var boss := get_unit(boss_unit_id)
 	var struck := get_unit(struck_unit_id)
@@ -557,7 +557,7 @@ func record_boss_collision_frenzy(boss_unit_id: String, struck_unit_id: String) 
 		return DEFAULT_FRENZY_BASELINE
 	if struck.unit_kind != "enemy_adventurer":
 		return boss.frenzy_power
-	if struck.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT:
+	if struck.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD:
 		return modify_frenzy_power(boss_unit_id, -DEFAULT_FRENZY_LOSS_KNIGHT)
 	return modify_frenzy_power(boss_unit_id, DEFAULT_FRENZY_GAIN_NON_KNIGHT)
 
@@ -867,14 +867,14 @@ func _does_unit_take_collision_damage_from(victim: UnitInformationDO, hitter: Un
 	if victim.unit_kind == "boss":
 		if hitter.unit_kind == "boss":
 			return false
-		# Only an OPPONENT Knight's impacts damage a Boss Monster (a friendly Knight never hurts its own Boss)
+		# Only an OPPONENT Guard's impacts damage a Boss Monster (a friendly Guard never hurts its own Boss)
 		if _are_units_friendly(victim, hitter):
 			return false
-		return hitter.unit_kind == "enemy_adventurer" and hitter.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT
+		return hitter.unit_kind == "enemy_adventurer" and hitter.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD
 	if victim.unit_kind == "enemy_adventurer":
-		# Knight protects its allies on the SAME team: no collision damage when colliding with a same-team Knight
+		# Guard protects its allies on the SAME team: no collision damage when colliding with a same-team Guard
 		if hitter.unit_kind == "enemy_adventurer" and _are_units_friendly(victim, hitter):
-			if victim.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT or hitter.adventurer_class == EnemyAdventurer.AdventurerClass.KNIGHT:
+			if victim.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD or hitter.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD:
 				return false
 		return true
 	# Minions / Target Pucks suffer collision damage from any impact
@@ -901,13 +901,13 @@ func _resolve_collision_boss_owner(hitter: UnitInformationDO, victim: UnitInform
 
 static func get_class_default_max_hp(adv_class: int) -> int:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return 3000
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return 2200
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return 2200
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return 1500
 		_:
 			return 2200
@@ -1060,34 +1060,34 @@ func apply_units_snapshot(payload: Dictionary) -> void:
 
 static func default_slot_for_class(adv_class: int) -> int:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return 1
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return 2
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return 3
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return 4
 		_:
 			return 5
 
 
 static func get_adventurer_reference_mark(team_index: int, slot_num: int) -> String:
-	var upper_marks: Array[String] = ["V", "B", "R", "S", "F", "E"]
-	var lower_marks: Array[String] = ["v", "b", "r", "s", "f", "e"]
+	var upper_marks: Array[String] = ["G", "B", "S", "A", "F", "E"]
+	var lower_marks: Array[String] = ["g", "b", "s", "a", "f", "e"]
 	var idx := clampi(slot_num, 1, 6) - 1
 	return lower_marks[idx] if team_index == 2 else upper_marks[idx]
 
 
 static func get_class_color(adv_class: int) -> Color:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return COLOR_SLOT_1_BLUE
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return COLOR_SLOT_2_RED
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return COLOR_SLOT_5_GREEN
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return COLOR_SLOT_4_PURPLE
 		_:
 			return COLOR_SLOT_2_RED
@@ -1131,34 +1131,34 @@ static func get_minion_slot_color(slot_num: int) -> Color:
 
 static func get_class_name_key(adv_class: int) -> String:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
-			return "uib_class_knight"
-		EnemyAdventurer.AdventurerClass.WARRIOR:
-			return "uib_class_warrior"
-		EnemyAdventurer.AdventurerClass.RANGER:
-			return "uib_class_ranger"
-		EnemyAdventurer.AdventurerClass.MAGE:
-			return "uib_class_mage"
+		EnemyAdventurer.AdventurerClass.GUARD:
+			return "uib_class_guard"
+		EnemyAdventurer.AdventurerClass.BRAWLER:
+			return "uib_class_brawler"
+		EnemyAdventurer.AdventurerClass.SCOUT:
+			return "uib_class_scout"
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
+			return "uib_class_acolyte"
 		_:
-			return "uib_class_warrior"
+			return "uib_class_brawler"
 
 
 static func get_class_avatar_path(adv_class: int, variant_index: int = 0) -> String:
 	var v := posmod(variant_index, 3)
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			if v == 1: return AVATAR_KNIGHT_2
 			if v == 2: return AVATAR_KNIGHT_3
 			return AVATAR_KNIGHT
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			if v == 1: return AVATAR_WARRIOR_2
 			if v == 2: return AVATAR_WARRIOR_3
 			return AVATAR_WARRIOR
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			if v == 1: return AVATAR_RANGER_2
 			if v == 2: return AVATAR_RANGER_3
 			return AVATAR_RANGER
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			if v == 1: return AVATAR_MAGE_2
 			if v == 2: return AVATAR_MAGE_3
 			return AVATAR_MAGE
@@ -1168,13 +1168,13 @@ static func get_class_avatar_path(adv_class: int, variant_index: int = 0) -> Str
 
 static func get_class_mark_path(adv_class: int) -> String:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return CLASS_ICON_KNIGHT
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return CLASS_ICON_WARRIOR
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return CLASS_ICON_RANGER
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return CLASS_ICON_MAGE
 		_:
 			return CLASS_ICON_WARRIOR

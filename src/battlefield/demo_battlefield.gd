@@ -682,10 +682,10 @@ func _setup_demo_unit_information() -> void:
 
 	# 2. Register Adventurer Team 1 (6 members: Enemy1..Enemy6, with ?5 and ?6 assigned random distinct classes)
 	var all_classes: Array[int] = [
-		EnemyAdventurer.AdventurerClass.WARRIOR,
-		EnemyAdventurer.AdventurerClass.KNIGHT,
-		EnemyAdventurer.AdventurerClass.MAGE,
-		EnemyAdventurer.AdventurerClass.RANGER,
+		EnemyAdventurer.AdventurerClass.BRAWLER,
+		EnemyAdventurer.AdventurerClass.GUARD,
+		EnemyAdventurer.AdventurerClass.ACOLYTE,
+		EnemyAdventurer.AdventurerClass.SCOUT,
 	]
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -785,9 +785,9 @@ func _setup_multiplayer_pvp_battlefield() -> void:
 
 	# 4. Spawn 6-Adventurer snooker triangle for Player A around original Enemy4 (-6, -3) facing +X,
 	#    and for Player B around original Enemy1 (6, 3) facing -X.
-	#    Front line (apex): Vanguard (Knight)
-	#    Second line: Brawler (Warrior) and Ranger (Ranger on the side nearer its own Boss Monster)
-	#    Third line: Free (Warrior on outer side), Spell (Mage in middle), and Extra (Ranger on side nearer Boss)
+	#    Front line (apex): Guard (G/g, Guard)
+	#    Second line: Brawler (B/b, Brawler) and Scout (S/s, Scout on the side nearer its own Boss Monster)
+	#    Third line: Free (F/f, Brawler on outer side), Acolyte (A/a, Acolyte in middle), and Extra (E/e, Scout on side nearer Boss)
 	var team_a_members := _spawn_pvp_adventurer_triangle("a", 1, Vector3(-6.0, 0.0, -3.0), 1.0, 1.0)
 	unit_information_manager.register_adventurer_team(1, team_a_members)
 
@@ -834,19 +834,19 @@ func _spawn_pvp_adventurer_triangle(
 	var row_dx := 1.25
 	var col_dz := 0.72
 	# Specs for slots 1..6:
-	# 1 (V/v): Knight at Front line (center_x + facing_x_sign * row_dx, center_z)
-	# 2 (B/b): Warrior at Second line, outer Z (center_x, center_z - boss_side_z_sign * col_dz)
-	# 3 (R/r): Ranger at Second line, inner Z nearer Boss (center_x, center_z + boss_side_z_sign * col_dz)
-	# 4 (S/s): Mage at Third line, middle Z (center_x - facing_x_sign * row_dx, center_z)
-	# 5 (F/f): Warrior at Third line, outer Z (center_x - facing_x_sign * row_dx, center_z - boss_side_z_sign * col_dz * 2.0)
-	# 6 (E/e): Ranger at Third line, inner Z nearer Boss (center_x - facing_x_sign * row_dx, center_z + boss_side_z_sign * col_dz * 2.0)
+	# 1 (G/g): Guard at Front line (center_x + facing_x_sign * row_dx, center_z)
+	# 2 (B/b): Brawler at Second line, outer Z (center_x, center_z - boss_side_z_sign * col_dz)
+	# 3 (S/s): Scout at Second line, inner Z nearer Boss (center_x, center_z + boss_side_z_sign * col_dz)
+	# 4 (A/a): Acolyte at Third line, middle Z (center_x - facing_x_sign * row_dx, center_z)
+	# 5 (F/f): Brawler at Third line, outer Z (center_x - facing_x_sign * row_dx, center_z - boss_side_z_sign * col_dz * 2.0)
+	# 6 (E/e): Scout at Third line, inner Z nearer Boss (center_x - facing_x_sign * row_dx, center_z + boss_side_z_sign * col_dz * 2.0)
 	var specs := [
-		{"slot": 1, "class": EnemyAdventurer.AdventurerClass.KNIGHT, "pos": Vector3(center_xz.x + facing_x_sign * row_dx, 1.70, center_xz.z)},
-		{"slot": 2, "class": EnemyAdventurer.AdventurerClass.WARRIOR, "pos": Vector3(center_xz.x, 1.675, center_xz.z - boss_side_z_sign * col_dz)},
-		{"slot": 3, "class": EnemyAdventurer.AdventurerClass.RANGER, "pos": Vector3(center_xz.x, 1.675, center_xz.z + boss_side_z_sign * col_dz)},
-		{"slot": 4, "class": EnemyAdventurer.AdventurerClass.MAGE, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z)},
-		{"slot": 5, "class": EnemyAdventurer.AdventurerClass.WARRIOR, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z - boss_side_z_sign * col_dz * 2.0)},
-		{"slot": 6, "class": EnemyAdventurer.AdventurerClass.RANGER, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z + boss_side_z_sign * col_dz * 2.0)},
+		{"slot": 1, "class": EnemyAdventurer.AdventurerClass.GUARD, "pos": Vector3(center_xz.x + facing_x_sign * row_dx, 1.70, center_xz.z)},
+		{"slot": 2, "class": EnemyAdventurer.AdventurerClass.BRAWLER, "pos": Vector3(center_xz.x, 1.675, center_xz.z - boss_side_z_sign * col_dz)},
+		{"slot": 3, "class": EnemyAdventurer.AdventurerClass.SCOUT, "pos": Vector3(center_xz.x, 1.675, center_xz.z + boss_side_z_sign * col_dz)},
+		{"slot": 4, "class": EnemyAdventurer.AdventurerClass.ACOLYTE, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z)},
+		{"slot": 5, "class": EnemyAdventurer.AdventurerClass.BRAWLER, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z - boss_side_z_sign * col_dz * 2.0)},
+		{"slot": 6, "class": EnemyAdventurer.AdventurerClass.SCOUT, "pos": Vector3(center_xz.x - facing_x_sign * row_dx, 1.675, center_xz.z + boss_side_z_sign * col_dz * 2.0)},
 	]
 
 	var members: Array = []
@@ -869,9 +869,9 @@ func _spawn_pvp_adventurer_triangle(
 
 
 func _spawn_adventurer_puck_node(node_name: String, adv_cls: int, world_pos: Vector3) -> EnemyAdventurer:
-	var cfg: Dictionary = EnemyAdventurer.CLASS_CONFIG.get(adv_cls, EnemyAdventurer.CLASS_CONFIG[EnemyAdventurer.AdventurerClass.WARRIOR])
+	var cfg: Dictionary = EnemyAdventurer.CLASS_CONFIG.get(adv_cls, EnemyAdventurer.CLASS_CONFIG[EnemyAdventurer.AdventurerClass.BRAWLER])
 	var r: float = float(cfg.get("radius", 0.6))
-	var h: float = 0.40 if adv_cls == EnemyAdventurer.AdventurerClass.KNIGHT else 0.35
+	var h: float = 0.40 if adv_cls == EnemyAdventurer.AdventurerClass.GUARD else 0.35
 
 	var en := EnemyAdventurer.new()
 	en.name = node_name

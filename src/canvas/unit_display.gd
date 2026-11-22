@@ -745,13 +745,13 @@ func _resolve_avatar_texture(u: UnitInformationDO) -> Texture2D:
 	if u.unit_kind == "minion":
 		return TEX_MINION
 	match u.adventurer_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return TEX_KNIGHT
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return TEX_WARRIOR
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return TEX_RANGER
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return TEX_MAGE
 		_:
 			return TEX_WARRIOR
@@ -759,13 +759,13 @@ func _resolve_avatar_texture(u: UnitInformationDO) -> Texture2D:
 
 func _resolve_class_texture(adv_class: int) -> Texture2D:
 	match adv_class:
-		EnemyAdventurer.AdventurerClass.KNIGHT:
+		EnemyAdventurer.AdventurerClass.GUARD:
 			return TEX_CLASS_KNIGHT
-		EnemyAdventurer.AdventurerClass.WARRIOR:
+		EnemyAdventurer.AdventurerClass.BRAWLER:
 			return TEX_CLASS_WARRIOR
-		EnemyAdventurer.AdventurerClass.RANGER:
+		EnemyAdventurer.AdventurerClass.SCOUT:
 			return TEX_CLASS_RANGER
-		EnemyAdventurer.AdventurerClass.MAGE:
+		EnemyAdventurer.AdventurerClass.ACOLYTE:
 			return TEX_CLASS_MAGE
 		_:
 			return TEX_CLASS_WARRIOR

@@ -24,7 +24,7 @@ var name_key: String = ""
 var avatar_path: String = ""
 var class_mark_path: String = ""
 
-var adventurer_class: int = EnemyAdventurer.AdventurerClass.KNIGHT
+var adventurer_class: int = EnemyAdventurer.AdventurerClass.GUARD
 var current_hp: int = 100
 var max_hp: int = 100
 var bars_remaining: int = 1
