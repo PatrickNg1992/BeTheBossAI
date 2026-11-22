@@ -57,6 +57,10 @@ Relative strength like the following
 
 ## Classes Advancement
 
+There is an Adventurer class hierarchy, like other games in Sword and Magic world. There are four main *Class Trees* corresponding to defence, melee, ranged and magic. Their base class are *Guard*, *Brawler*, *Scout*, *Acolyte*. There are 3 levels of common Classes. (There are exceptional unique upper classes for Legendary Heroes) Each class at level 1 and 2 has two advancement options. Therefore, there are 4/8/16 classes for Level 1/2/3. 
+
+The following are the 4 Class Trees for Level 1, 2 and 3
+
 - Guard: defence-based
   - Sentinel: defence-based
     - Bastion: tanky
@@ -73,7 +77,7 @@ Relative strength like the following
     - Spellblade: effect damage
 - Scout: ranged-based
   - Shooter: attack-based
-    - Marksman: long range focus
+    - Marksman: long-range focus
     - Barrager: heavy power focus
   - Ranger: effect-based
     - Trapper: hinder effects
@@ -81,7 +85,23 @@ Relative strength like the following
 - Acolyte: magic-based
   - Mage: damage-based
     - Sorcerer: attack-based
-    - Warlock: effect damage-based
+    - Warlock: effect-damage-based
   - Priest: support-based
     - Bishop: healer
     - Enchanter: buffs
+
+The following are some terms to describe the relation between classes:
+
+*Class Level*: a number that describes the relative strength of a class, which should be proportional to the overall power. 
+
+*Base Class*: Classes of Level 1: Guard, Brawler, Scout, or Acolyte.
+
+*Advanced Class*: Classes that a class can evolve into. (ie. Knight and Bastion are Advanced Classes of Guard) 
+
+*Prerequisite Class*:  All Classes that a class evolved from (Guard and Knight are Prerequisite classes of Paladin)
+
+*Parallel Class*: Classes of the same Level (Knight is a parallel class of Mage; Trapper is a parallel class of Assassin)
+
+*Exceptional Class*: Class that is not in the four hierarchy Level 1/2/3. These classes are uniquely designed for special Legendary Heroes. Some Exceptional Classes may have a class from the four hierarchy as a base class.  They are normally at Level 3, 4, or 5. (A Pope may be developed from a Bishop. A Dragon Slayer is from Champion. A Dark Knight is from Knight) However, some Exceptional Classes simply do not have any Prerequisite Classes.
+
+*Direct* Advanced/Prerequisite Class: the Class that a class directly advanced to/evolved from (Knight is a direct prerequisite class of Paladin, but Guard is not). Note that a direct Prerequisite Class of an Exceptional Class sometimes can be more than 1 level lower. (A Dragon Knight evolved from Knight, but it is Level 4)
