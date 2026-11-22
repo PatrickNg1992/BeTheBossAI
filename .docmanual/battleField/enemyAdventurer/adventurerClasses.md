@@ -50,22 +50,22 @@ Relative strength like the following
 
 | Class   | HP  | ATK | ATK FRQ | SPD | RNG |
 | ------- | --- | --- | ------- | --- | --- |
-| Warrior | 4   | 4   | 3       | 2   | 1   |
-| Mage    | 1   | 5   | 1       | 3   | 5   |
-| Ranger  | 3   | 2   | 5       | 5   | 3-4 |
-| Knight  | 5   | 1   | 2       | 1   | 2   |
+| Brawler | 4   | 4   | 3       | 2   | 1   |
+| Acolyte | 1   | 5   | 1       | 3   | 5   |
+| Scout   | 3   | 2   | 5       | 5   | 3-4 |
+| Guard   | 5   | 1   | 2       | 1   | 2   |
 
 ## Classes Advancement
 
 There is an Adventurer class hierarchy, like other games in Sword and Magic world. There are four main *Class Trees* corresponding to defence, melee, ranged and magic. Their base class are *Guard*, *Brawler*, *Scout*, *Acolyte*. There are 3 levels of common Classes. (There are exceptional unique upper classes for Legendary Heroes) Each class at level 1 and 2 has two advancement options. Therefore, there are 4/8/16 classes for Level 1/2/3. 
 
-The following are the 4 Class Trees for Level 1, 2 and 3
+The following are the 4 Class Trees for Levels 1, 2 and 3. If you really need to know the class details, read ./.docmanual/codexList/index.md and the ./.docmanual/codexList/classes folder. But avoid it if possible, since the codex could be large. Common classes are listed here
 
 - Guard: defence-based
-  - Sentinel: defence-based
+  - Sentinel: self-focused
     - Bastion: tanky
     - Vanguard: taunt and block
-  - Knight: effect-based
+  - Knight: protection-focused
     - Paladin: support and heal effects
     - Banneret: aura-based
 - Brawler: melee-based
@@ -77,17 +77,17 @@ The following are the 4 Class Trees for Level 1, 2 and 3
     - Spellblade: effect damage
 - Scout: ranged-based
   - Shooter: attack-based
-    - Marksman: long-range focus
-    - Barrager: heavy power focus
+    - Marksman: single-target focused
+    - Barrager: heavy-power focused
   - Ranger: effect-based
     - Trapper: hinder effects
-    - Assassin: effect-buffed attack and damage prevention
+    - Assassin: effect damage and damage prevention
 - Acolyte: magic-based
   - Mage: damage-based
-    - Sorcerer: attack-based
-    - Warlock: effect-damage-based
+    - Sorcerer: attack focused
+    - Warlock: effect-damage focused
   - Priest: support-based
-    - Bishop: healer
+    - Bishop: healing and protection
     - Enchanter: buffs
 
 The following are some terms to describe the relation between classes:

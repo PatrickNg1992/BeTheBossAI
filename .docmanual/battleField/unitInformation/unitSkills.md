@@ -92,4 +92,4 @@ This condition means that
 
 When a unit falls into the Pocket Area, calculate all the passive effects to adjust the damage it should take. The default Pocket Area Damage value is 50% of the max HP for all units (only count 1 HP bar). The resulting value must be within 0 to 100%. 
 
-For example, if two Scouts with skill apply -10% each to teammates and a Boss monsters skill apply +15% to all enemies, a unit should take 45% damage when fallen into pocket.
+For example, if two Scouts with skill apply -10% each to teammates and a Boss monster skill apply +15% to all enemies, a unit should take 45% damage when fallen into pocket.

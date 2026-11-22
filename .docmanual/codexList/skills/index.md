@@ -28,7 +28,7 @@ Skill lists are categorised by their types in subfolders: move, attack, active, 
 
 
 
-## Key point
+## Key points
 
 The name row uses Header 2 for Markdown.
 
