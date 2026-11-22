@@ -70,3 +70,7 @@ Don't commit any code. Leave it to developers.
 
 The game should be multi-language. The language setting should be put in ./scr/multiLang
 Please put all the display text into this holder.
+
+## Codex Maintenance
+
+If a task is related to collectable objects, read ./.docmanual/codexList/index.md. It explains how to manage the documents of collectable object lists.

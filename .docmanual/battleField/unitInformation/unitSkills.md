@@ -6,15 +6,19 @@ There are mainly 4 types of skills. For simplicity, an Adventurer unit has one *
 
 In Action Time, always check the skills in this order: Active Skill, Attack Skill, Move Skill.
 
-Each skill has name, type and description. Attack Skills should has a attack power. Some Attack and Active Skills have Skill Countdowns. All these information should displayed when player check in the Unit Information Display system.
+Each skill has a name, icon, type and description. Attack Skills should have an attack power. Some Attack and Active Skills have Skill Countdowns. All this information should be displayed when the player checks the Unit Information Display system.
 
-Each Skill has a unique name. Notice that some skills with LV? at the end but they are counted different skills that can coexist. Treat it just a part of the skill name, even though they usually have similar effects. 
+Each Skill has a unique name. Notice that skills with LV? at the end are Upgradable Skills. When generating Adventurers, it can increase to LV to adjust the strength of a unit.
 
-Whenever a units use their Attack Skills and Active Skills, an animation should be played. And the effects should display at the almost the end of the animation.
+Whenever a unit uses its Attack Skills or Active Skills, an animation should be played. The effects should display at almost the end of the animation.
+
+Read ./.docmanual/codexList/skills/index.md to find the skills document.
 
 ## Move Skill
 
-It defines how a Unit moves. Every unit, except a Boss Monster, has exactly one. It defines the distance, directions, and other conditions or effects. Typically, if a unit does not Basic Attack and uses its Active Skill, it moves.
+It defines how a Unit moves. Every unit, except a Boss Monster, has exactly one. It defines the distance, directions, and other conditions or effects. Sometimes a unit that attacked and used active skills will skip the Move Skill. 
+
+When pucks move by Move Skill in Action, ignore puck collisions until they all stop. Then resolve the overlap if any. 
 
 ## Attack Skill
 
@@ -26,13 +30,45 @@ It defines how a Unit acts beyond moving and basic attacks. Every unit has zero 
 
 ## Passive Skill
 
-It defines some extra effects of a unit. Every unit can have multiple Passive Skills. The effects are various. 
+It defines some extra effects of a unit. Every unit can have multiple Passive Skills. The effects are varied. 
 
 Passive Skills are extra traits of a unit beyond its defined behaviour. Adding random Passive Skills is a way to adjust the unit and team strength in unit random generation logic. Some passive skills are restricted to some specific kinds of units.
 
 Passive skills can be triggered whenever the condition is met, not necessarily at the Unit's Action Time.
 
+## Implementation
 
+Create a abstract Unit Skill Class. It should include name, icon path, type, target classes, level etc. 
+
+Then create 4 abstract subclasses: Move Skill, Attack Skill, Active Skill and Passive Skill. Create Skill Classes and set them into the Unit Information Object. The User Display Detail should show them. Create classes for actual implementations for each skill. Create helpers for common effects.
+
+In the unit's Action Times, check Active Skill, Attack Skill, and Move Skill, and make the pucks act accordingly.
+
+For Passive Skills, create multiple checking functions and run the checks for different types of effects. Checking times are: 
+
+- When created,
+
+- Collision with pucks or the cushion,
+
+- Pucks are falling into the pocket area,
+
+- Pucks are put back on the cue table, 
+
+- Making or receiving Damage DO,
+
+- Units are defeated,
+
+- Before or after movement or attack,
+
+- When a player plays a card,
+
+- When a player makes a cue shot,
+
+- When a card is completed and goes to the discard pile,
+
+- When a player draws a card
+
+This list should be managed. Add comments to the Skill Classes for that. Can use event listener pattern if it is better, but need to consider the return value.
 
 ## Common Skill Effects
 
