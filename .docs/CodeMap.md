@@ -82,7 +82,11 @@ src/
 │                               # and class_mark PNGs (regenerate via tests/_gen_assets.tscn)
 │
 └── multiLang/
-    └── localization.gd         # EN/ZH localization (autoload)
+    ├── localization.gd         # Multi-language localization autoload (EN / ZH / ZH_TW / JA)
+    ├── lang_en.gd              # English translation dictionary
+    ├── lang_zh.gd              # Simplified Chinese translation dictionary
+    ├── lang_zh_tw.gd           # Traditional Chinese translation dictionary
+    └── lang_ja.gd              # Japanese translation dictionary
 ```
 
 ## Subsystem notes

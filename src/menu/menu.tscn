@@ -32,5 +32,10 @@ layout_mode = 2
 [node name="MultiplayerButton" type="Button" parent="Center/VBox"]
 layout_mode = 2
 
+[node name="LanguageButton" type="OptionButton" parent="Center/VBox"]
+layout_mode = 2
+alignment = 1
+
 [connection signal="pressed" from="Center/VBox/PlayButton" to="." method="_on_play_button_pressed"]
 [connection signal="pressed" from="Center/VBox/MultiplayerButton" to="." method="_on_multiplayer_button_pressed"]
+[connection signal="item_selected" from="Center/VBox/LanguageButton" to="." method="_on_language_button_item_selected"]

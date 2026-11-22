@@ -92,3 +92,93 @@ func test_empty_pending_slot_shows_no_popup() -> void:
 	_mount_and_release(MENU_SCENE_PATH, func(menu):
 		assert_true(menu.notification_dialog == null, "No popup expected when nothing pending")
 	)
+
+
+func test_multilang_extracted_files_and_en_zh_zh_tw_ja_translations() -> void:
+	var prev_lang: String = Loc.language
+	var en_script := ResourceLoader.load("res://src/multiLang/lang_en.gd", "", ResourceLoader.CACHE_MODE_IGNORE) as Script
+	var zh_script := ResourceLoader.load("res://src/multiLang/lang_zh.gd", "", ResourceLoader.CACHE_MODE_IGNORE) as Script
+	var zh_tw_script := ResourceLoader.load("res://src/multiLang/lang_zh_tw.gd", "", ResourceLoader.CACHE_MODE_IGNORE) as Script
+	var ja_script := ResourceLoader.load("res://src/multiLang/lang_ja.gd", "", ResourceLoader.CACHE_MODE_IGNORE) as Script
+	assert_true(en_script != null, "res://src/multiLang/lang_en.gd exists")
+	assert_true(zh_script != null, "res://src/multiLang/lang_zh.gd exists")
+	assert_true(zh_tw_script != null, "res://src/multiLang/lang_zh_tw.gd exists")
+	assert_true(ja_script != null, "res://src/multiLang/lang_ja.gd exists")
+
+	if en_script != null and zh_script != null and zh_tw_script != null and ja_script != null:
+		var en_dict: Dictionary = en_script.get("TRANSLATIONS")
+		var zh_dict: Dictionary = zh_script.get("TRANSLATIONS")
+		var zh_tw_dict: Dictionary = zh_tw_script.get("TRANSLATIONS")
+		var ja_dict: Dictionary = ja_script.get("TRANSLATIONS")
+		assert_true(not en_dict.is_empty(), "English translation table is non-empty")
+		var missing_zh := 0
+		var missing_zh_tw := 0
+		var missing_ja := 0
+		for k in en_dict.keys():
+			if not zh_dict.has(k) or str(zh_dict[k]).is_empty():
+				missing_zh += 1
+			if not zh_tw_dict.has(k) or str(zh_tw_dict[k]).is_empty():
+				missing_zh_tw += 1
+			if not ja_dict.has(k) or str(ja_dict[k]).is_empty():
+				missing_ja += 1
+		assert_eq(missing_zh, 0, "All English keys are present in Simplified Chinese (lang_zh.gd)")
+		assert_eq(missing_zh_tw, 0, "All English keys are present in Traditional Chinese (lang_zh_tw.gd)")
+		assert_eq(missing_ja, 0, "All English keys are present in Japanese (lang_ja.gd)")
+
+	Loc.language = "en"
+	assert_eq(Loc.t("uib_class_guard"), "Guard", "EN Guard label")
+	assert_eq(Loc.t("menu_multiplayer"), "Multiplayer", "EN Multiplayer label")
+
+	Loc.language = "zh"
+	assert_eq(Loc.t("uib_class_guard"), "卫兵", "ZH Simplified Chinese Guard label")
+	assert_eq(Loc.t("menu_multiplayer"), "多人对战", "ZH Simplified Chinese Multiplayer label")
+
+	Loc.language = "zh_tw"
+	assert_eq(Loc.t("uib_class_guard"), "衛兵", "ZH_TW Traditional Chinese Guard label")
+	assert_eq(Loc.t("menu_multiplayer"), "多人對戰", "ZH_TW Traditional Chinese Multiplayer label")
+
+	Loc.language = "ja"
+	assert_true(Loc.t("uib_class_guard") != "Guard" and not Loc.t("uib_class_guard").is_empty(), "JA Japanese Guard label is localized")
+	assert_true(Loc.t("menu_multiplayer") != "Multiplayer" and not Loc.t("menu_multiplayer").is_empty(), "JA Japanese Multiplayer label is localized")
+
+	Loc.language = prev_lang
+
+
+func test_language_dropdown_button_changes_language_and_updates_menu_labels() -> void:
+	var prev_lang: String = Loc.language
+	Loc.language = "en"
+	_mount_and_release(MENU_SCENE_PATH, func(menu):
+		assert_true(menu.language_button != null and menu.language_button is OptionButton,
+			"Main Menu has a language dropdown OptionButton")
+		if menu.language_button == null:
+			return
+		var opt: OptionButton = menu.language_button
+		assert_eq(opt.item_count, 4, "Language dropdown offers 4 language options (en, zh, zh_tw, ja)")
+		assert_eq(opt.selected, 0, "Language dropdown starts with English (index 0) selected")
+
+		# Select Simplified Chinese (index 1 -> "zh")
+		opt.select(1)
+		opt.item_selected.emit(1)
+		assert_eq(Loc.language, "zh", "Selecting index 1 switches Loc.language to 'zh'")
+		assert_eq(menu.play_button.text, Loc.t("menu_play"), "Play button updates to Simplified Chinese")
+		assert_eq(menu.multiplayer_button.text, "多人对战", "Multiplayer button updates to Simplified Chinese")
+
+		# Select Traditional Chinese (index 2 -> "zh_tw")
+		opt.select(2)
+		opt.item_selected.emit(2)
+		assert_eq(Loc.language, "zh_tw", "Selecting index 2 switches Loc.language to 'zh_tw'")
+		assert_eq(menu.multiplayer_button.text, "多人對戰", "Multiplayer button updates to Traditional Chinese")
+
+		# Select Japanese (index 3 -> "ja")
+		opt.select(3)
+		opt.item_selected.emit(3)
+		assert_eq(Loc.language, "ja", "Selecting index 3 switches Loc.language to 'ja'")
+		assert_eq(menu.multiplayer_button.text, "マルチプレイ", "Multiplayer button updates to Japanese")
+
+		# Select English (index 0 -> "en")
+		opt.select(0)
+		opt.item_selected.emit(0)
+		assert_eq(Loc.language, "en", "Selecting index 0 switches Loc.language back to 'en'")
+		assert_eq(menu.multiplayer_button.text, "Multiplayer", "Multiplayer button updates back to English")
+	)
+	Loc.language = prev_lang
