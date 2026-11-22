@@ -52,17 +52,17 @@ While it is already moving after clicking the button
 
 ## Pucks
 
-Meanwhile, the units, including Boss Monster, Enemy Adventurers and minions, stand like pucks instead of cue balls. The size of the pucks differs based on what they represent. Typically, a large monster will have a large puck, and a small mage enemy will have a small puck.
+Meanwhile, the units, including Boss Monster, Enemy Adventurers and minions, stand like pucks instead of cue balls. The size of the pucks differs based on what they represent. Typically, a large monster will have a large puck, and a small acolyte enemy will have a small puck.
 
-For the test scene:
+For the test scene (default puck radius and mass for Adventurer classes are defined in `./.docmanual/codexList/classes/`):
 
 Make the puck with (radius, height, mass):
 
 - Boss Monster: radius `0.8`, height `0.6` (`0.5 * 1.2`), mass `3.2` (`1.5 * (0.8 / 0.6)^2 * 1.2`)
-- Knight: radius `0.65`, height `0.4`, mass `1.7604` (`1.5 * (0.65 / 0.6)^2`)
-- Warrior: radius `0.6`, height `0.35`, mass `1.5` (reference mass)
-- Ranger (Archer): radius `0.57`, height `0.35`, mass `1.35375` (`1.5 * (0.57 / 0.6)^2`)
-- Mage: radius `0.55`, height `0.35`, mass `1.2604` (`1.5 * (0.55 / 0.6)^2`)
+- Guard: radius `0.65`, height `0.4`, mass `1.75`
+- Brawler: radius `0.6`, height `0.35`, mass `1.5` (reference mass)
+- Scout: radius `0.57`, height `0.35`, mass `1.35`
+- Acolyte: radius `0.55`, height `0.35`, mass `1.25`
 
 ## Timing
 

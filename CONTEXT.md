@@ -30,6 +30,6 @@ _Avoid_: pile
 **Card Type**:
 One of Environment, Monster Skill, Summoner or Minion — the four card families.
 
-**Legendary Hero**:
-A fixed, pre-designed Enemy Adventurer that appears in specific Stages — tailor-made and free to break Class rules. Stronger than random adventurers; defeated Legendary Heroes are recorded in the Codex.
+**Hero**:
+A superior Enemy Adventurer with an **Exceptional Class** (outside the standard Level 1–3 Class Trees) — fixed, pre-designed, tailor-made, and free to break standard Class rules. Stronger than random adventurers; defeated Heroes are recorded in the Codex.
 _Avoid_: named adventurer, boss (that's the player's own monster)

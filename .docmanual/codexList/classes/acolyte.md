@@ -14,6 +14,10 @@
 
 - Trait: magic-based
 
+- puck mass: 1.25
+
+- puck radius: 0.55
+
 ## Name: Mage
 
 - ID: ACA20001

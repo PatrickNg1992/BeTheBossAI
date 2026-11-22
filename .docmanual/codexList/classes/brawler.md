@@ -14,6 +14,10 @@
 
 - Trait: melee-focused
 
+- puck mass: 1.5
+
+- puck radius: 0.6
+
 ## Name: Warrior
 
 - ID: ACB20001

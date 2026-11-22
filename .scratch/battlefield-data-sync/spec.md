@@ -46,7 +46,7 @@ A unified, **Host-authoritative Battlefield Data Sync** architecture used identi
 
 14. As a Peer during `Puck-puck Time!` and `Action Time`, I want the Host to calculate all puck physics, rebounds, and scripted glides and sync puck positions to my screen, so that pucks always land in identical positions on every machine.
 15. As a Peer during `Puck-puck Time!`, I want to receive a one-shot effect start trigger whenever a collision occurs (carrying impact position, involved pucks, and staged damage numbers), so that my client plays collision sparks and running staged-damage popups without syncing particle frames.
-16. As a Peer during `Action Time`, I want to receive a one-shot effect start trigger when an Enemy Adventurer or Minion begins its action (move glide, auto-attack, skill, or Knight cue-shot), so that my client starts the unit's action animation in sync.
+16. As a Peer during `Action Time`, I want to receive a one-shot effect start trigger when an Enemy Adventurer or Minion begins its action (move glide, auto-attack, skill, or Guard cue-shot), so that my client starts the unit's action animation in sync.
 17. As a Peer, I want UI and status animations (the "Puck-puck Time!" banner flash, Energy spend rewind, Boss Monster Health Bar break flash/shake, and Adventurer Focusing lighting VFX) to trigger automatically on my client when the corresponding synced state changes, so that network traffic stays minimal.
 
 **Cards & Role-Based Hand Visibility**

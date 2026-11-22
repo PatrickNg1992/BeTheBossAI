@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent
 
-- [ ] When the local seated player's **Boss Monster** (shown in the upper-left screen HUD) takes staged damage during `Puck-puck Time!` or `Action Time` (such as colliding with a Knight puck, enemy attacks, or falling into a Pocket Area), the upper-left Boss Monster HUD displays:
+- [ ] When the local seated player's **Boss Monster** (shown in the upper-left screen HUD) takes staged damage during `Puck-puck Time!` or `Action Time` (such as colliding with a Guard puck, enemy attacks, or falling into a Pocket Area), the upper-left Boss Monster HUD displays:
   - A **Damage Stack** hit-count badge on the left of the Boss HP bar (with a large, smart count number and subtle circle background, invisible when count is `0`, shaking proportionally on each hit).
   - A blood-red **Ghost HP** trail (`(Sum of Damage Stack) * 1.1^(Hit Level)`, clamped at `0` of the active Health Bar) against a green-to-greenish-yellow remaining HP fill.
   - A large settled negative HP change number (e.g. `-567`) when `Settle Time` resolves the Boss Monster's Damage Stack (capped at clearing at most 1 Health Bar per Settle Phase).

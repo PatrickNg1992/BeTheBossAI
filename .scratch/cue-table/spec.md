@@ -33,15 +33,15 @@ Implemented in `src/battlefield/cue_table.tscn` (instanced as `Battlefield` in `
 
 ## Puck sizes (test scene)
 
-Radius × height, sized by what the puck represents (large monster → large puck):
+Radius, height, and mass, sized by what the puck represents (Adventurer class defaults are defined in `.docmanual/codexList/classes/`):
 
-| Puck | Radius | Height |
-|---|---|---|
-| Boss Monster | 1.5 | 1.0 |
-| Knight | 1.2 | 0.8 |
-| Warrior | 1.1 | 0.7 |
-| Ranger | 1.0 | 0.7 |
-| Mage | 0.9 | 0.7 |
+| Puck | Radius | Height | Mass |
+|---|---|---|---|
+| Boss Monster | 0.8 | 0.6 | 3.2 |
+| Guard | 0.65 | 0.4 | 1.75 |
+| Brawler | 0.6 | 0.35 | 1.5 |
+| Scout | 0.57 | 0.35 | 1.35 |
+| Acolyte | 0.55 | 0.35 | 1.25 |
 
 ## Camera
 

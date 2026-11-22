@@ -8,7 +8,7 @@ It controls the effects when two pucks collide. It basically follows classical m
 
 Each puck has a relative mass. The mass depends on the unit it represents. 
 
-Typically, the boss monster puck has a large mass. A knight puck has a larger mass than other enemy adventurer pucks.
+Typically, the boss monster puck has a large mass. A guard puck has a larger mass than other enemy adventurer pucks.
 
 A heavier puck is less likely to be affected by a lighter puck.
 

@@ -4,11 +4,11 @@ While controlling the boss monster, the player faces incoming adventurers as ene
 
 Adventurers come in groups in each wave, called Adventurer teams. The player must defeat all the adventurers in a wave to complete it. Each team consists of at most 6 adventurers. 1 or 2 teams are allowed in a single wave. (4 - 12 adventurers in common)
 
-There is a random adventurer generation logic to be specified in ./heroGeneration.md
+There is a random adventurer generation logic to be specified in ./adventurerGeneration.md
 
-## Hero Basic
+## Adventurer Basic
 
-Each hero owns the following basic properties: 
+Each adventurer owns the following basic properties: 
 
 - Class, which affects the activities and skills,
 
@@ -16,9 +16,9 @@ Each hero owns the following basic properties:
 
 - Max HP, which affects survivability, 
 
-- Power, which affects the attack damage
+- Power, which affects attack damage
 
-Then, based on the basic properties, a hero will have:
+Then, based on the basic properties, an adventurer will have:
 
 - Current HP
 
@@ -30,15 +30,15 @@ Then, based on the basic properties, a hero will have:
 
 - Upcoming Actions
 
-Typically, the player can defeat a hero by bringing his HP to 0.
+Typically, the player defeats an adventurer by reducing their HP to 0.
 
-The class system is desbribed in ./heroClasses.md
+The class system is desbribed in ./adventurerClasses.md
 
 ## Visualization
 
 On the right side of the canvas in the battlefield scene, an area shows the basic information of the members of the adventurer team, called the *Unit Information Board*.
 
-The Profile shows a box for each hero in that wave. It displays the following info:
+The Profile shows a box for each adventurer in that wave. It displays the following info:
 
 - Icon,
 
@@ -47,42 +47,34 @@ The Profile shows a box for each hero in that wave. It displays the following in
 - Class,
 
 - A number and unique colour in the team,
-
-- How many turns left for the next basic attack and active skills
-
+- How many turns left for the next action (Action Countdown)
 
 
-If a hero is defeated, the icon turns grey, and a red cross mark appears on it. Hide the HP bar and all turn information.
 
-If a hero is temporarily taken out of the game (like pocketed), the icon turns grey. Shows the turn number needed for it to come back instead. 
+If an adventurer is defeated, the icon turns grey, and a red cross mark appears on it. Hide the HP bar and all turn information.
 
-Each hero is represented by a puck on the table. The pucks are distinguished by the colour and number of the hero.
+If an adventurer is temporarily taken out of the game (like pocketed), the icon turns grey. Shows the turn number needed for it to come back instead. 
 
-In Action timing, or "Puck-puck Time!", when the heroes take damage, the damage will display and accumulate under the profile. A Ghost Health bar (trail HP) will be displayed and kept until the settle time and fade out with animation. The defeat calculation will only take effect at the settle time but not at other times. The puck of a defeated hero will be removed.
+Each adventurer is represented by a puck on the table. The pucks are distinguished by the colour and number of the adventurer.
+
+In Action timing, or "Puck-puck Time!", when the adventurers take damage, the damage will display and accumulate under the profile. A Ghost Health bar (trail HP) will be displayed and kept until the settle time and fade out with animation. The defeat calculation will only take effect at the settle time but not at other times. The puck of a defeated adventurer will be removed.
 
 ## Action Tags
 
-Heroes not only mark the turns left for their next basic attacks and active skills, but the information will also be displayed on the *Time Board Display*. 
+Adventurers mark the turns left for their next action (*Action Countdown*), and this information is also displayed on the *Time Board Display* as an *Action Tag*. See `./adventurerActions.md` for the full 12-turn Action Cycle design.
 
-Heroes with the same turns left for the upcoming action will share the same tag. An action tag will mark 2 numbers: the count of heroes using this tag and the turns remaining. 
+Adventurers with the same turns left for their upcoming action share the same tag. An action tag marks 2 numbers: the count of adventurers using this tag and the turns remaining. 
 
-Once a hero decides when the next actions will be (either entering the game, completing an action, or being taken out of the table, etc), it will show the action tag. If a tag for that turn is already there, just change the count of heroes. Otherwise, create a tag with count = 1.
-
-Remove an action tag with a count of 0.
-
-Typically, a hero has 1 to 2 action tags. One active skill can coexist with a basic move.
-
-A hero may change its targeted next action in settle timing, after some moves in action timing or "Puck-ppuck timing!".
+Each adventurer has a fixed Action Countdown that is a factor of 12 (`3`, `4`, or `6`). When an adventurer enters the game or completes an action (resetting at the end of Settle Time), it places/joins the action tag for its Action Countdown. If a tag for that turn is already there, increment the count of adventurers; otherwise, create a tag with `count = 1`. Remove an action tag when its count reaches `0`. Individual Attack and Active Skills have their own `Skill Countdown` checked when the unit acts in Action Time (see `./adventurerSkills.md` and `../unitInformation/unitSkills.md`).
 
 ## Focusing State and Attack
 
-A unit (puck) can change to focusing state before attack. This gives the player time to take appropriate actions. 
+Existing base skills take effect immediately in Action Time and are non-interruptible.
 
-A unit enters focusing state under specific conditions based on its class. In most cases, it depends on the distance between it and other pucks. If a puck is focusing, it has lighting visual effects. Player are often recommended to hit a focusing pucks in "Puck-puck time!". (Except classes like Knight)
+For specific future/advanced interruptible skills, a unit (puck) can change to a **Focusing** state before its attack lands, giving the player time to take appropriate counter-actions. When a puck is focusing, it has lighting visual effects, and players are often recommended to hit focusing pucks in "Puck-puck time!" (except classes in the Guard tree).
+## Adventurer move
 
-## Hero move
-
-Most heroes move at constant speed without a physical engine in Action timing. No collision detection is needed. 
+Most adventurers move at constant speed without a physical engine in Action timing. No collision detection is needed. 
 
 ## Number size
 

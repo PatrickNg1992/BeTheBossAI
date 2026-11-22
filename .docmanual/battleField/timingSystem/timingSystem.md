@@ -26,7 +26,7 @@ If an energy slot with action tags is charged, it enters the Action Time.
 
 Units on the battlefield make their actions automatically.
 
-If a knight or other special puck makes a cue-shot, it enters the Puck-puck Time.
+If a guard or other special puck makes a cue-shot, it enters the Puck-puck Time.
 
 Otherwise, it enters the Settle Time when ends.
 

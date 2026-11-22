@@ -74,7 +74,7 @@ Rows L1 and R1 hold each side's boss monster (`Ω` Fire Dragon for Player A; `Ψ
 
 Rows L2-4 and R2-4 show up to 6 minions of each side.
 
-Row L5 and R5 hold each side's Adventurer Team header (or are left empty). Rows L6-8 (`L61..L82`) show Player A's 6 Adventurers (`V, B, R, S, F, E`), and Rows R6-8 (`R61..R82`) show Player B's 6 Adventurers (`v, b, r, s, f, e`).
+Row L5 and R5 hold each side's Adventurer Team header (or are left empty). Rows L6-8 (`L61..L82`) show Player A's 6 Adventurers (`G, B, S, A, F, E`), and Rows R6-8 (`R61..R82`) show Player B's 6 Adventurers (`g, b, s, a, f, e`).
 
 ## 2-player cooperative game
 
@@ -86,26 +86,26 @@ On the left side, L1-4 are the same as a single-player game that shows Player A'
 
 Reference marks identify different pucks on the cue table. A reference mark marks the same symbol on the upper-left Unit Display and the middle of the puck of a unit. Each wave uses unique marks.
 
-The members of the first Adventurer Team are marked with **capital letters** (`V, B, R, S, F, E`), while the members of the second Adventurer Team are marked with **small letters** (`v, b, r, s, f, e`), corresponding to positions `1` through `6` (**V**anguard, **B**rawler, **R**anger, **S**pell, **F**ree, and **E**xtra). For easy identification, in general for normal random Adventurer Team generation, the reference position will be arranged by unit classes so that position `1` (`V`/`v`) is Knight (guardian) class, position `2` (`B`/`b`) is Warrior class, position `3` (`R`/`r`) is Ranger class, and position `4` (`S`/`s`) is Mage (magician) class. Positions `5` (`F`/`f`) and `6` (`E`/`e`) are free positions for duplicate classes. Therefore, some positions may be missing in the middle for some small teams, and their corresponding Unit Display cells are left empty rather than compacted. Note: this class-to-position rule applies to normal random Adventurer Team generation; customized team compositions in specific stages are free to override it.
+The members of the first Adventurer Team are marked with **capital letters** (`G, B, S, A, F, E`), while the members of the second Adventurer Team are marked with **small letters** (`g, b, s, a, f, e`), corresponding to positions `1` through `6` (**G**uard, **B**rawler, **S**cout, **A**colyte, **F**ree, and **E**xtra). For easy identification, in general for normal random Adventurer Team generation, the reference position will be arranged by unit class trees so that position `1` (`G`/`g`) is Guard (and its advanced classes), position `2` (`B`/`b`) is Brawler (and its advanced classes), position `3` (`S`/`s`) is Scout (and its advanced classes), and position `4` (`A`/`a`) is Acolyte (and its advanced classes). Positions `5` (`F`/`f`) and `6` (`E`/`e`) are free positions for duplicate class trees. Therefore, some positions may be missing in the middle for some small teams, and their corresponding Unit Display cells are left empty rather than compacted. Note: this class-to-position rule applies to normal random Adventurer Team generation; customized team compositions in specific stages are free to override it.
 
-For intuitive class recognition on the Cue Table, both the **puck** and the **Unit Display grid border** are coloured according to the unit's **Class** (even when placed in free positions `F`/`f` or `E`/`e`):
-- **Knight**: **Blue**
-- **Warrior**: **Red**
-- **Ranger**: **Green**
-- **Mage**: **Purple**
+For intuitive class recognition on the Cue Table, both the **puck** and the **Unit Display grid border** are coloured according to the unit's **Class Tree** (applying to each base class and its advanced classes, even when placed in free positions `F`/`f` or `E`/`e`):
+- **Guard (and advanced classes)**: **Blue**
+- **Brawler (and advanced classes)**: **Red**
+- **Scout (and advanced classes)**: **Green**
+- **Acolyte (and advanced classes)**: **Purple**
 - **Boss Monster**: **Black**
 
 To distinguish between multiple pucks of the same Class across teams and free positions (`5` and `6`):
 1. **Team 4-Sided X Stripe** (to clearly separate Adventurer Team 1 and Adventurer Team 2):
-   - **Adventurer Team 1 (`V, B, R, S, F, E`)**: **White** 4-sided stripe like an **X**
-   - **Adventurer Team 2 (`v, b, r, s, f, e`)**: **Black** 4-sided stripe like an **X**
+   - **Adventurer Team 1 (`G, B, S, A, F, E`)**: **White** 4-sided stripe like an **X**
+   - **Adventurer Team 2 (`g, b, s, a, f, e`)**: **Black** 4-sided stripe like an **X**
 2. **Free-Position 8-Ball Circle** (to identify free positions `5` and `6` without extra stripes):
-   - **Positions `1..4` (`V/v, B/b, R/r, S/s`)**: No circle behind the letter
+   - **Positions `1..4` (`G/g, B/b, S/s, A/a`)**: No circle behind the letter
    - **Positions `5` and `6` (`F`/`f`, `E`/`e`)**: A **white circle** behind the Reference Mark letter in the center of the puck (like an 8-ball)
 
 In addition, the **Reference Mark colour** itself differs by team:
-- **Adventurer Team 1 (`V, B, R, S, F, E`)**: **Deep Grey** Reference Mark colour
-- **Adventurer Team 2 (`v, b, r, s, f, e`)**: **Deep Brown** Reference Mark colour
+- **Adventurer Team 1 (`G, B, S, A, F, E`)**: **Deep Grey** Reference Mark colour
+- **Adventurer Team 2 (`g, b, s, a, f, e`)**: **Deep Brown** Reference Mark colour
 
 (This logic affects the enemy random algorithm)
 

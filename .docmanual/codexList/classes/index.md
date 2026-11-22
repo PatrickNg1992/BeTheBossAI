@@ -28,6 +28,10 @@ This codex does not have subfolders. Classes are stored in 5 Markdown files in t
 
 - Trait: {brief description of the special point of this class}
 
+- puck mass: {default puck mass}
+
+- puck radius: {default puck radius}
+
 ## Key points
 
 The name row uses Header 2 for Markdown.
@@ -47,3 +51,5 @@ The reference ID of Adventurer Class are in the format of regex  `AC[GBSAO][1234
 - `[12345]`: Class level
 
 - `\d{4}`: running number in order
+
+If the puck mass or radius is not specified, follow its direct prerequisite class.

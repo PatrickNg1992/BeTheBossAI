@@ -26,9 +26,13 @@ A group of *Enemy Adventurers* that come to challenge the player in each wave. A
 
 An enemy unit of the player. Each may have a *Class*, some *Equipment* and some *Adventurer Skills*.
 
+## Hero
+
+A superior *Enemy Adventurer* with an *Exceptional Class* — fixed, pre-designed, free to break standard Class rules, and recorded in the Codex when defeated.
+
 ## Class
 
-The type (occupation) of an Enemy Adventurer. Examples are Warrior, Mage, Ranger, Knight, etc.
+The type (occupation) of an Enemy Adventurer. The 4 base classes (Level 1) are Brawler, Acolyte, Scout, and Guard (which advance into Level 2 and Level 3 classes in their respective Class Trees, such as Warrior, Mage, Ranger, Knight, etc.). Class Tree properties (such as Guard's ally collision protection, Boss collision damage, and class colour coding) apply to the base class and its advanced classes.
 
 ## Battlefield
 
@@ -62,7 +66,7 @@ The battle-scoped manager node inside the Battlefield Scene that owns authoritat
 
 ## Reference Mark
 
-The short identifier shown on both the upper-left corner of a unit's **Unit Display** and the center of its Puck(s) on the Cue Table: `Ω` / `ω1..ω6` in Gold for Player A; `Ψ` / `ψ1..ψ6` in Silver for Player B; capital letters `V, B, R, S, F, E` in Deep Grey for Adventurer Team 1; small letters `v, b, r, s, f, e` in Deep Brown for Adventurer Team 2 (**V**anguard, **B**rawler, **R**anger, **S**pell, **F**ree, **E**xtra). Pucks and Unit Display borders are coloured by Class (Knight = Blue, Warrior = Red, Ranger = Green, Mage = Purple, Boss Monster = Black), with a 4-sided White X stripe for Team 1, a 4-sided Black X stripe for Team 2, and a white 8-ball circle behind the letter for free positions `F`/`f` and `E`/`e`.
+The short identifier shown on both the upper-left corner of a unit's **Unit Display** and the center of its Puck(s) on the Cue Table: `Ω` / `ω1..ω6` in Gold for Player A; `Ψ` / `ψ1..ψ6` in Silver for Player B; capital letters `G, B, S, A, F, E` in Deep Grey for Adventurer Team 1; small letters `g, b, s, a, f, e` in Deep Brown for Adventurer Team 2 (**G**uard, **B**rawler, **S**cout, **A**colyte, **F**ree, **E**xtra). Pucks and Unit Display borders are coloured by Class Tree (Guard tree = Blue, Brawler tree = Red, Scout tree = Green, Acolyte tree = Purple, Boss Monster = Black), with a 4-sided White X stripe for Team 1, a 4-sided Black X stripe for Team 2, and a white 8-ball circle behind the letter for free positions `F`/`f` and `E`/`e`.
 
 ## Damage Stack
 
@@ -70,7 +74,7 @@ The time-ordered list of pending `Damage DO` records accumulated on a unit durin
 
 ## Frenzy Power
 
-A percentage damage multiplier (baseline `100.0%`, floor `50.0%`, displayed to 1 d.p. on the right of each Boss Monster's 2-cell Unit Display). Increases by `+10%` when colliding with an opponent non-Knight Adventurer, decreases by `-20%` when colliding with an opponent Knight, multiplies opponent Adventurer damage at `Settle Time`, and decays via `new_frenzy = (current_frenzy / 2) + 50%` after each `Settle Time`.
+A percentage damage multiplier (baseline `100.0%`, floor `50.0%`, displayed to 1 d.p. on the right of each Boss Monster's 2-cell Unit Display). Increases by `+10%` when colliding with an opponent Adventurer, and is dynamically reduced by passive skills such as Guard's `SPA10001 Protect` (`-X * (4% + Lv * 1%)` where `X` is the number of non-Guard-tree teammates, offsetting the normal `+10%`). Multiplies opponent Adventurer scalable damage at `Settle Time`, and decays via `new_frenzy = (current_frenzy / 2) + 50%` after each `Settle Time`.
 
 ## Hit Level
 
@@ -136,13 +140,13 @@ Everything waits for exactly one player action: one cue-shot, one card, or cance
 
 ## Action Time
 
-The units whose Action Tags reached the goal act, one action each, in spawn order (buff/debuff first — TBC; cue-shot actions like the Knight's last). Everyone else spectates.
+The units whose Action Tags reached the goal act in a deterministic order (buff/debuff first — TBC; normal actions in spawn order; cue-shot actions last), without waiting for the previous unit's animation or movement to finish before starting the next unit's action. Everyone else spectates.
 
 ## Action Tag
 
-A marker a Adventurer or Minion places on a slot of the *Time Board*, meaning "this unit acts when the tag reaches the goal (upper-left slot)." Tags are independent of energy. After acting, the unit places its next tag some slots ahead of the goal; faster units use smaller offsets and act more often.
+A marker an Adventurer or Minion places on a slot of the *Time Board*, meaning "this unit acts when the tag reaches the goal (upper-left slot)." Tags are independent of energy. Every 12 turns is an *Action Cycle*: each Adventurer has a single fixed *Action Countdown* that must be a factor of 12 (`3`, `4`, or `6` — typically `4` for Guard and Brawler trees, `3` for Scout tree, `6` for Acolyte tree, modifiable by passive skills to another fixed factor), so Action Time only occurs at turns `3, 4, 6, 8, 9, 12` of the 12-turn cycle (with 12-interval tags highlighted in a special colour). Individual Attack and Active Skills have their own *Skill Countdown* checked in `Active Skill → Attack Skill → Move Skill` order when the unit acts, and the unit's Action Tag resets at the end of *Settle Time*.
 
-Displayed as a simple arrow pointing into the bar, with two integers — how many units share the tag, and how many *Turns* until the goal. The Turns integer is also shown on each unit's icon in the canvas. During *Action Time* the firing tag stays at the goal, its unit count decreasing as each unit acts; replacement tags fade in one-by-one as each action completes, and the firing tag vanishes when Action Time ends.
+Displayed as a simple arrow pointing into the bar, with two integers — how many units share the tag, and how many *Turns* until the goal. The Turns integer is also shown on each unit's icon in the canvas. During *Action Time* the firing tag stays at the goal, and its replacement tags are placed when Action Time / Settle Time completes.
 
 ## Puck-puck Time!
 

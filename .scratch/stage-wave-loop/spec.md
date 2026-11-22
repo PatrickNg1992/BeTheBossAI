@@ -9,9 +9,9 @@ One Stage of 5 Waves. All Adventurer Team compositions are rolled once, when the
 ## Adventurer Team composition
 
 - Wave sizes: 4 / 6 / 7 / 8 / 10 (designed escalation; counts may be tuned).
-- Every Wave contains at least one puck of **each** Class (Warrior, Knight, Mage, Ranger).
-- Remaining slots: fully random, uniform class pick.
-- Spawn positions: random Tiles along the four Cushions.
+- Waves should contain pucks from all four Class Trees (Guard, Brawler, Scout, Acolyte); missing class trees are allowed as an uncommon case (e.g. small teams, leaving their Unit Information Board slots empty).
+- Remaining slots: random pick across the Class Trees.
+- Spawn positions: **TBC** (not confirmed yet).
 
 ## Flow
 

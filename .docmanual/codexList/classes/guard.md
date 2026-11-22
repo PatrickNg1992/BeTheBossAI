@@ -8,11 +8,15 @@
 
 - Description: TBC
 
-- Skills: SMA10001, SAA10001, SPA1001
+- Skills: SMA10001, SAA10001, SPA10001
 
 - From: -
 
 - Trait: defence-focused
+
+- puck mass: 1.75
+
+- puck radius: 0.65
 
 ## Name: Sentinel
 

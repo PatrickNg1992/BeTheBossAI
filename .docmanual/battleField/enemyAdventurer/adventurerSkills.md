@@ -16,7 +16,7 @@ It is common for a class to have the skills of its Prerequisite Classes.
 
 For the four base classes of each class tree, they are defaulted equipped with the following skills:
 
-- Guard: SMA10001, SAA10001, SPA1001
+- Guard: SMA10001, SAA10001, SPA10001
 
 - Brawler: SMA10002, SAA10002
 

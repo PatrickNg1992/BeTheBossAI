@@ -13,7 +13,7 @@ Today on the demo Battlefield, the Boss Monster is driven by placeholder keyboar
 Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck scripts, Cue Table blocks, Time Board view, and a central `PuckVelocityManager` on the Battlefield:
 
 1. **Puck State & `PuckVelocityManager` (60 Hz Position / 20 Hz Velocity)**:
-   - Every Puck (`BasePuck` and subclasses) belongs to the `"pucks"` group and stores `radius`, `mass`, and `velocity` (default radii & squared-radius-ratio masses with Warrior `radius = 0.6, mass = 1.5` as reference and Boss Monster height & mass `x1.2`: Boss Monster `radius = 0.8, height = 0.6, mass = 3.2`; Knight `radius = 0.65, height = 0.4, mass ≈ 1.7604`; Warrior `radius = 0.6, height = 0.35, mass = 1.5`; Ranger `radius = 0.57, height = 0.35, mass = 1.35375`; Mage `radius = 0.55, height = 0.35, mass ≈ 1.2604`).
+   - Every Puck (`BasePuck` and subclasses) belongs to the `"pucks"` group and stores `radius`, `mass`, and `velocity` (default Adventurer puck radii and masses are defined per class in `.docmanual/codexList/classes/`: Boss Monster `radius = 0.8, height = 0.6, mass = 3.2`; Guard `radius = 0.65, height = 0.4, mass = 1.75`; Brawler `radius = 0.6, height = 0.35, mass = 1.5`; Scout `radius = 0.57, height = 0.35, mass = 1.35`; Acolyte `radius = 0.55, height = 0.35, mass = 1.25`).
    - A Battlefield-level `PuckVelocityManager` advances moving Puck positions every frame ($\Delta \vec{p} = \vec{v} \cdot \Delta t$, host-authoritative for `MultiplayerSynchronizer`) and runs velocity updates at **20 Hz (`0.05s` interval)** to resolve collisions and ground Friction Forces with minimal CPU overhead.
 2. **Extendable Ground Friction on `TableBlock` (`-1.0 unit/sec²`)**:
    - Each `TableBlock` exposes an extendable method taking `puck: BasePuck` that computes the continuous ground effect on velocity.
@@ -35,7 +35,7 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
 1. As a player, I want every moving Puck on the Cue Table to gradually slow down and come to a complete stop due to ground Friction, so that every Cue-Shot finishes cleanly and transitions out of `Puck-puck Time!`.
 2. As a player, I want a Puck on a standard grass Tile to decelerate at `-1.0 unit/sec²` (slowing from `5 units/sec` to `4 units/sec` after `1` second) and stop cleanly at zero without ever reversing direction, so that shot stopping distances are predictable.
 3. As a designer, I want different `TableBlock` types (`GRASS`, `STONE`, `MUD`, `ICE`, and future custom blocks) to modify ground Friction or apply custom Forces via an extendable method on `TableBlock` that receives the Puck as input, so that swapping table blocks creates fun gameplay variations.
-4. As a player, I want each Puck to have a `radius` and a relative `mass` based on the unit it represents (Boss Monster > Knight > Warrior > Ranger > Mage), so that heavier Pucks are harder to knock around and transfer more momentum to lighter Pucks.
+4. As a player, I want each Puck to have a `radius` and a relative `mass` based on the unit it represents (Boss Monster > Guard > Brawler > Scout > Acolyte), so that heavier Pucks are harder to knock around and transfer more momentum to lighter Pucks.
 5. As a developer, I want Puck positions updated every frame while velocity changes (collisions and ground Friction) are calculated at ~20 Hz (`0.05s`) by a central `PuckVelocityManager`, so that motion looks smooth at 60+ FPS while physics calculation overhead stays low.
 6. As a player, I want two colliding Pucks to exchange opposite Impulses along their contact normal using classical mechanics ($m_1, m_2, e$), so that chain collisions feel physical and reward hitting lighter Enemy Adventurers with a heavy Boss Monster.
 7. As a player, I want a Puck hitting a Cushion to rebound with perpendicular restitution ($e$) and parallel Cushion friction ($f_c$) via an extendable impact method on `CushionBlock`, so that bank shots behave like a cue game and future Special Cushions can override the impact.
@@ -62,12 +62,12 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
     - `@export var restitution: float = 0.85`
     - `velocity: Vector3` (horizontal motion in `velocity.x` and `velocity.z`)
     - `apply_impulse(impulse: Vector3) -> void`: one-off velocity change `velocity += impulse / mass`.
-  - Default unit masses:
-    - Boss Monster (`DragonPlayer`): `3.0`
-    - Knight: `2.0`
-    - Warrior: `1.5`
-    - Ranger: `1.2`
-    - Mage: `1.0`
+  - Default unit masses and radii (per `.docmanual/codexList/classes/`):
+    - Boss Monster (`DragonPlayer`): `mass = 3.2`, `radius = 0.8`
+    - Guard: `mass = 1.75`, `radius = 0.65`
+    - Brawler: `mass = 1.5`, `radius = 0.6`
+    - Scout: `mass = 1.35`, `radius = 0.57`
+    - Acolyte: `mass = 1.25`, `radius = 0.55`
   - In the demo sandbox, `BaseEnemy` autonomous wandering/chasing is gated by an `@export var ai_enabled: bool = false` flag so Enemy Adventurers stay stationary unless moved by `PuckVelocityManager`.
 - **`PuckVelocityManager` (60 Hz Position / 20 Hz Velocity & Swept Collision)**:
   - Hosted on the Battlefield (and callable directly in tests via `step_positions(delta: float)` and `step_velocities(tick_dt: float)`):
@@ -115,7 +115,7 @@ Introduce a tailor-made Puck physics and Drag-and-Shot system across the Puck sc
 ## Out of Scope
 
 - Full `TimingManager` state machine (`Prepare`, `Charging`, `Play`, `Action`, `Puck-puck Time!`, `Settle`) and Action Tag scheduling.
-- Collision Damage calculation, Knight protection rules, Focusing Interrupts, and staged damage in Settle Time.
+- Collision Damage calculation, Guard protection rules, Focusing Interrupts, and staged damage in Settle Time.
 - Multiplayer `MultiplayerSynchronizer` scene wiring (covered by `.docmanual/battleField/battleFieldDataSync.md`).
 - Card effects and final audio/VFX assets.
 

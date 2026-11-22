@@ -1,6 +1,12 @@
-update hero to adventurer except the concept of legenary hero
-update base class name: knight to guard, warrior to brawler, mage to speller. they are the base classes. knight, warrior and mage should be upper classes
+I have re-phased some keywords so i need you to scan the project to refactor the existing resource. Here is the target refactors:
 
-Acolyte, Scout
+- re-phase "hero" to "adventurer" except the concept of "legenary hero". Now a Hero should means a superior Adventurer with a Exceptional Class. Especially "Hero team" should be Adventurer Team.
+- re-phase base class name: knight to guard, warrior to brawler, ranger to scout, mage to acolyte. the 4 base classes are renamed. Now, knight, warrior, ranger and mage should be Level 2 classes. Beware not to change the wording that means upper level classes.
+
+
+Check the content meaning. Do not just global search and replace. Keep the letter cases. Ask me if you are not sure. 
+
+This time, no need to work on the source code in ./src folder. It will be done later. Focus on these folder: `./docmanual`, `./.docs`, `./.scratch` . Also check the markdown files in the project root folder.
+Also, while reading the documents, spec and ticket, detect any idea are contractic in different documents now. There are so many to maintenance. Tell me to clarify if contraction is found. 
 
 

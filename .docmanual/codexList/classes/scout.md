@@ -8,11 +8,15 @@
 
 - Description: TBC
 
-- Skills: SMA10003, SAA10003, SPA1002
+- Skills: SMA10003, SAA10003, SPA10002
 
 - From: -
 
 - Trait: ranged-based
+
+- puck mass: 1.35
+
+- puck radius: 0.57
 
 ## Name: Shooter
 

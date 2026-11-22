@@ -76,7 +76,7 @@ This list should be managed. Add comments to the Skill Classes for that. Can use
 
 Some skills will not take effect every Action Time a unit participates. Skill Countdown is the minimum number of turns that must pass before the skill can activate again. The Skill Countdown of a skill start with the value, but not 0. The countdown resets only when the skill fulfilled its activation conditions and activated.
 
-For example, if a Knight has a skill with Skill Countdown 9 while it has Action Countdown 4, it means the skill takes at least 3 Action Time to take effect again. 
+For example, if a Guard has a skill with Skill Countdown 9 while it has Action Countdown 4, it means the skill takes at least 3 Action Time to take effect again. 
 
 ### On the cue table
 
@@ -90,6 +90,6 @@ This condition means that
 
 ### Pocket Area Damage +/-?%
 
-When a unit falls into the Pocket Area, calculate all the passive effects to adjust the damage it should take. The default Pocket Area Damage value is 50% of the max HP for all units (only count 1 HP bar). The resulting value must be within 0 to 100%. 
+When a unit falls into the Pocket Area, calculate all the passive effects to adjust the damage it should take. The default Pocket Area Damage value is 50% of the max HP for all units (only count 1 HP bar). The resulting value must be within 0 to 100%, and the resulting `Damage DO` is marked `is_fixed = true` (meaning it is not affected by `Hit Level` or `Frenzy Power` during Damage Settlement). 
 
 For example, if two Scouts with skill apply -10% each to teammates and a Boss monster skill apply +15% to all enemies, a unit should take 45% damage when fallen into pocket.
