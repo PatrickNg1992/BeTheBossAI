@@ -26,6 +26,8 @@ const ROLE_SPECTATOR := "spectator"
 @onready var puck_velocity_manager: PuckVelocityManager = %PuckVelocityManager
 @onready var cue_shot_manager: CueShotManager = %CueShotManager
 @onready var unit_information_manager: UnitInformationManager = get_node_or_null("%UnitInformationManager") as UnitInformationManager
+var unit_skill_manager: UnitSkillManager = null
+var time_board_model: TimeBoardModel = null
 @onready var time_board: TimeBoard = %TimeBoard
 @onready var play_button: Button = %PlayButton
 @onready var fast_play_button: Button = %FastPlayButton
@@ -152,6 +154,9 @@ func _ready() -> void:
 
 	_apply_role_and_authority_mode()
 	_setup_demo_unit_information()
+	if time_board_model == null:
+		time_board_model = TimeBoardModel.new()
+	time_board_model.bind(timing_manager, unit_information_manager, unit_skill_manager, has_player_b())
 	timing_manager.set_energy(DEMO_INITIAL_ENERGY)
 	timing_manager.set_energy_b(DEMO_INITIAL_ENERGY if has_player_b() else 0.0)
 
@@ -170,14 +175,7 @@ func _ready() -> void:
 	Loc.language_changed.connect(_update_ui_labels)
 
 	time_board.set_perspective_role(get_local_role())
-	time_board.render_state({
-		"energy": timing_manager.get_energy(),
-		"energy_a": timing_manager.get_energy(),
-		"energy_b": timing_manager.get_energy_b(),
-		"has_player_b": has_player_b(),
-		"charge": timing_manager.get_charge_progress(),
-		"tags": {},
-	})
+	time_board.render_state(time_board_model.get_state())
 	_bind_unit_info_sync_signals()
 	if is_host:
 		sync_time_board({}, MpTransport.RELIABLE)
@@ -197,6 +195,8 @@ func _apply_role_and_authority_mode() -> void:
 			timing_manager._energy_b = DEMO_INITIAL_ENERGY
 	if puck_velocity_manager != null:
 		puck_velocity_manager.set_process(is_host)
+	if time_board_model != null:
+		time_board_model.set_has_player_b(has_player_b())
 	if time_board != null:
 		time_board.set_perspective_role(get_local_role())
 	var canvas_node := get_node_or_null("Canvas")
@@ -463,7 +463,7 @@ func sync_time_board(payload: Dictionary = {}, transfer_mode: int = MpTransport.
 	if not data.has("has_player_b"):
 		data["has_player_b"] = has_player_b()
 	if not data.has("action_tags"):
-		data["action_tags"] = []
+		data["action_tags"] = time_board_model.get_state().get("tags", {}) if time_board_model != null else []
 	if not data.has("unit_tag_turns"):
 		data["unit_tag_turns"] = {}
 	_dispatch_sync("time_board", data, transfer_mode)
@@ -659,6 +659,13 @@ func _setup_demo_unit_information() -> void:
 		unit_information_manager = get_node_or_null("UnitInformationManager") as UnitInformationManager
 	if unit_information_manager == null:
 		return
+	if unit_skill_manager == null:
+		unit_skill_manager = get_node_or_null("UnitSkillManager") as UnitSkillManager
+		if unit_skill_manager == null:
+			unit_skill_manager = UnitSkillManager.new()
+			unit_skill_manager.name = "UnitSkillManager"
+			add_child(unit_skill_manager)
+	unit_skill_manager.bind_unit_information_manager(unit_information_manager)
 	unit_information_manager.clear_all()
 
 	if has_player_b():
@@ -951,9 +958,15 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 	if is_host and new_timing == TimingManager.TIMING_CHARGING and _old_timing != TimingManager.TIMING_PLAY:
 		timing_manager.reset_play_used()
 		active_player = ""
+	if time_board != null and timing_manager != null:
+		var scale_f := maxf(timing_manager.get_effective_time_scale(), 1.0)
+		time_board.turn_duration = timing_manager.turn_duration / scale_f
 	_refresh_controls()
 	if is_host:
 		sync_timing()
+		if new_timing == TimingManager.TIMING_CHARGING or new_timing == TimingManager.TIMING_ACTION or new_timing == TimingManager.TIMING_PREPARE:
+			sync_time_board({}, MpTransport.RELIABLE)
+			sync_units()
 
 
 func _bind_unit_info_sync_signals() -> void:
@@ -992,8 +1005,9 @@ func _on_host_unit_collision_impulse(u: UnitInformationDO, impulse_mag: float) -
 func resolve_settle_and_check_pvp_winner() -> void:
 	if not is_host or unit_information_manager == null:
 		return
-	var res: Dictionary = unit_information_manager.settle_all_damage()
+	var res: Dictionary = time_board_model.on_settle_time_resolved() if time_board_model != null else unit_information_manager.settle_all_damage()
 	var settled_map: Dictionary = res.get("settled_damage", {})
+	sync_time_board({}, MpTransport.RELIABLE)
 	sync_boss_stats()
 	sync_units()
 	if not settled_map.is_empty():
@@ -1188,6 +1202,9 @@ func _on_fast_play_changed(enabled: bool) -> void:
 	elif _fast_play_index == 0:
 		var idx := FAST_PLAY_SPEEDS.find(timing_manager.fast_play_multiplier)
 		_fast_play_index = idx if idx > 0 else 2
+	if time_board != null and timing_manager != null:
+		var scale_f := maxf(timing_manager.get_effective_time_scale(), 1.0)
+		time_board.turn_duration = timing_manager.turn_duration / scale_f
 	_refresh_controls()
 
 

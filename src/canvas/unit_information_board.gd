@@ -245,7 +245,7 @@ func simulate_cell_click(grid_id: String) -> void:
 	if _detail_display.visible and _detail_display.inspected_grid_id == grid_id:
 		_detail_display.close_popup()
 	else:
-		_detail_display.show_for_unit(u, grid_id)
+		_detail_display.show_for_unit(u, grid_id, manager)
 
 
 func close_detail_display() -> void:
@@ -286,7 +286,7 @@ func set_local_role(p_role: String) -> void:
 func _on_unit_changed(_u: UnitInformationDO) -> void:
 	refresh_board()
 	if _detail_display != null and _detail_display.visible and _detail_display.inspected_unit != null:
-		_detail_display.show_for_unit(_detail_display.inspected_unit, _detail_display.inspected_grid_id)
+		_detail_display.show_for_unit(_detail_display.inspected_unit, _detail_display.inspected_grid_id, manager)
 
 
 func _on_mode_changed(_new_mode: String) -> void:

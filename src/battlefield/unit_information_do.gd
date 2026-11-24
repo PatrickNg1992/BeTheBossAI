@@ -25,13 +25,22 @@ var avatar_path: String = ""
 var class_mark_path: String = ""
 
 var adventurer_class: int = EnemyAdventurer.AdventurerClass.GUARD
+var class_id: String = "ACG10001"
+var unit_lv: int = 5
+var default_skill_lv: int = 1
+var base_max_hp: int = 100
 var current_hp: int = 100
 var max_hp: int = 100
 var bars_remaining: int = 1
 var max_bars: int = 1
+var base_power: int = 10
 var power: int = 10
+var base_spd: int = 100
+var spd: int = 100
+var action_countdown: int = 4
 var mass: float = 1.0
 var radius: float = 0.5
+var stat_modifiers: Array = []
 
 var damage_stack: Array[DamageDO] = []
 var hit_level: int = 0

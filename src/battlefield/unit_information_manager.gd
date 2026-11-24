@@ -78,6 +78,8 @@ const CLASS_ICON_RANGER := "res://src/resource/battlefield/class_ranger.png"
 const CLASS_ICON_MAGE := "res://src/resource/battlefield/class_mage.png"
 
 var game_mode: String = MODE_SINGLE_PLAYER
+var current_cycle_turn: int = 12
+var _skill_manager: UnitSkillManager = null
 var _units_by_id: Dictionary = {} # unit_id -> UnitInformationDO
 var _units_by_grid: Dictionary = {} # grid_id ("L11", "R21", ...) -> UnitInformationDO
 var _class_avatar_Usage_counts: Dictionary = {} # adv_class -> int count of assigned avatars
@@ -100,6 +102,7 @@ func clear_all() -> void:
 	_units_by_id.clear()
 	_units_by_grid.clear()
 	_class_avatar_Usage_counts.clear()
+	current_cycle_turn = 12
 	units_cleared.emit()
 
 
@@ -158,10 +161,14 @@ func register_boss(unit_id: String, seat: String, config: Dictionary = {}) -> Un
 	u.name_key = str(config.get("name_key", default_boss_name))
 	u.avatar_path = str(config.get("avatar_path", default_boss_avatar))
 	u.max_hp = int(config.get("max_hp", 1000))
+	u.base_max_hp = u.max_hp
 	u.current_hp = int(config.get("current_hp", u.max_hp))
 	u.max_bars = int(config.get("max_bars", 15))
 	u.bars_remaining = int(config.get("bars_remaining", u.max_bars))
 	u.power = int(config.get("power", 400))
+	u.base_power = u.power
+	u.spd = int(config.get("spd", 100))
+	u.base_spd = u.spd
 	u.mass = float(config.get("mass", 3.2))
 	u.radius = float(config.get("radius", 0.8))
 	u.frenzy_power = float(config.get("frenzy_power", 1.0))
@@ -210,8 +217,12 @@ func register_minion(unit_id: String, seat: String, slot_index: int, config: Dic
 	u.name_key = str(config.get("name_key", "uib_minion"))
 	u.avatar_path = str(config.get("avatar_path", AVATAR_MINION))
 	u.max_hp = int(config.get("max_hp", 80))
+	u.base_max_hp = u.max_hp
 	u.current_hp = int(config.get("current_hp", u.max_hp))
 	u.power = int(config.get("power", 10))
+	u.base_power = u.power
+	u.spd = int(config.get("spd", 100))
+	u.base_spd = u.spd
 	u.mass = float(config.get("mass", 1.0))
 	u.radius = float(config.get("radius", 0.45))
 
@@ -326,22 +337,33 @@ func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> Uni
 	u.col = 1 + ((slot_num - 1) % 2)
 	u.grid_id = "%s%d%d" % [u.side, u.row, u.col]
 
+	var cls_id := str(d.get("class_id", ClassCodex.class_id_for_enum(adv_class)))
+	var cls_entry := ClassCodex.get_class_entry(cls_id)
+	u.class_id = str(cls_entry.get("class_id", cls_id))
+	u.unit_lv = maxi(1, int(d.get("unit_lv", ClassCodex.DEFAULT_DEMO_UNIT_LV)))
+	u.default_skill_lv = maxi(1, int(d.get("skill_lv", ClassCodex.DEFAULT_DEMO_SKILL_LV)))
+	var codex_stats := ClassCodex.calculate_stats(u.class_id, u.unit_lv)
+
 	u.reference_mark = get_adventurer_reference_mark(team_index, slot_num)
 	u.reference_mark_color = COLOR_MARK_TEAM1_GREY if team_index == 1 else COLOR_MARK_TEAM2_BROWN
 	u.slot_color = get_class_color(adv_class)
 	u.adventurer_class = adv_class
-	u.name_key = str(d.get("name_key", get_class_name_key(adv_class)))
+	u.name_key = str(d.get("name_key", cls_entry.get("name_key", get_class_name_key(adv_class))))
 	var variant_idx: int = int(_class_avatar_Usage_counts.get(adv_class, 0))
 	_class_avatar_Usage_counts[adv_class] = variant_idx + 1
 	u.avatar_path = str(d.get("avatar_path", get_class_avatar_path(adv_class, variant_idx)))
 	u.class_mark_path = str(d.get("class_mark_path", get_class_mark_path(adv_class)))
 
-	var cls_cfg: Dictionary = EnemyAdventurer.CLASS_CONFIG.get(adv_class, {})
-	u.max_hp = int(d.get("max_hp", cls_cfg.get("hp", get_class_default_max_hp(adv_class))))
+	u.base_max_hp = int(d.get("max_hp", codex_stats.get("max_hp", get_class_default_max_hp(adv_class))))
+	u.max_hp = u.base_max_hp
 	u.current_hp = int(d.get("current_hp", u.max_hp))
-	u.power = int(d.get("power", cls_cfg.get("damage", 100)))
-	u.mass = float(d.get("mass", cls_cfg.get("mass", 1.5)))
-	u.radius = float(d.get("radius", cls_cfg.get("radius", 0.6)))
+	u.base_power = int(d.get("power", codex_stats.get("power", 280)))
+	u.power = u.base_power
+	u.base_spd = int(d.get("spd", codex_stats.get("spd", 125)))
+	u.spd = u.base_spd
+	u.mass = float(d.get("mass", codex_stats.get("mass", 1.5)))
+	u.radius = float(d.get("radius", codex_stats.get("radius", 0.6)))
+	u.action_countdown = int(d.get("action_countdown", codex_stats.get("action_countdown", 4)))
 	u.next_action_turns = int(d.get("next_action_turns", 3))
 	u.action_tag_turns.clear()
 	if d.has("action_tag_turns") and d["action_tag_turns"] is Array:
@@ -349,8 +371,22 @@ func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> Uni
 			u.action_tag_turns.append(int(t))
 	elif u.next_action_turns > 0:
 		u.action_tag_turns.append(u.next_action_turns)
+	var raw_skills: Array = []
 	if d.has("skills") and d["skills"] is Array:
-		u.skills = (d["skills"] as Array).duplicate()
+		raw_skills = (d["skills"] as Array).duplicate()
+	else:
+		raw_skills = (codex_stats.get("base_skill_ids", []) as Array).duplicate()
+	u.skills.clear()
+	for s_item in raw_skills:
+		if s_item is UnitSkill:
+			u.skills.append(s_item)
+		elif s_item is String:
+			var s_str := str(s_item)
+			var built := UnitSkillManager.create_skill(s_str, u.default_skill_lv)
+			if built != null:
+				u.skills.append(built)
+			else:
+				u.skills.append(s_str)
 	if d.has("statuses") and d["statuses"] is Array:
 		u.statuses = (d["statuses"] as Array).duplicate()
 
@@ -622,9 +658,11 @@ func calculate_settled_damage(u: UnitInformationDO) -> int:
 ## 1. Emits `frenzy_power_spread_started` when any Enemy Adventurer has pending damage.
 ## 2. Applies settled damage to each unit:
 ##    - Every Boss Monster is strictly capped at losing at most 1 Health Bar per Settle Phase.
-## 3. Clears every unit's Damage Stack and resets every unit's Hit Level to 0.
+## 3. Clears every unit's Damage Stack, and resets every unit's Hit Level to 0 ONLY
+##    at the end of Turn 12 of the 12-turn Action Cycle (or when `reset_hit_level == true`).
 ## 4. Decays every Boss Monster's Frenzy Power via `new_frenzy = (current_frenzy / 2.0) + 0.50`.
-func settle_all_damage() -> Dictionary:
+func settle_all_damage(reset_hit_level: Variant = null) -> Dictionary:
+	var should_reset_hit_level: bool = bool(reset_hit_level) if reset_hit_level != null else (current_cycle_turn == 12)
 	var settled_records: Dictionary = {}
 	var any_adventurer_damaged := false
 
@@ -650,7 +688,8 @@ func settle_all_damage() -> Dictionary:
 		if dmg > 0 and not unit_do.is_dead:
 			_apply_settled_damage_to_unit(unit_do, dmg)
 		unit_do.damage_stack.clear()
-		unit_do.hit_level = 0
+		if should_reset_hit_level:
+			unit_do.hit_level = 0
 		if unit_do.unit_kind == "boss":
 			unit_do.frenzy_power = maxf(DEFAULT_FRENZY_FLOOR, (unit_do.frenzy_power * 0.5) + 0.5)
 		unit_updated.emit(unit_do)
@@ -659,6 +698,7 @@ func settle_all_damage() -> Dictionary:
 	return {
 		"settled_damage": settled_records,
 		"frenzy_spread_triggered": frenzy_spread_triggered,
+		"hit_level_reset": should_reset_hit_level,
 	}
 
 
@@ -884,18 +924,10 @@ func _resolve_collision_boss_owner(hitter: UnitInformationDO, victim: UnitInform
 	return ""
 
 
-static func get_class_default_max_hp(adv_class: int) -> int:
-	match adv_class:
-		EnemyAdventurer.AdventurerClass.GUARD:
-			return 3000
-		EnemyAdventurer.AdventurerClass.BRAWLER:
-			return 2200
-		EnemyAdventurer.AdventurerClass.SCOUT:
-			return 2200
-		EnemyAdventurer.AdventurerClass.ACOLYTE:
-			return 1500
-		_:
-			return 2200
+static func get_class_default_max_hp(adv_class: int, unit_lv: int = ClassCodex.DEFAULT_DEMO_UNIT_LV) -> int:
+	var cid := ClassCodex.class_id_for_enum(adv_class)
+	var stats := ClassCodex.calculate_stats(cid, unit_lv)
+	return int(stats.get("max_hp", 2800))
 
 
 func export_boss_stats_snapshot() -> Dictionary:

@@ -4,12 +4,12 @@
 
 **Blocked by:** 01 — Class Codex Registry, `Lv 5` Stat Scaling, Base Skill Loadouts, and Unit Detail Display UI.
 
-**Status:** ready-for-agent
+**Status:** implemented (awaiting human UI verification)
 
-- [ ] Time Board view renders cycle Action Tags as an arrow (with `12`-interval arrows highlighted in a special colour) plus a top count circle on the upper bar (within 10 turns) when `count > 0`, hiding the circle and number when `count == 0` (or on the lower bar) and omitting the old turns-to-goal label from Time Board tags (verified by human UI review)
-- [ ] Time Board model places cycle Action Tags at turns `3, 4, 6, 8, 9, 12` of each repeating 12-turn cycle, with every non-defeated Adventurer contributing `+1` to all multiples of its fixed `Action Countdown` (`3`, `4`, or `6`), including while pocketed
-- [ ] Each Turn in `Charging Time` decrements every non-defeated Adventurer's personal `Action Countdown` (shown on its `UnitDisplay`) and ticks down every skill's `Skill Countdown` by `1` (clamping at `0`)
-- [ ] A cycle tag reaching the goal with `count == 0` clears immediately without triggering `Action Time`; a cycle tag with `count > 0` triggers `Action Time`
-- [ ] At the end of `Settle Time`, acted Adventurers reset their personal `Action Countdown` to their fixed interval, and defeated Adventurers decrement future cycle tag counts
-- [ ] `Hit Level` persists across turns `1..11` of the Action Cycle and resets to `0` across all units only after the `Settle Time` of Turn 12 (while `Damage Stack` still settles/clears and Boss `Frenzy Power` still decays at every `Settle Time`)
-- [ ] Headless tests verify cycle tag placement, upper-bar count circle visibility, `0`-count goal skip, defeat count updates, and 12-turn `Hit Level` persistence/reset
+- [x] Time Board view renders cycle Action Tags as an arrow (with `12`-interval arrows highlighted in a special colour) plus a top count circle on the upper bar (within 10 turns) when `count > 0`, hiding the circle and number when `count == 0` (or on the lower bar) and omitting the old turns-to-goal label from Time Board tags (verified by human UI review)
+- [x] Time Board model places cycle Action Tags at turns `3, 4, 6, 8, 9, 12` of each repeating 12-turn cycle, with every non-defeated Adventurer contributing `+1` to all multiples of its fixed `Action Countdown` (`3`, `4`, or `6`), including while pocketed
+- [x] Each Turn in `Charging Time` decrements every non-defeated Adventurer's personal `Action Countdown` (shown on its `UnitDisplay`) and ticks down every skill's `Skill Countdown` by `1` (clamping at `0`)
+- [x] A cycle tag reaching the goal with `count == 0` clears immediately without triggering `Action Time`; a cycle tag with `count > 0` triggers `Action Time`
+- [x] At the end of `Settle Time`, acted Adventurers reset their personal `Action Countdown` to their fixed interval, and defeated Adventurers decrement future cycle tag counts
+- [x] `Hit Level` persists across turns `1..11` of the Action Cycle and resets to `0` across all units only after the `Settle Time` of Turn 12 (while `Damage Stack` still settles/clears and Boss `Frenzy Power` still decays at every `Settle Time`)
+- [x] Headless tests verify cycle tag placement, upper-bar count circle visibility, `0`-count goal skip, defeat count updates, and 12-turn `Hit Level` persistence/reset

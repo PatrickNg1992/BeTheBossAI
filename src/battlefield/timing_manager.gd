@@ -36,6 +36,7 @@ var _settle_events: Array = []
 var _settle_elapsed: float = 0.0
 var _paused: bool = false
 var _fast_play: bool = false
+var last_completed_step_amount: float = 1.0
 
 
 func _ready() -> void:
@@ -334,6 +335,7 @@ func _next_charge_step_needed() -> float:
 
 
 func _finish_charge_step(step_amount: float) -> void:
+	last_completed_step_amount = step_amount
 	if _energy < MAX_ENERGY:
 		_energy = minf(MAX_ENERGY, snappedf(_energy + step_amount, 0.5))
 	if _energy_b < MAX_ENERGY:

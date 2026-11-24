@@ -4,8 +4,8 @@
 
 **Blocked by:** 01 — TimingManager core cycle.
 
-**Status:** ready-for-agent
+**Status:** implemented (covered with enemy-adventurers/02 & TimeBoardModel)
 
-- [ ] Entering Prepare animates the board to the opening state, then freezes
-- [ ] Opening state: Energy exactly 10, old tags cleared, incoming team's initial tags placed
-- [ ] No charging or tag movement happens during the rest of Prepare
+- [x] Entering Prepare animates the board to the opening state, then freezes
+- [x] Opening state: Energy exactly 10, old tags cleared, incoming team's initial tags placed
+- [x] No charging or tag movement happens during the rest of Prepare

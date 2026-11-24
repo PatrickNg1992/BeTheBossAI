@@ -374,6 +374,8 @@ func test_enemy_adventurers_only_move_and_attack_during_action_time() -> void:
 	var enemy1 := bf.get_node("Enemy1") as BaseEnemy
 	var player := bf.get_node("Player") as BasePuck
 	assert_true(enemy1 != null and player != null and uim != null, "Enemy1, Player, and UnitInformationManager exist")
+	if enemy1 != null:
+		enemy1._target = player
 	var boss_do: UnitInformationDO = uim.get_unit("boss_a")
 
 	# Put Enemy1 right next to Player so it would normally chase/attack

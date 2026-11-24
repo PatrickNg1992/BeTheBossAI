@@ -518,8 +518,8 @@ func test_unit_hp_stats_migrated_to_unit_info_with_thousands_scale_adventurer_hp
 		"BasePuck retains physics properties (mass, radius, restitution)")
 	raw_puck.free()
 
-	# 2. Verify default Enemy Adventurer max HP values are scaled to thousands level in UnitInformationDO:
-	#    Knight = 3000, Warrior = 2200, Ranger = 2200, Mage = 1500
+	# 2. Verify default Enemy Adventurer max HP values at default Unit Lv = 5 (from ClassCodex base + 5 * per_lv):
+	#    Guard = 3500, Brawler = 2800, Scout = 2800, Acolyte = 2100
 	mgr.configure_mode(mgr.MODE_SINGLE_PLAYER)
 	mgr.register_adventurer_team(1, [
 		{"unit_id": "u_knight", "adventurer_class": EnemyAdventurer.AdventurerClass.KNIGHT},
@@ -527,11 +527,11 @@ func test_unit_hp_stats_migrated_to_unit_info_with_thousands_scale_adventurer_hp
 		{"unit_id": "u_ranger", "adventurer_class": EnemyAdventurer.AdventurerClass.RANGER},
 		{"unit_id": "u_mage", "adventurer_class": EnemyAdventurer.AdventurerClass.MAGE},
 	])
-	assert_eq(mgr.get_unit("u_knight").max_hp, 3000, "Knight default max HP is 3000")
-	assert_eq(mgr.get_unit("u_knight").current_hp, 3000, "Knight starts at 3000 HP in UnitInformationDO")
-	assert_eq(mgr.get_unit("u_warrior").max_hp, 2200, "Warrior default max HP is 2200")
-	assert_eq(mgr.get_unit("u_ranger").max_hp, 2200, "Ranger default max HP is 2200")
-	assert_eq(mgr.get_unit("u_mage").max_hp, 1500, "Mage default max HP is 1500")
+	assert_eq(mgr.get_unit("u_knight").max_hp, 3500, "Guard Lv 5 default max HP is 3500")
+	assert_eq(mgr.get_unit("u_knight").current_hp, 3500, "Guard starts at 3500 HP in UnitInformationDO")
+	assert_eq(mgr.get_unit("u_warrior").max_hp, 2800, "Brawler Lv 5 default max HP is 2800")
+	assert_eq(mgr.get_unit("u_ranger").max_hp, 2800, "Scout Lv 5 default max HP is 2800")
+	assert_eq(mgr.get_unit("u_mage").max_hp, 2100, "Acolyte Lv 5 default max HP is 2100")
 
 	tree.root.remove_child(mgr)
 	mgr.free()
@@ -658,9 +658,9 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 
 	# 6. End-to-end Settle Time: when all pucks come to rest in Puck-puck Time!, TimingManager enters Settle Time
 	#    and UnitInformationManager settles the Damage Stacks into actual HP reductions!
-	assert_eq(warrior_do.current_hp, 2200, "Warrior actual HP is still 2200 before Settle Time")
+	assert_eq(warrior_do.current_hp, 2800, "Warrior actual HP is still 2800 before Settle Time")
 	mgr.settle_all_damage()
-	assert_true(warrior_do.current_hp < 2200, "Warrior HP reduced after Settle Time resolves collision Damage Stack")
+	assert_true(warrior_do.current_hp < 2800, "Warrior HP reduced after Settle Time resolves collision Damage Stack")
 	assert_eq(boss_do.current_hp, 1000, "Boss Monster HP remains 1000 when no skill dealt damage to Boss")
 
 	# 7. Pocket Area fall damage & 80% middle respawn:

@@ -44,7 +44,8 @@ const GOAL_SLOT := 19
 @export var consume_preview_color := Color(0.26, 0.82, 0.96, 0.95)
 @export var overdrag_preview_color := Color(0.92, 0.18, 0.16, 0.95)
 @export var turns_color := Color(0.92, 0.86, 0.68, 1.0)
-@export var count_color := Color(0.22, 0.1, 0.06, 1.0)
+@export var count_color := Color(0.18, 0.08, 0.04, 1.0)
+@export var cycle_12_arrow_color := Color(1.0, 0.36, 0.24, 1.0)
 @export var arrow_down_texture: Texture2D = preload("res://src/resource/battlefield/arrow_down.png")
 @export var arrow_up_texture: Texture2D = preload("res://src/resource/battlefield/arrow_up.png")
 ## Ticket-01 scaffolding: cycle a crafted state to preview the animations.
@@ -69,7 +70,12 @@ var _secondary_overdrag_fills: Array[ColorRect] = []
 var _tag_movers: Array[Control] = []
 var _tag_turns: Array[Label] = []
 var _tag_counts: Array[Label] = []
+var _tag_circles: Array[Panel] = []
 var _tag_arrows: Array[TextureRect] = []
+var _tag_tweens: Dictionary = {}
+var _wrap_out_mover: Control = null
+var _wrap_out_arrow: TextureRect = null
+var _wrap_out_tween: Tween = null
 var _fill_tweens: Dictionary = {}
 var _rewind_tween: Tween = null
 var _secondary_rewind_tween: Tween = null
@@ -122,6 +128,7 @@ func _build_board() -> void:
 	_tag_movers.resize(SLOT_COUNT)
 	_tag_turns.resize(SLOT_COUNT)
 	_tag_counts.resize(SLOT_COUNT)
+	_tag_circles.resize(SLOT_COUNT)
 	_tag_arrows.resize(SLOT_COUNT)
 	# Lower bar: slots 0..9 left→right. Upper bar: slots 19..10 left→right.
 	for slot in range(BAR_SIZE):
@@ -206,12 +213,12 @@ func _make_bar_rect(color: Color, upper: bool) -> ColorRect:
 	return rect
 
 
-## A tag cell holds one slot's tag. The mover (arrow + integers) rests with
-## the arrow centered on the slot's LEADING edge — the boundary in the path
-## direction — so tags sit on box edges, never mid-box.
+## A tag cell holds one slot's tag. The mover (arrow + top count circle on
+## the upper bar) rests with the arrow centered on the slot's LEADING edge.
+## No turns-to-goal integer is rendered on the Time Board tag itself.
 func _make_tag_cell(slot: int, upper: bool) -> Control:
 	var cell := Control.new()
-	cell.custom_minimum_size = Vector2(slot_size.x, 22.0)
+	cell.custom_minimum_size = Vector2(slot_size.x, 26.0)
 	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mover := Control.new()
 	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -225,8 +232,9 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	turns.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	turns.size = Vector2(slot_size.x, 11)
 	turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	turns.visible = false
 	mover.add_child(turns)
-	# The count sits on the arrow itself, in a contrasting color.
+
 	var arrow_frame := Control.new()
 	arrow_frame.size = Vector2(slot_size.x, 12.0)
 	arrow_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -236,6 +244,21 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	arrow_frame.add_child(arrow)
+	mover.add_child(arrow_frame)
+
+	# Circle badge on top of the arrow showing the unit count (visible on upper bar when count > 0)
+	var circle := Panel.new()
+	circle.size = Vector2(16.0, 16.0)
+	circle.position = Vector2((slot_size.x - 16.0) * 0.5, 0.0 if upper else 10.0)
+	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var circle_style := StyleBoxFlat.new()
+	circle_style.bg_color = Color(0.95, 0.88, 0.72, 0.98)
+	circle_style.border_color = Color(0.45, 0.22, 0.12, 0.98)
+	circle_style.set_border_width_all(1)
+	circle_style.set_corner_radius_all(8)
+	circle.add_theme_stylebox_override("panel", circle_style)
+	mover.add_child(circle)
+
 	var count := Label.new()
 	count.modulate = count_color
 	count.add_theme_font_size_override("font_size", 10)
@@ -243,20 +266,38 @@ func _make_tag_cell(slot: int, upper: bool) -> Control:
 	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	arrow_frame.add_child(count)
-	mover.add_child(arrow_frame)
-	# Arrow nearest the bar, Turns integer outermost, with a gap so the
-	# arrow never overlaps the text line.
+	circle.add_child(count)
+
 	if upper:
-		turns.position = Vector2.ZERO
-		arrow_frame.position = Vector2(0, 10)
+		circle.position = Vector2((slot_size.x - 16.0) * 0.5, 0.0)
+		arrow_frame.position = Vector2(0, 14.0)
 	else:
-		arrow_frame.position = Vector2.ZERO
-		turns.position = Vector2(0, 11)
+		arrow_frame.position = Vector2(0, 0.0)
+		circle.position = Vector2((slot_size.x - 16.0) * 0.5, 11.0)
+		circle.visible = false
 	_tag_movers[slot] = mover
 	_tag_arrows[slot] = arrow
+	_tag_circles[slot] = circle
 	_tag_counts[slot] = count
 	_tag_turns[slot] = turns
+	if slot == 9 and not upper:
+		var wrap_mover := Control.new()
+		wrap_mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrap_mover.modulate.a = 0.0
+		wrap_mover.position.x = _edge_offset(false)
+		var wrap_frame := Control.new()
+		wrap_frame.size = Vector2(slot_size.x, 12.0)
+		wrap_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var wrap_arrow := TextureRect.new()
+		wrap_arrow.texture = arrow_up_texture
+		wrap_arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		wrap_arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		wrap_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrap_frame.add_child(wrap_arrow)
+		wrap_mover.add_child(wrap_frame)
+		cell.add_child(wrap_mover)
+		_wrap_out_mover = wrap_mover
+		_wrap_out_arrow = wrap_arrow
 	return cell
 
 
@@ -343,6 +384,7 @@ func _secondary_energy_of(s: Dictionary) -> float:
 
 ## Render a full board state instantly, no animation.
 func render_state(state: Dictionary) -> void:
+	_kill_all_tag_tweens()
 	_state = _normalize_state(state)
 	var two_p := bool(_state.get("has_player_b", false))
 	if _secondary_bar_box != null:
@@ -426,19 +468,24 @@ func apply_state(state: Dictionary) -> void:
 
 	var old_tags: Dictionary = old.get("tags", {})
 	var new_tags: Dictionary = next.get("tags", {})
-	# Detect movement before rendering (same count one slot further along
-	# the path = the same tag gliding; 9→10 wraps with a fade-teleport).
+	var tags_changed := not _tags_equal(old_tags, new_tags)
+	# Detect movement before rendering (same tag one slot further along
+	# the path = gliding; 9→10 wraps with a fade-teleport, even when adjacent
+	# slots like 3&4 or 8&9 move simultaneously).
 	var glides: Array = []
 	var teleports: Array = []
-	for slot in new_tags:
-		if old_tags.has(slot):
-			continue
-		var prev: int = slot - 1
-		if old_tags.has(prev) and old_tags[prev].get("count", -1) == new_tags[slot].get("count", -2):
-			if prev == 9 and slot == 10:
-				teleports.append([prev, slot])
-			else:
-				glides.append([prev, slot])
+	if tags_changed:
+		for slot in new_tags:
+			var s_idx := int(slot)
+			var prev: int = s_idx - 1
+			if old_tags.has(prev) and _did_tag_advance_from(old_tags, new_tags, prev, s_idx):
+				if prev == 9 and s_idx == 10:
+					teleports.append([prev, s_idx])
+				else:
+					glides.append([prev, s_idx])
+			elif s_idx == 0 and not old_tags.has(0) and not old_tags.is_empty():
+				# Newly entering cycle tag at slot 0 glides in from the left edge of slot 0
+				glides.append([-1, 0])
 	var main_rewound := new_main_e < old_main_e - 0.001
 	var sec_rewound := two_p and (new_sec_e < old_sec_e - 0.001)
 	var is_rewinding := (_rewind_tween != null and _rewind_tween.is_running()) or (_secondary_rewind_tween != null and _secondary_rewind_tween.is_running())
@@ -464,13 +511,16 @@ func apply_state(state: Dictionary) -> void:
 		else:
 			_render_secondary_energy(new_sec_e, ch)
 	_render_all_previews()
-	_render_tags(new_tags)
-	# Post-render fix-ups: movers in motion show their OLD numbers until the
-	# arrow lands on the next edge, then count down.
-	for pair in glides:
-		_play_glide(pair[0], pair[1], old_tags[pair[0]], new_tags[pair[1]])
-	for pair in teleports:
-		_play_fade_teleport(pair[0], pair[1], old_tags[pair[0]])
+	# Only re-render and re-animate tags when the tag map actually changed, so
+	# per-frame charge progress updates never clobber in-flight tag glides/fades!
+	if tags_changed:
+		_kill_all_tag_tweens()
+		_render_tags(new_tags)
+		for pair in glides:
+			var old_t: Dictionary = old_tags.get(pair[0], new_tags[pair[1]])
+			_play_glide(pair[0], pair[1], old_t, new_tags[pair[1]])
+		for pair in teleports:
+			_play_fade_teleport(pair[0], pair[1], old_tags[pair[0]])
 
 
 # ----- observable renderable output (test seam; never tween internals) -----
@@ -547,18 +597,25 @@ func secondary_slot_charging_ratio(slot: int) -> float:
 	return _secondary_charging_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Tag render info for a slot: {"side", "count", "turns", "arrow"} from the
-## committed state, or empty when no tag is rendered there. (Transient
-## in-flight label text is motion, not renderable output.)
+## Tag render info for a slot: {"side", "count", "turns", "arrow",
+## "count_circle_visible", "turns_label_visible", "is_cycle_12",
+## "is_cycle_12_highlighted"} from the committed state, or empty when no tag is
+## rendered there.
 func tag_info(slot: int) -> Dictionary:
 	var tags: Dictionary = _state.get("tags", {})
 	if not tags.has(slot):
 		return {}
+	var tag: Dictionary = tags[slot]
+	var is_12 := bool(tag.get("is_cycle_12", false)) or int(tag.get("cycle_step", 0)) == 12
 	return {
 		"side": "above" if slot >= BAR_SIZE else "below",
-		"count": tags[slot].get("count", 0),
-		"turns": tags[slot].get("turns", 0),
+		"count": int(tag.get("count", 0)),
+		"turns": int(tag.get("turns", GOAL_SLOT - slot)),
 		"arrow": "down" if _tag_arrows[slot].texture == arrow_down_texture else "up",
+		"count_circle_visible": _tag_circles[slot].visible,
+		"turns_label_visible": _tag_turns[slot].visible,
+		"is_cycle_12": is_12,
+		"is_cycle_12_highlighted": is_12,
 	}
 
 
@@ -695,9 +752,67 @@ func _apply_fill_width(fill: ColorRect, width: float) -> void:
 		fill.offset_left = -width
 
 
+func _tags_equal(a: Dictionary, b: Dictionary) -> bool:
+	if a.size() != b.size():
+		return false
+	for k in a.keys():
+		if not b.has(k):
+			return false
+		var ta: Dictionary = a[k]
+		var tb: Dictionary = b[k]
+		if int(ta.get("count", -1)) != int(tb.get("count", -2)):
+			return false
+		if int(ta.get("turns", -1)) != int(tb.get("turns", -2)):
+			return false
+		if int(ta.get("cycle_step", -1)) != int(tb.get("cycle_step", -1)):
+			return false
+		if bool(ta.get("is_cycle_12", false)) != bool(tb.get("is_cycle_12", false)):
+			return false
+	return true
+
+
+func _did_tag_advance_from(old_tags: Dictionary, new_tags: Dictionary, prev: int, slot: int) -> bool:
+	var old_t: Dictionary = old_tags[prev]
+	var new_t: Dictionary = new_tags[slot]
+	if int(old_t.get("count", -1)) != int(new_t.get("count", -2)):
+		return false
+	if old_t.has("cycle_step") and new_t.has("cycle_step"):
+		if int(old_t["cycle_step"]) != int(new_t["cycle_step"]):
+			return false
+	# If `slot` was already in `old_tags` with identical state AND `slot + 1` did not receive it,
+	# then `slot` was stationary rather than receiving `prev`.
+	if old_tags.has(slot):
+		var prev_at_slot: Dictionary = old_tags[slot]
+		var same_stationary := (
+			int(prev_at_slot.get("count", -1)) == int(new_t.get("count", -2))
+			and int(prev_at_slot.get("cycle_step", -1)) == int(new_t.get("cycle_step", -2))
+			and not new_tags.has(slot + 1)
+		)
+		if same_stationary:
+			return false
+	return true
+
+
+func _kill_all_tag_tweens() -> void:
+	for k in _tag_tweens.keys():
+		var tw: Tween = _tag_tweens[k]
+		if tw != null and tw.is_running():
+			tw.kill()
+	_tag_tweens.clear()
+	if _wrap_out_tween != null and _wrap_out_tween.is_running():
+		_wrap_out_tween.kill()
+	_wrap_out_tween = null
+	if _wrap_out_mover != null:
+		_wrap_out_mover.modulate.a = 0.0
+	for slot in range(SLOT_COUNT):
+		if _tag_movers[slot] != null:
+			_tag_movers[slot].position.x = _edge_offset(slot >= BAR_SIZE)
+
+
 func _render_tags(tags: Dictionary) -> void:
 	for slot in range(SLOT_COUNT):
 		var mover := _tag_movers[slot]
+		mover.position.x = _edge_offset(slot >= BAR_SIZE)
 		if tags.has(slot):
 			_set_tag_text(slot, tags[slot])
 			mover.modulate.a = 1.0
@@ -706,37 +821,63 @@ func _render_tags(tags: Dictionary) -> void:
 
 
 func _set_tag_text(slot: int, tag: Dictionary) -> void:
-	_tag_counts[slot].text = str(tag.get("count", 0))
-	_tag_turns[slot].text = str(tag.get("turns", 0))
+	var cnt := int(tag.get("count", 0))
+	var is_12 := bool(tag.get("is_cycle_12", false)) or int(tag.get("cycle_step", 0)) == 12
+	_tag_arrows[slot].self_modulate = cycle_12_arrow_color if is_12 else Color.WHITE
+	var show_circle := (slot >= BAR_SIZE) and (cnt > 0)
+	_tag_circles[slot].visible = show_circle
+	_tag_counts[slot].visible = show_circle
+	_tag_counts[slot].text = str(cnt) if show_circle else ""
+	_tag_turns[slot].visible = false
+	_tag_turns[slot].text = ""
 
 
 # ----- animations (tuned visually in the editor; never asserted) -----
 
 ## Smooth one-slot glide along the leading edges: the arrow slides to the
-## next edge over one Turn; the integers count down when it lands.
-func _play_glide(from_slot: int, to_slot: int, old_tag: Dictionary, new_tag: Dictionary) -> void:
+## next edge over one Turn. Always uses canonical `_edge_offset` so an
+## interrupted glide never drifts.
+func _play_glide(_from_slot: int, to_slot: int, old_tag: Dictionary, new_tag: Dictionary) -> void:
 	var mover := _tag_movers[to_slot]
-	var direction := -1.0 if to_slot >= BAR_SIZE else 1.0
+	var upper := to_slot >= BAR_SIZE
+	var direction := -1.0 if upper else 1.0
 	var pitch := slot_size.x + slot_gap
-	var rest_x: float = mover.position.x
+	var rest_x := _edge_offset(upper)
 	mover.position.x = rest_x - direction * pitch
-	_set_tag_text(to_slot, old_tag)  # keep the old numbers while in flight
+	mover.modulate.a = 1.0
+	_set_tag_text(to_slot, new_tag if upper else old_tag)
 	var tween := create_tween()
+	_tag_tweens[to_slot] = tween
 	tween.tween_property(mover, "position:x", rest_x, turn_duration * 0.9)
 	tween.tween_callback(_set_tag_text.bind(to_slot, new_tag))
 
 
-## The 9→10 wrap: fade out at the lower-right edge, fade in at the
-## upper-right edge (the new numbers appear with the fade-in).
+## The 9→10 wrap: fade out at the lower-right edge (using the dedicated
+## `_wrap_out_mover` so slot 9's main mover remains free if an 8→9 glide happens
+## on the same Turn!), and fade in + glide at the upper-right edge (slot 10).
 func _play_fade_teleport(from_slot: int, to_slot: int, old_tag: Dictionary) -> void:
-	var old_mover := _tag_movers[from_slot]
 	var new_mover := _tag_movers[to_slot]
-	_set_tag_text(from_slot, old_tag)
-	old_mover.modulate.a = 1.0
+	var is_12 := bool(old_tag.get("is_cycle_12", false)) or int(old_tag.get("cycle_step", 0)) == 12
+	if _wrap_out_mover != null and from_slot == 9:
+		if _wrap_out_arrow != null:
+			_wrap_out_arrow.self_modulate = cycle_12_arrow_color if is_12 else Color.WHITE
+		_wrap_out_mover.position.x = _edge_offset(false)
+		_wrap_out_mover.modulate.a = 1.0
+		_wrap_out_tween = create_tween()
+		_wrap_out_tween.tween_property(_wrap_out_mover, "modulate:a", 0.0, 0.18)
+	else:
+		var old_mover := _tag_movers[from_slot]
+		_set_tag_text(from_slot, old_tag)
+		old_mover.modulate.a = 1.0
+		var out_tween := create_tween()
+		_tag_tweens[from_slot] = out_tween
+		out_tween.tween_property(old_mover, "modulate:a", 0.0, 0.15)
+
+	new_mover.position.x = _edge_offset(true)
 	new_mover.modulate.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(old_mover, "modulate:a", 0.0, 0.12)
-	tween.tween_property(new_mover, "modulate:a", 1.0, 0.12)
+	var in_tween := create_tween()
+	_tag_tweens[to_slot] = in_tween
+	in_tween.tween_property(new_mover, "modulate:a", 1.0, 0.22)
 
 
 ## Spend-Energy rewind: drains slots sequentially one-by-one from the highest

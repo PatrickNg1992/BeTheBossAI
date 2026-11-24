@@ -45,8 +45,16 @@ src/
 │   └── dragon_player.gd        # Boss Monster controller (movement + auto-attack)
 │
 ├── enemies/
-│   ├── enemy_adventurer.gd           # Enemy Adventurer (class config + hit flash)
+│   ├── class_codex.gd          # ClassCodex: 28 Rank 1-3 Adventurer Classes (ACG10001..ACA30004), prerequisite inheritance & base + Lv * per_lv stats
+│   ├── enemy_adventurer.gd     # Enemy Adventurer (class config + hit flash)
 │   └── health_bar_3d.gd        # (unused — replaced by UnitInformationBoard)
+│
+├── skills/
+│   ├── unit_skill.gd           # UnitSkill base class: skill_id, Lv, Skill Countdown, counter, variable resolution & *keyword* BBCode formatter
+│   ├── move_skill.gd           # MoveSkill subclass (SMA10001..10004): centre-to-centre distance checks & roll_distance
+│   ├── attack_skill.gd         # AttackSkill subclass (SAA10001..10004): ratio, range, Hit Level bonus & Skip Movement
+│   ├── active_skill.gd         # ActiveSkill subclass
+│   └── passive_skill.gd        # PassiveSkill subclass (SPA10001..10004)
 │
 ├── battlefield/
 │   ├── cue_table.tscn           # Hardcoded 30×20 medieval Cue Table: numbered TableBlocks (1..150),
@@ -58,8 +66,9 @@ src/
 │   ├── puck_velocity_manager.gd # PuckVelocityManager: 60 Hz position updates, 20 Hz collision/friction, cushion Hit Level & middle-80% pocket respawn
 │   ├── cue_shot_manager.gd      # CueShotManager: Play-Time gated drag-to-shot (Player A / Player B Boss puck), 0.5-slot Energy preview & 3D aiming arrow
 │   ├── damage_do.gd             # DamageDO: per-hit staged damage record (source_unit_id, owner_boss_unit_id, decimal value, damage_type, is_fixed)
-│   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, stats, Damage Stack & 0..N pucks
+│   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, base & effective stats, Damage Stack & 0..N pucks
 │   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout, Damage Stack/Frenzy/Hit Level & snapshot sync
+│   ├── unit_skill_manager.gd    # UnitSkillManager: skill factory, trigger-time-to-skills map & Statistic Buff/Debuff recalculation
 │   └── demo_battlefield.gd      # Demo battlefield root: 1P & 2P PvP setup, Host-authoritative sync, Play/Fast Play/Pause UI & PvP victory countdown
 │
 ├── cards/
@@ -71,10 +80,11 @@ src/
 ├── canvas/
 │   ├── canvas.gd               # HUD: upper-left Boss multi-bar HP + Ghost HP trail, UnitInformationBoard mount, warnings
 │   ├── unit_display.gd         # UnitDisplay: medieval 1- or 2-cell unit card (portrait, Reference Mark, Class Mark, Frenzy Power, HP bar, Action Tag turns, Defeated/Pocketed states)
-│   ├── unit_detail_display.gd  # UnitDetailDisplay: click-to-inspect popup showing localized Name, Class, numeric HP/Max HP, Power, Mass, Radius, Hit Level, Frenzy Power, Condition, Skills & Statuses
+│   ├── unit_detail_display.gd  # UnitDetailDisplay: click-to-inspect popup showing Lv, Class, HP/Max HP, POW, SPD, Mass, Radius, 2-row Skill Icons & hover Skill Display tooltip
 │   ├── unit_information_board.gd # UnitInformationBoard: left & right 2×8 grids ({L|R}{1..8}{1..2}) driven by UnitInformationManager
 │   ├── card_canvas.gd          # Card UI: hand, selection, casting area + CD, deck/discard windows
-│   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, tag arrows (dumb view)
+│   ├── time_board_model.gd     # TimeBoardModel: pure 12-Turn Action Cycle tag model (turns 3, 4, 6, 8, 9, 12), Prepare opening state & Settle lifecycle
+│   └── time_board.tscn/.gd     # Time Board view: serpentine bars, energy fill, 12-cycle highlighted tag arrows & upper-bar count circles (dumb view)
 │
 ├── resource/
 │   └── battlefield/            # Generated UI art: wood_panel, arrow_up/down, double_arrow, goal_flag, sword,
