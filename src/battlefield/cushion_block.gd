@@ -32,10 +32,10 @@ const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass
 @export var inward_normal: Vector3 = Vector3.ZERO
 
 ## Collision energy restitution factor (e) in the cushion rebound equation.
-@export var restitution: float = 0.85
+@export var restitution: float = PhysicsConstant.DEFAULT_CUSHION_RESTITUTION
 
 ## Cushion parallel friction factor (fc) in the cushion rebound equation.
-@export var cushion_friction: float = 0.10
+@export var cushion_friction: float = PhysicsConstant.DEFAULT_CUSHION_FRICTION
 
 
 func _ready() -> void:

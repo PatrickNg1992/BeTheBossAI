@@ -399,6 +399,10 @@ func _create_adventurer_do(team_index: int, slot_num: int, d: Dictionary) -> Uni
 func _store_unit(u: UnitInformationDO) -> void:
 	_units_by_id[u.unit_id] = u
 	_units_by_grid[u.grid_id] = u
+	if _skill_manager == null:
+		_skill_manager = UnitSkillManager.new()
+		_skill_manager.unit_information_manager = self
+	_skill_manager.register_unit_skills(u)
 	unit_registered.emit(u)
 
 
@@ -530,15 +534,20 @@ func push_damage_to_puck(
 	return push_damage(target_id, amount, source_id, "", damage_type, is_fixed)
 
 
-## When a puck falls into a Pocket Area, pushes a fixed DamageDO equal to half
-## of the unit's max_hp (rounded UP to integer: `ceili(float(max_hp) / 2.0)`).
-## This DamageDO is fixed (`is_fixed = true`) and immune to Frenzy Power and Hit Level.
+## When a puck falls into a Pocket Area, pushes a fixed DamageDO (`is_fixed = true`,
+## immune to Frenzy Power and Hit Level) starting at 50% of `max_hp` (1 Health Bar)
+## and modified by `TRIGGER_ON_POCKET_FALL` passive skills (`SPA10003 Safety Rope`),
+## while also resetting any `SPA10004 Chanting` counter on the falling unit.
 func push_pocket_fall_damage(unit_id: String) -> DamageDO:
 	var u := get_unit(unit_id)
 	if u == null or u.is_dead:
 		return null
-	var half_up := int(ceil(float(u.max_hp) / 2.0))
-	return push_damage(unit_id, float(half_up), "", "", "pocket", true)
+	var pct := _skill_manager.handle_unit_pocket_fall_passives(u) if _skill_manager != null else 0.50
+	var dmg_up := int(ceil(float(u.max_hp) * pct))
+	if dmg_up <= 0:
+		unit_updated.emit(u)
+		return null
+	return push_damage(unit_id, float(dmg_up), "", "", "pocket", true)
 
 
 func push_pocket_fall_damage_for_puck(puck: BasePuck) -> DamageDO:
@@ -585,15 +594,23 @@ func modify_frenzy_power(boss_unit_id: String, delta: float) -> float:
 
 ## Adjusts a Boss Monster's Frenzy Power when colliding with an opponent Enemy Adventurer puck:
 ##   - Default baseline on hit: +10% (DEFAULT_FRENZY_GAIN_NON_KNIGHT).
-##   - Any reduction (such as Guard's SPA10001 Protect passive skill) is applied by equipped skills rather than hardcoded class rules.
-func record_boss_collision_frenzy(boss_unit_id: String, struck_unit_id: String) -> float:
+##   - Dispatches `TRIGGER_ON_PUCK_COLLISION` passive skills via `UnitSkillManager` (e.g. Guard's SPA10001 Protect).
+func record_boss_collision_frenzy(
+	boss_unit_id: String,
+	struck_unit_id: String,
+	boss_puck: BasePuck = null,
+	struck_puck: BasePuck = null
+) -> float:
 	var boss := get_unit(boss_unit_id)
 	var struck := get_unit(struck_unit_id)
 	if boss == null or boss.unit_kind != "boss" or struck == null:
 		return DEFAULT_FRENZY_BASELINE
 	if struck.unit_kind != "enemy_adventurer":
 		return boss.frenzy_power
-	return modify_frenzy_power(boss_unit_id, DEFAULT_FRENZY_GAIN_NON_KNIGHT)
+	var skill_delta := 0.0
+	if _skill_manager != null:
+		skill_delta = _skill_manager.evaluate_boss_collision_frenzy_skills(boss, struck, boss_puck, struck_puck)
+	return modify_frenzy_power(boss_unit_id, DEFAULT_FRENZY_GAIN_NON_KNIGHT + skill_delta)
 
 
 func notify_unit_collision_impulse(unit_id: String, impulse_magnitude: float) -> void:
@@ -692,6 +709,9 @@ func settle_all_damage(reset_hit_level: Variant = null) -> Dictionary:
 			unit_do.hit_level = 0
 		if unit_do.unit_kind == "boss":
 			unit_do.frenzy_power = maxf(DEFAULT_FRENZY_FLOOR, (unit_do.frenzy_power * 0.5) + 0.5)
+		for p in unit_do.pucks:
+			if is_instance_valid(p) and p.has_method("clear_collision_history"):
+				p.clear_collision_history()
 		unit_updated.emit(unit_do)
 
 	damage_settled.emit(settled_records)
@@ -830,7 +850,7 @@ func set_unit_highlighted(unit_id: String, highlighted: bool) -> void:
 static func calculate_linear_collision_damage(impulse_scalar: float, hitter_power: int = 100) -> float:
 	if impulse_scalar <= 0.0 or hitter_power <= 0:
 		return 0.0
-	return maxf(1.0, (impulse_scalar / 10.0) * float(hitter_power))
+	return maxf(1.0, (impulse_scalar / PhysicsConstant.COLLISION_DAMAGE_IMPULSE_DIVISOR) * float(hitter_power))
 
 
 ## Handles a physical Puck–Puck collision resolved in `PuckVelocityManager`:
@@ -861,6 +881,13 @@ func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 	if u1 == null or u2 == null:
 		return
 
+	# Ensure collision history is recorded if handle_puck_collision was called directly
+	if p1._last_recorded_collision_puck != p2:
+		p1.record_collision("puck", u2.unit_id, p2)
+		p2.record_collision("puck", u1.unit_id, p1)
+	p1._last_recorded_collision_puck = null
+	p2._last_recorded_collision_puck = null
+
 	# Boss vs. Boss: 0 damage and no Frenzy change
 	if u1.unit_kind == "boss" and u2.unit_kind == "boss":
 		return
@@ -868,22 +895,26 @@ func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 	# Frenzy Power adjustment ONLY when a Boss Monster collides with an OPPONENT Enemy Adventurer
 	if u1.unit_kind == "boss" and u2.unit_kind == "enemy_adventurer":
 		if not _are_units_friendly(u1, u2):
-			record_boss_collision_frenzy(u1.unit_id, u2.unit_id)
+			record_boss_collision_frenzy(u1.unit_id, u2.unit_id, p1, p2)
 	elif u2.unit_kind == "boss" and u1.unit_kind == "enemy_adventurer":
 		if not _are_units_friendly(u2, u1):
-			record_boss_collision_frenzy(u2.unit_id, u1.unit_id)
+			record_boss_collision_frenzy(u2.unit_id, u1.unit_id, p2, p1)
+
+	var ally_skill_mult := 1.0
+	if u1.unit_kind != "boss" and u2.unit_kind != "boss" and _are_units_friendly(u1, u2) and _skill_manager != null:
+		ally_skill_mult = _skill_manager.evaluate_ally_collision_damage_multiplier(u1, u2)
 
 	# Check whether u1 takes collision damage from u2 (using u2.power), and whether u2 takes collision damage from u1 (using u1.power)
 	if _does_unit_take_collision_damage_from(u1, u2):
 		var dmg_to_u1 := calculate_linear_collision_damage(j_mag, u2.power)
 		if dmg_to_u1 > 0.0:
-			var mult_u1 := 0.25 if (u2.unit_kind == "boss" and _are_units_friendly(u1, u2)) else 1.0
+			var mult_u1 := 0.25 if (u2.unit_kind == "boss" and _are_units_friendly(u1, u2)) else ally_skill_mult
 			var boss_owner_for_u1 := _resolve_collision_boss_owner(u2, u1)
 			push_damage(u1.unit_id, dmg_to_u1 * mult_u1, u2.unit_id, boss_owner_for_u1, "collision")
 	if _does_unit_take_collision_damage_from(u2, u1):
 		var dmg_to_u2 := calculate_linear_collision_damage(j_mag, u1.power)
 		if dmg_to_u2 > 0.0:
-			var mult_u2 := 0.25 if (u1.unit_kind == "boss" and _are_units_friendly(u2, u1)) else 1.0
+			var mult_u2 := 0.25 if (u1.unit_kind == "boss" and _are_units_friendly(u2, u1)) else ally_skill_mult
 			var boss_owner_for_u2 := _resolve_collision_boss_owner(u1, u2)
 			push_damage(u2.unit_id, dmg_to_u2 * mult_u2, u1.unit_id, boss_owner_for_u2, "collision")
 

@@ -20,10 +20,10 @@ const TEX_GRASS_DARK: Texture2D = preload("res://src/resource/battlefield/grass_
 const TEX_GRASS_LIGHT: Texture2D = preload("res://src/resource/battlefield/grass_light.png")
 const TEX_POCKET_SWIRL: Texture2D = preload("res://src/resource/battlefield/pocket_swirl.png")
 
-const POCKET_CAPTURE_RATIO := 0.75
-const POCKET_DECELERATION := 28.0
-const POCKET_PULL_SPEED := 6.0
-const POCKET_Y_DROP := 0.3
+const POCKET_CAPTURE_RATIO := PhysicsConstant.POCKET_CAPTURE_RATIO
+const POCKET_DECELERATION := PhysicsConstant.POCKET_DECELERATION
+const POCKET_PULL_SPEED := PhysicsConstant.POCKET_PULL_SPEED
+const POCKET_Y_DROP := PhysicsConstant.POCKET_Y_DROP
 
 const SWIRL_SHADER_CODE := """
 shader_type spatial;
@@ -194,7 +194,7 @@ func _apply_block_type() -> void:
 
 	match block_type:
 		BlockType.GRASS_DARK:
-			friction_factor = 1.0
+			friction_factor = PhysicsConstant.FRICTION_GRASS
 			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
@@ -205,7 +205,7 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.GRASS_LIGHT:
-			friction_factor = 1.0
+			friction_factor = PhysicsConstant.FRICTION_GRASS
 			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
@@ -216,7 +216,7 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.POCKET:
-			friction_factor = 1.0
+			friction_factor = PhysicsConstant.FRICTION_GRASS
 			_set_vertical_offset(col_shape, mesh_inst, -POCKET_Y_DROP)
 			if col_shape != null:
 				col_shape.disabled = false
@@ -227,7 +227,7 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.STONE:
-			friction_factor = 0.75
+			friction_factor = PhysicsConstant.FRICTION_STONE
 			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
@@ -238,7 +238,7 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.MUD:
-			friction_factor = 2.0
+			friction_factor = PhysicsConstant.FRICTION_MUD
 			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false
@@ -249,7 +249,7 @@ func _apply_block_type() -> void:
 				pocket_rim.visible = false
 
 		BlockType.ICE:
-			friction_factor = 0.2
+			friction_factor = PhysicsConstant.FRICTION_ICE
 			_set_vertical_offset(col_shape, mesh_inst, 0.0)
 			if col_shape != null:
 				col_shape.disabled = false

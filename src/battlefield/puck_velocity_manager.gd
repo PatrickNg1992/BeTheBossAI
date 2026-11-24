@@ -11,10 +11,10 @@ extends Node
 
 signal all_pucks_at_rest()
 
-const TICK_INTERVAL := 0.05
-const STOP_SPEED_THRESHOLD := 0.002
-const DEFAULT_DECELERATION := 1.2
-const POCKET_RESPAWN_MIDDLE_RATIO := 0.80
+const TICK_INTERVAL := PhysicsConstant.VELOCITY_TICK_INTERVAL
+const STOP_SPEED_THRESHOLD := PhysicsConstant.STOP_SPEED_THRESHOLD
+const DEFAULT_DECELERATION := PhysicsConstant.DEFAULT_DECELERATION
+const POCKET_RESPAWN_MIDDLE_RATIO := PhysicsConstant.POCKET_RESPAWN_MIDDLE_RATIO
 
 var battlefield: Battlefield = null
 var timing_manager: TimingManager = null
@@ -298,16 +298,20 @@ func resolve_puck_puck_collision(p1: BasePuck, p2: BasePuck) -> bool:
 
 	apply_impulse_to_puck(p1, impulse_vec)
 	apply_impulse_to_puck(p2, -impulse_vec)
+	p1.record_collision("puck", p2.get_unit_id(), p2)
+	p2.record_collision("puck", p1.get_unit_id(), p1)
+	p1._last_recorded_collision_puck = p2
+	p2._last_recorded_collision_puck = p1
 	_resolve_references()
 	# In Multiplayer PvP, when a Boss Monster collides with the opponent Boss Monster:
 	# - 0 damage is dealt to both Boss Monsters
 	# - Both Boss pucks' post-collision velocities are immediately multiplied by 20% (0.2x)
 	# - The non-active opponent gains +3 Energy (at most once per Puck-puck Time!)
 	if p1 is BaseBossMonster and p2 is BaseBossMonster:
-		p1.velocity.x *= 0.20
-		p1.velocity.z *= 0.20
-		p2.velocity.x *= 0.20
-		p2.velocity.z *= 0.20
+		p1.velocity.x *= PhysicsConstant.BOSS_VS_BOSS_VELOCITY_DAMPING
+		p1.velocity.z *= PhysicsConstant.BOSS_VS_BOSS_VELOCITY_DAMPING
+		p2.velocity.x *= PhysicsConstant.BOSS_VS_BOSS_VELOCITY_DAMPING
+		p2.velocity.z *= PhysicsConstant.BOSS_VS_BOSS_VELOCITY_DAMPING
 		_award_boss_collision_opponent_energy_once()
 	if unit_information_manager != null:
 		unit_information_manager.handle_puck_collision(p1, p2, j_mag)
@@ -381,13 +385,13 @@ func _resolve_puck_cushion_collision(puck: BasePuck) -> void:
 
 func _apply_cushion_or_fallback(puck: BasePuck, inward_normal: Vector3) -> void:
 	_resolve_references()
+	var cushion: CushionBlock = battlefield.get_cushion_block_for_normal(puck.global_position, inward_normal) if battlefield != null else null
+	puck.record_collision("cushion", "", cushion)
 	if unit_information_manager != null:
 		unit_information_manager.handle_puck_cushion_collision(puck)
-	if battlefield != null:
-		var cushion := battlefield.get_cushion_block_for_normal(puck.global_position, inward_normal)
-		if cushion != null:
-			cushion.apply_cushion_impact(puck, inward_normal)
-			return
+	if cushion != null:
+		cushion.apply_cushion_impact(puck, inward_normal)
+		return
 	var v_in := Vector3(puck.velocity.x, 0.0, puck.velocity.z)
 	var v_dot_n := v_in.dot(inward_normal)
 	if v_dot_n < 0.0:

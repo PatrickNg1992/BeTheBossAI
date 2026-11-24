@@ -4,14 +4,14 @@ extends CharacterBody3D
 signal health_changed(current_hp: int, max_hp: int)
 signal died()
 
-const TABLE_GRAVITY: float = 25.0
+const TABLE_GRAVITY: float = PhysicsConstant.TABLE_GRAVITY
 
 @export var move_speed: float = 3.0
 @export var attack_range: float = 2.5
 @export var attack_cooldown: float = 1.0
 @export var mass: float = 1.0
 @export var radius: float = 0.5
-@export var restitution: float = 0.85
+@export var restitution: float = PhysicsConstant.DEFAULT_PUCK_RESTITUTION
 
 var is_dead: bool = false
 var is_falling_in_pocket: bool = false
@@ -31,6 +31,44 @@ var _stripes_root_3d: Node3D = null
 var _is_highlighted: bool = false
 var _highlight_ring_3d: MeshInstance3D = null
 var _highlight_timer_token: int = 0
+var collision_history: Array[Dictionary] = []
+var _last_recorded_collision_puck: BasePuck = null
+
+
+func record_collision(kind: String, target_unit_id: String = "", target_object: Variant = null) -> void:
+	collision_history.append({
+		"kind": kind,
+		"target_unit_id": target_unit_id,
+		"object": target_object,
+	})
+
+
+func get_collision_history() -> Array[Dictionary]:
+	return collision_history.duplicate(true)
+
+
+func clear_collision_history() -> void:
+	collision_history.clear()
+	_last_recorded_collision_puck = null
+
+
+func is_first_puck_hit_in_turn(other_puck: BasePuck = null, other_unit_id: String = "") -> bool:
+	var first_puck_entry: Dictionary = {}
+	var puck_hit_count := 0
+	for entry in collision_history:
+		if str(entry.get("kind", "")) == "puck":
+			puck_hit_count += 1
+			if puck_hit_count == 1:
+				first_puck_entry = entry
+	if puck_hit_count == 0:
+		return true
+	if puck_hit_count != 1:
+		return false
+	if other_puck != null and first_puck_entry.get("object", null) == other_puck:
+		return true
+	if not other_unit_id.is_empty() and str(first_puck_entry.get("target_unit_id", "")) == other_unit_id:
+		return true
+	return false
 
 
 func set_unit_id(uid: String) -> void:

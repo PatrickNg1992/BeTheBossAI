@@ -57,6 +57,7 @@ src/
 │   └── passive_skill.gd        # PassiveSkill subclass (SPA10001..10004)
 │
 ├── battlefield/
+│   ├── physics_constant.gd      # PhysicsConstant: centralized Cue Table physics & collision damage divisor constants (COLLISION_DAMAGE_IMPULSE_DIVISOR = 40.0, IMPULSE_PER_ENERGY, friction, restitution, gravity)
 │   ├── cue_table.tscn           # Hardcoded 30×20 medieval Cue Table: numbered TableBlocks (1..150),
 │   │                            # CushionBlocks (1..54), hollow corner Pocket Areas, 4 CornerFlags
 │   ├── battlefield.gd           # Cue Table controller: block lookup, type customization & swapping

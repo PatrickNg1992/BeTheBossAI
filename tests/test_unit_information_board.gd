@@ -605,7 +605,7 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	assert_true(pvm.resolve_puck_puck_collision(boss, warrior), "Boss and Warrior collide")
 	assert_eq(warrior_do.damage_stack.size(), 1, "Collision pushed 1 DamageDO onto Warrior's Damage Stack")
 	var dmg_1: float = float(warrior_do.damage_stack[0].value)
-	assert_true(dmg_1 >= 100.0 and dmg_1 <= 600.0, "Collision damage scales with (J / 10) * Boss POW 400 (got %.2f)" % dmg_1)
+	assert_true(dmg_1 >= 40.0 and dmg_1 <= 250.0, "Collision damage scales with (J / 40) * Boss POW 400 (got %.2f)" % dmg_1)
 	assert_eq(warrior_do.damage_stack[0].owner_boss_unit_id, "boss_a", "DamageDO attributes owner_boss_unit_id to boss_a")
 	assert_eq(boss_do.damage_stack.size(), 0, "Boss Monster takes no collision damage from non-Knight Warrior")
 	assert_true(is_equal_approx(boss_do.frenzy_power, 1.10), "Boss Frenzy Power increased by +10% to 110% on hitting Warrior")
@@ -653,8 +653,8 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	assert_true(pvm.resolve_puck_puck_collision(boss, knight), "Boss and Guard collide")
 	assert_eq(knight_do.damage_stack.size(), 2, "Guard takes collision damage from Boss impact")
 	assert_eq(boss_do.damage_stack.size(), 0, "Boss Monster takes 0 default collision damage from Guard impact")
-	assert_true(is_equal_approx(boss_do.frenzy_power, frenzy_before_knight + 0.10),
-		"Boss Frenzy Power increases by +10% baseline on colliding with Guard when no skill overrides it (120% -> 130%)")
+	assert_true(is_equal_approx(boss_do.frenzy_power, frenzy_before_knight),
+		"Guard's SPA10001 Protect (Lv 1, X=2 non-Guard teammates -> -10%%) offsets the +10%% baseline on subsequent hit (stays 120%%)")
 
 	# 6. End-to-end Settle Time: when all pucks come to rest in Puck-puck Time!, TimingManager enters Settle Time
 	#    and UnitInformationManager settles the Damage Stacks into actual HP reductions!

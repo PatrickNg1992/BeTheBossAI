@@ -11,18 +11,18 @@ signal drag_updated(required_energy: float, shot_direction: Vector3, in_deadzone
 signal shot_cancelled()
 signal shot_launched(spent_energy: float, shot_direction: Vector3)
 
-const MIN_SHOT_ENERGY := 1.0
-const MAX_SHOT_ENERGY := 9.0
-const ENERGY_STEP := 0.5
+const MIN_SHOT_ENERGY := PhysicsConstant.MIN_SHOT_ENERGY
+const MAX_SHOT_ENERGY := PhysicsConstant.MAX_SHOT_ENERGY
+const ENERGY_STEP := PhysicsConstant.ENERGY_STEP
 const TABLE_PLANE_Y := 1.5
 const AIM_LINE_Y := 1.55
 
-@export var deadzone_radius: float = 0.65
-@export var drag_distance_per_energy: float = 1.0
-@export var boss_click_radius: float = 1.25
-@export var impulse_per_energy: float = 7.2
-@export var aim_length_per_impulse: float = 0.45
-@export var post_hit_length_per_speed: float = 0.50
+@export var deadzone_radius: float = PhysicsConstant.DEADZONE_RADIUS
+@export var drag_distance_per_energy: float = PhysicsConstant.DRAG_DISTANCE_PER_ENERGY
+@export var boss_click_radius: float = PhysicsConstant.BOSS_CLICK_RADIUS
+@export var impulse_per_energy: float = PhysicsConstant.IMPULSE_PER_ENERGY
+@export var aim_length_per_impulse: float = PhysicsConstant.AIM_LENGTH_PER_IMPULSE
+@export var post_hit_length_per_speed: float = PhysicsConstant.POST_HIT_LENGTH_PER_SPEED
 @export var aim_valid_color: Color = Color(1.0, 0.88, 0.28, 0.95)
 @export var aim_struck_puck_color: Color = Color(0.28, 0.88, 1.0, 0.95)
 @export var aim_invalid_color: Color = Color(0.95, 0.20, 0.18, 0.95)

@@ -214,10 +214,13 @@ static func apply_stat_modifier(
 static func remove_stat_modifier(unit_do: UnitInformationDO, modifier_id: String) -> void:
 	if unit_do == null or modifier_id.is_empty():
 		return
+	var removed := false
 	for i in range(unit_do.stat_modifiers.size() - 1, -1, -1):
 		if str(unit_do.stat_modifiers[i].get("id", "")) == modifier_id:
 			unit_do.stat_modifiers.remove_at(i)
-	recalculate_unit_stats(unit_do)
+			removed = true
+	if removed:
+		recalculate_unit_stats(unit_do)
 
 
 ## Recalculates `max_hp`, `power`, and `spd` from `base_max_hp`, `base_power`, `base_spd`
@@ -274,6 +277,87 @@ static func is_unit_on_cue_table(unit_do: UnitInformationDO) -> bool:
 					break
 		return has_active_table_puck
 	return true
+
+
+# ----- Trigger-Time Passive Skill Dispatch (`ON_PUCK_COLLISION`, `ON_POCKET_FALL`) -----
+
+## Dispatches `TRIGGER_ON_PUCK_COLLISION` when an opponent Boss Monster collides with `struck_unit`:
+## - Evaluates `SPA10001 Protect`: reduces Boss Frenzy Power by `Y% = X * (4% + Lv * 1%)`
+##   (where `X` is the number of non-defeated non-Guard-tree teammates in the SAME Adventurer Team,
+##   including pocketed teammates), doubled to `2 * Y%` if `struck_puck` is the very first puck
+##   in `boss_puck`'s Collision History for that shot.
+func evaluate_boss_collision_frenzy_skills(
+	_boss_unit: UnitInformationDO,
+	struck_unit: UnitInformationDO,
+	boss_puck: BasePuck = null,
+	struck_puck: BasePuck = null
+) -> float:
+	if struck_unit == null:
+		return 0.0
+	var total_delta := 0.0
+	var entries := get_skills_for_trigger(TRIGGER_ON_PUCK_COLLISION, struck_unit.unit_id)
+	for entry in entries:
+		var sk: UnitSkill = entry.get("skill", null) as UnitSkill
+		if sk == null:
+			continue
+		if sk.skill_id == "SPA10001":
+			var non_guard_count := PassiveSkill._count_same_team_non_guard_teammates(struck_unit, unit_information_manager)
+			var y_delta := float(non_guard_count * (4 + sk.skill_lv * 1)) / 100.0
+			var is_first_hit := true
+			if boss_puck != null:
+				is_first_hit = boss_puck.is_first_puck_hit_in_turn(struck_puck, struck_unit.unit_id)
+			var mult := 2.0 if is_first_hit else 1.0
+			total_delta -= y_delta * mult
+	return total_delta
+
+
+## Dispatches `TRIGGER_ON_PUCK_COLLISION` when two non-Boss units collide:
+## - Evaluates `SPA10001 Protect`: when colliding with an ally in the SAME team,
+##   reduces collision damage taken on both pucks by 50% (`0.50x`, fixed, not affected
+##   by skill Lv, applied at most once per collision even if both pucks have Protect).
+func evaluate_ally_collision_damage_multiplier(u1: UnitInformationDO, u2: UnitInformationDO) -> float:
+	if u1 == null or u2 == null:
+		return 1.0
+	if u1.team_index != u2.team_index or u1.owner_seat != u2.owner_seat:
+		return 1.0
+	for uid in [u1.unit_id, u2.unit_id]:
+		for entry in get_skills_for_trigger(TRIGGER_ON_PUCK_COLLISION, uid):
+			var sk: UnitSkill = entry.get("skill", null) as UnitSkill
+			if sk != null and sk.skill_id == "SPA10001":
+				return 0.50
+	return 1.0
+
+
+## Dispatches `TRIGGER_ON_POCKET_FALL` when `falling_unit` falls into a Pocket Area:
+## - Evaluates `SPA10003 Safety Rope`: every Scout in the SAME Adventurer Team that is
+##   currently `On the cue table` (excluding `falling_unit` itself!) reduces Pocket Area
+##   damage by `-(10 + Lv * 3)%` from the `50%` baseline (clamped to `0%..100%`).
+## - Evaluates `SPA10004 Chanting`: if `falling_unit` has `SPA10004 Chanting`, resets its
+##   chanting counter `N` to `0` and removes its chanting POW modifier immediately.
+func handle_unit_pocket_fall_passives(falling_unit: UnitInformationDO) -> float:
+	if falling_unit == null:
+		return 0.50
+	var pct := 0.50
+	var entries := get_skills_for_trigger(TRIGGER_ON_POCKET_FALL)
+	for entry in entries:
+		var owner_id := str(entry.get("unit_id", ""))
+		var sk: UnitSkill = entry.get("skill", null) as UnitSkill
+		if sk == null:
+			continue
+		if sk.skill_id == "SPA10003":
+			# The falling unit itself is no longer on the cue table when its pocket damage is calculated
+			if owner_id == falling_unit.unit_id:
+				continue
+			var owner_u := unit_information_manager.get_unit(owner_id) if unit_information_manager != null else null
+			if owner_u == null or owner_u.team_index != falling_unit.team_index or owner_u.owner_seat != falling_unit.owner_seat:
+				continue
+			if not is_unit_on_cue_table(owner_u):
+				continue
+			pct -= float(10 + sk.skill_lv * 3) / 100.0
+		elif sk.skill_id == "SPA10004" and owner_id == falling_unit.unit_id:
+			sk.counter = 0
+			remove_stat_modifier(falling_unit, "SPA10004_chanting")
+	return clampf(pct, 0.0, 1.0)
 
 
 # ----- Factory for All Codex Skills (`SMA10001..10004`, `SAA10001..10004`, `SPA10001..10004`) -----
