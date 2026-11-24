@@ -47,7 +47,19 @@ One cell on the Unit Information Board (or a 2-column horizontal span for a Boss
 _Avoid_: unit card, profile box
 
 **Unit Detail Display**:
-A popup window alongside the Unit Information Board that shows full stats, skills, status effects, and puck properties for an inspected unit.
+A popup window alongside the Unit Information Board that shows full stats, status effects, puck properties, and two rows of skill icons (Row 1: Move, Attack, and Active Skill slots, leaving an empty slot if no Active Skill is equipped; Row 2: Passive Skills) for an inspected unit.
+
+**Skill Display**:
+A hover tooltip window shown when hovering over a skill icon in the Unit Detail Display. Displays the skill's name, type, skill `Lv`, and `Description` injected with resolved variable values (highlighted in a value colour) and `*keyword*` terms (highlighted in a keyword colour), with the glossary meanings of those keywords listed at the bottom (never displaying raw internal `Effects` implementation text).
+
+**Unit Skill Manager**:
+The battle-scoped manager node that owns skill definitions and unit skill bindings, maintains a trigger-time-to-skills lookup map (so event sites dispatch only to skills registered for that trigger time without scanning all skills), evaluates cross-unit skill effects, and recalculates **Statistic Buff/Debuff** values (`round(base_stat_at_lv * (1 + sum_pct) + sum_flat)`).
+
+**Auto Fight Manager**:
+The battle-scoped manager node that controls the automated combat flow in `Action Time` (start-of-action passives, followed by `All Active Skills → All Attack Skills → All Move Skills → Pocketed Units Return`, each ordered by `SPD` descending) and `Settle Time` for all units on the battlefield.
+
+**Presentation Manager**:
+The battle-scoped manager node that controls visual and sound effects and animations (skill attack animations, constant-speed Move Skill glides, skill popups, Frenzy Power spread, settled damage popups) across `Action Time` and `Settle Time`.
 
 **Reference Mark**:
 The short identifier shown on both the upper-left corner of a unit's Unit Display and the center of its Puck(s) on the Cue Table so the player can match HUD cells to pucks. Player A's Boss Monster uses `Ω` and minions `ω1..ω6` (Gold Reference Mark colour); Player B's uses `Ψ` and minions `ψ1..ψ6` (Silver Reference Mark colour); Enemy Adventurer Team 1 uses capital letters `G, B, S, A, F, E` (Deep Grey Reference Mark colour) and Team 2 uses small letters `g, b, s, a, f, e` (Deep Brown Reference Mark colour), standing for **G**uard (`1`), **B**rawler (`2`), **S**cout (`3`), **A**colyte (`4`), **F**ree (`5`), and **E**xtra (`6`). In normal random Adventurer Team generation, slot `1` (`G`/`g`) = Guard tree, slot `2` (`B`/`b`) = Brawler tree, slot `3` (`S`/`s`) = Scout tree, slot `4` (`A`/`a`) = Acolyte tree, and slots `5..6` (`F`/`f`, `E`/`e`) are free positions for duplicate class trees (missing class trees leave their slots and grid cells unused); customized stage compositions may override this class-to-slot assignment. Both the puck colour and the Unit Display border colour follow the unit's **Class Tree** (Guard tree = Blue, Brawler tree = Red, Scout tree = Green, Acolyte tree = Purple; Minions use a deeper shade of `1..6` TBC; Boss Monster is Black). To distinguish pucks of the same Class across teams and free positions, Team 1 pucks carry a 4-sided White X stripe and Team 2 pucks carry a 4-sided Black X stripe, while free positions `5` (`F`/`f`) and `6` (`E`/`e`) display a white circle behind the Reference Mark letter (like an 8-ball).

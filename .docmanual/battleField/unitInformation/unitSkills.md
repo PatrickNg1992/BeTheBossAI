@@ -66,6 +66,15 @@ This list should be managed. Add comments to the Skill Classes for that. Can use
 
 In the Unit Detail Display, the bottom part shows all skills of that unit. 
 
-Skills are displayed as Icons. When player hover the mouse on the icon. A *Skill Display* window will appear, showing the name, type, skill Lv, description of the skill. The Description should allow styling. Keywords and variable value are highlight in different color. At the bottom of the Skill Display, show the meaning of the keywords.
+Skills are displayed as Icons. The first row, with proper spacing, shows the three Move, Attack, and Active Skill icon slots (leaving an empty slot frame if the unit has no Active Skill). Below it shows all Passive Skill icons. Skills with a *Skill Countdown* or counter also display a live badge on the icon.
 
-The first row, with proper spacing shows the three Move, Attack and Active Skills Icon. Below it shows all Passive Skills. 
+When the player hovers the mouse on a skill icon, a *Skill Display* window appears, showing the name, type, skill Lv, and `Description` of the skill (do not display the raw `Effects` implementation text). The `Description` is injected with resolved variable values (e.g. `?X`, `?Y` evaluated at the skill's current `Lv` and counter) and allows styling: keywords (marked as `*keyword*` in the skill codex) and resolved variable values are highlighted in different colours. At the bottom of the *Skill Display*, show the meaning of the highlighted keywords that appear in that skill. 
+
+
+## Game managers
+
+Create a Unit Skill Manager to handle:
+- Common Skills effects
+- Handle skill effects that across more than one units
+- Handle a map to skills at different triggering times so that other logic no need to loop all the skills to check 
+- Manage the Skills type and belongs

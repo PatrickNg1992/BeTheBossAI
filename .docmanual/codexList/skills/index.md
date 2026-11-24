@@ -9,8 +9,8 @@ Skill lists are categorised by their types in subfolders: move, attack, active, 
 - Lv: {optional. if the skill allows levels, it shows the max level}
 - Type: {optional. extra type category}
 - For: {optional. What type of unit can equip this skill normally, but is not restricted
-- Description: {display text to players}
-- Effects: {Describe the effects in text, implement this logic}
+- Description: {display text to players; injected with resolved `?X` variable values and `*keyword*` highlights in Skill Display}
+- Effects: {Describe the effects in text, implement this logic; not shown directly to players}
 - Animation: {describe the animation to play. Commonly for Attack or Active Skills}
 - Ratio: {Commonly valid for attack or active skills, optional. Describe the attack ratio}
 - Dist: {distance to move, common in Move Skills. A random range like 1.00 - 1.50}

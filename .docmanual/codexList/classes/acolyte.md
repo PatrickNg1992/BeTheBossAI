@@ -5,7 +5,7 @@
 - ID: ACA10001
 - Rank: 1
 - Description: TBC
-- Skills: SMA10004, SAA10004
+- Skills: SMA10004, SAA10004, SPA10004
 - From: -
 - Trait: magic-based
 - puck mass: 1.25

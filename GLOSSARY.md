@@ -64,6 +64,22 @@ The HUD board on the left and right edges of the battlefield canvas, arranged as
 
 The battle-scoped manager node inside the Battlefield Scene that owns authoritative `Unit Information` data objects (stats, `current_hp`, `max_hp`, `bars_remaining`, `Damage Stack`, `Hit Level`, `Frenzy Power`, and `0..N` active Puck references) for every unit in the battle. Puck scripts store physics state only (`radius`, `mass`, `restitution`, `position`, `velocity`, `rotation`).
 
+## Unit Skill Manager
+
+The battle-scoped manager node that manages unit skills, common skill effects (such as *Statistic Buff/Debuff* recalculations and *Pocket Area Damage* modifiers), cross-unit skill effects, and a trigger-time-to-skills map so trigger points only check skills registered for that timing.
+
+## Auto Fight Manager
+
+The battle-scoped manager node that orchestrates the automated flow in *Action Time* and *Settle Time* for all units on the battlefield.
+
+## Presentation Manager
+
+The battle-scoped manager node that controls visual/sound effects and animations across *Action Time* and *Settle Time*.
+
+## Skill Display
+
+The hover popup window opened from a skill icon inside the *Unit Detail Display*, showing the skill's name, type, skill Lv, and `Description` injected with resolved variable values and highlighted `*keyword*` terms (with keyword definitions at the bottom).
+
 ## Reference Mark
 
 The short identifier shown on both the upper-left corner of a unit's **Unit Display** and the center of its Puck(s) on the Cue Table: `Ω` / `ω1..ω6` in Gold for Player A; `Ψ` / `ψ1..ψ6` in Silver for Player B; capital letters `G, B, S, A, F, E` in Deep Grey for Adventurer Team 1; small letters `g, b, s, a, f, e` in Deep Brown for Adventurer Team 2 (**G**uard, **B**rawler, **S**cout, **A**colyte, **F**ree, **E**xtra). Pucks and Unit Display borders are coloured by Class Tree (Guard tree = Blue, Brawler tree = Red, Scout tree = Green, Acolyte tree = Purple, Boss Monster = Black), with a 4-sided White X stripe for Team 1, a 4-sided Black X stripe for Team 2, and a white 8-ball circle behind the letter for free positions `F`/`f` and `E`/`e`.

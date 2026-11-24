@@ -4,7 +4,7 @@
 - ID: ACB10001
 - Rank: 1
 - Description: TBC
-- Skills: SMA10002, SAA10002
+- Skills: SMA10002, SAA10002, SPA10002
 - From: -
 - Trait: melee-focused
 - puck mass: 1.5
