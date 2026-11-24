@@ -102,6 +102,10 @@ Special unit effects are triggered during collisions. When two pucks collide, fi
 
 Besides the normal rebound impulse, some blocks of the cushion could have special effects. Therefore, create a function that calculates the impulse applied to pucks that hit the cushion blocks. The function should be in a script that is attached to cushion blocks and extendable. 
 
+## Collision history
+
+For calculate some skill effects, each pucks need to record a order list of pucks or cushion collided. The history will be cleared at the end of Settle Time.
+
 ## Gravity
 
 There is gravity acting on pucks. Pucks not on the cue table will fall. This applies when pucks fall into the pocket area. When a puck's height is below 5 of the table, it temporarily disappears and should appear again at the end of the settle phase if it is defeated.

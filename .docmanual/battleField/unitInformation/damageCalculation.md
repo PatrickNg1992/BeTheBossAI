@@ -12,25 +12,27 @@ All units hold a Damage Stack, including Boss monsters, minions and adventurers.
 
 A Damage DO of a unit stores the source and value of damage taken. It also specifies other information, such as damage type and whether the damage is fixed (`is_fixed`). Damage values can be decimal numbers during calculation and are rounded to the nearest integer when settled in Settle Time (while `current_hp` and `max_hp` are always integers).
 
-When two pucks collide in `PuckVelocityManager`, after calculating the collision Impulse scalar `J`, `PuckVelocityManager` checks collision effects and pushes a `Damage DO` to the affected unit's Damage Stack in `UnitInformationManager` (following the collision matrix: Enemy Adventurers take collision damage from any impact except with an allied Guard or its advanced classes; Boss Monsters only take collision damage from impacts with a Guard or its advanced classes). For the demo formula (to be refined later), collision damage is linear with the collision Impulse `J`, landing in approximately the `50 ~ 200` range per collision depending on hitting velocity/impulse.
+When two pucks collide in `PuckVelocityManager`, after calculating the collision Impulse scalar `J` applied to each puck, `PuckVelocityManager` checks collision effects and pushes a `Damage DO` to the affected unit's Damage Stack in `UnitInformationManager` (by default, Boss Monsters take `0` collision damage unless a specific skill deals collision damage to them, while all non-Boss pucks take normal collision damage modifiable by equipped skills such as Guard's `SPA10001 Protect`). By default, the collision damage taken by a puck is proportional to the collision Impulse `J` applied to it and the hitting puck's `POW`: `damage = (J / 10) * hitter_POW`.
 
-When a puck falls into a Pocket Area, a `Damage DO` with `is_fixed = true` is pushed to its Damage Stack. Its percentage defaults to `50%` of the unit's `max_hp` (1 Health Bar) and can be modified by passive skills (`Pocket Area Damage +/-?%`, clamped to `0%..100%`, such as Scout's `SPA10002 Safety Rope`), rounded up to an integer. Here **fixed (`is_fixed = true`)** specifically means that the resulting `Damage DO` is not affected by `Frenzy Power` or `Hit Level` during Damage Settlement. After falling into a Pocket Area, when the puck returns to the table, it respawns at a random empty, non-pocket Tile inside the middle 80% of the Cue Table.
+When a puck falls into a Pocket Area, a `Damage DO` with `is_fixed = true` is pushed to its Damage Stack. Its percentage defaults to `50%` of the unit's `max_hp` (1 Health Bar) and can be modified by passive skills (`Pocket Area Damage +/-?%`, clamped to `0%..100%`, such as Scout's `SPA10003 Safety Rope` for teammates in the same Adventurer Team when the Scout is on the cue table), rounded up to an integer. Here **fixed (`is_fixed = true`)** specifically means that the resulting `Damage DO` is not affected by `Frenzy Power` or `Hit Level` during Damage Settlement. After falling into a Pocket Area, if the unit is not defeated:
+- A **Boss Monster** respawns on the table at the end of that turn's **Settle Time** (at a random empty, non-pocket Tile inside the middle 80% of the Cue Table) so the game can continue.
+- An **Adventurer** (or Minion) keeps its Time Board Action Tag counts and Action Countdown unchanged, and returns to the table at its **next Action Time** (consuming its action for that turn, respawning after all on-table acting units finish moving, ordered by `SPD` descending if multiple units return on the same turn) at a random empty, non-pocket Tile inside the middle 80% of the Cue Table.
 
 ## Frenzy Power
 
 Frenzy Power is a bonus mechanism that allows players to multiply the damage with a good play. It is a percentage number (default `100.0%`, displayed to 1 decimal place) that multiplies the total damage right before the Damage Settlement.
 
-The number can be affected by collisions and effects. Typically, the power number increases whenever the Boss monster collides with an enemy adventurer puck (default `+10%`), with a minimum floor of `50%`. However, when hitting a Guard-tree puck equipped with the passive skill `Protect` (`SPA10001`), that passive skill reduces the Boss monster's Frenzy Power by `X * (4% + Lv * 1%)` (where `X` is the number of non-Guard-tree teammates, offsetting the normal `+10.0%`). Sometimes the battlefields will spawn special blocks that allow the player to adjust the Frenzy Power.
+The number can be affected by collisions and effects. Typically, the power number increases whenever the Boss monster collides with an enemy adventurer puck (default `+10%`), with a minimum floor of `50%`. However, when hitting a Guard-tree puck equipped with the passive skill `Protect` (`SPA10001`), that passive skill reduces the Boss monster's Frenzy Power by `Y% = X * (4% + Lv * 1%)` (where `X` is the number of non-defeated, non-Guard-tree teammates in the same Adventurer Team, including pocketed teammates, offsetting the normal `+10.0%`; if this Guard puck is the very first puck the Boss Monster hits in a shot, the reduction `Y%` is multiplied by `2`, i.e. `+10.0% - 2 * Y%`). Sometimes the battlefields will spawn special blocks that allow the player to adjust the Frenzy Power.
 
 Only boss monsters have Frenzy Power (each boss monster has its own Frenzy Power, displayed on the right side of its 2-cell Unit Display). After each Damage Settlement in Settle Time, the extra Frenzy Power above 100% is halved: `new_frenzy = (current_frenzy / 2) + 50%` (e.g. `200% -> 150%`, `100% -> 100%`).
 
 ## Hit Level
 
-Hit Level adjusts damage based on special conditions. Every unit (Boss monsters, minions, and enemy adventurers) has its own hit level. Hit level is an integer that defaults to zero and can be increased or decreased by conditional effects. The final damage to a unit scales exponentially with its hit level (`1.1^(Hit Level)`). Hit Level resets to `0` after each Damage Settlement in Settle Time. Some standard effects are:
+Hit Level adjusts damage based on special conditions. Every unit (Boss monsters, minions, and enemy adventurers) has its own hit level. Hit level is an integer that defaults to zero and can be increased or decreased by conditional effects. The final damage to a unit scales exponentially with its hit level (`1.1^(Hit Level)`). Hit Level resets to `0` after the Settle Time of the last turn of each 12-turn cycle. Some standard effects are:
 
 - The monster hits a unit puck that is charging an attack
 
-- When an enemy adventurer puck hits a cushion block during "Puck-puck time!", its Hit Level increases by `+1` (handled inside `PuckVelocityManager`)
+- When a unit puck, except the Boss Monster, hits a cushion block during "Puck-puck time!", its Hit Level increases by `+1` (handled inside `PuckVelocityManager`)
 
 - The pucks collide with special cushion blocks
 
@@ -54,7 +56,7 @@ Damage taken by Boss Monster and Minions:
 
 For any Boss Monster, pending and settled damage in a single Settle Phase is capped at clearing at most 1 Health Bar (its Ghost HP bar trails down to 0 of the active Health Bar, and excess damage never spills over into the next Health Bar). This applies to every Boss Monster in every Settle Phase.
 
-After Damage Settlement, the Damage stack translates to the actual integer Damage value dealt to units (rounded to the nearest integer, and shown on the Unit Display as a negative HP change number such as `-567`), Hit Level resets to 0 for all units, and each Boss Monster's Frenzy Power decays to `(current_frenzy / 2) + 50%`. Then the units check whether they are defeated.
+After Damage Settlement, the Damage stack translates to the actual integer Damage value dealt to units (rounded to the nearest integer, and shown on the Unit Display as a negative HP change number such as `-567`), and each Boss Monster's Frenzy Power decays to `(current_frenzy / 2) + 50%`. Hit Level persists across turns and resets to `0` for all units only after the Settle Time of the last turn (Turn 12) of each 12-turn cycle. Then the units check whether they are defeated.
 
 ## Visual Effect (Count and HP Trailing)
 

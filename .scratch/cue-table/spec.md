@@ -28,7 +28,7 @@ Implemented in `src/battlefield/cue_table.tscn` (instanced as `Battlefield` in `
 - Tiles (`TableBlock_1..150`): 2×2 each (height 3) → a 15×10 grid. Alternating dark/light medieval grass; corners `1, 15, 136, 150` default to `POCKET`. Individual blocks can be customized or swapped by number.
 - Cushions (`Cushion_1..54`): on all four sides, width 2, height above the table 2 (total block height 5 from table base `-1.5` to `+3.5`), split into 2-length segments. Outer rail spans: 34 on the long sides, 24 on the short sides. Corner squares (`Cushion_51..54`): upper-left and lower-right share one colour (`CORNER_DARK` + crimson banner), the other two share another (`CORNER_LIGHT` + blue banner).
 - Cushion impacts deal no damage. **Special Cushions** (segments with triggered effects) are future work.
-- Pocket Areas: hollow 2×2 zones at the four corners (`TableBlock_1`, `TableBlock_15`, `TableBlock_136`, `TableBlock_150`). Damage / kill / 5-Turn return rules: see `CONTEXT.md` → Pocket Area.
+- Pocket Areas: hollow 2×2 zones at the four corners (`TableBlock_1`, `TableBlock_15`, `TableBlock_136`, `TableBlock_150`). Damage / kill / next-Action-Time return rules: see `.docs/contexts/battlefield.md` → Pocket Area.
 - Obstacles: TBA, future.
 
 ## Puck sizes (test scene)
@@ -50,4 +50,4 @@ Radius, height, and mass, sized by what the puck represents (Adventurer class de
 ## Parked / deferred
 
 - Camera-button behaviour while a move is already in progress (the source doc sentence trails off — needs a decision when the camera is revisited).
-- Gameplay rules triggered by special-effect Tiles, Special Cushions, pocket damage/5-Turn return lifecycle, and obstacles.
+- Gameplay rules triggered by special-effect Tiles, Special Cushions, pocket damage/return lifecycle, and obstacles.

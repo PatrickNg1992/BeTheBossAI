@@ -83,3 +83,11 @@ The player can click to start the next phase and do some preparations.
 At any timing, the game allows the player to pause. 
 
 Also, add a switch button on the battlefield screen to enable fast play in single-player games. Fast play should affect all timing except Play Time and Prepare Time because these two are basically waiting for user actions.
+
+
+## Game Managers
+
+Create these managers in the battlefield scene:
+- Timing manager to control the running and transition of timing. 
+- Auto Fight Manager to control the flow in Action Time and Settle Time.
+- Presentation Manager to control the visual and sound effects, including the animations.

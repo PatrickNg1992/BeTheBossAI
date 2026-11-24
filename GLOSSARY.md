@@ -32,7 +32,7 @@ A superior *Enemy Adventurer* with an *Exceptional Class* — fixed, pre-designe
 
 ## Class
 
-The type (occupation) of an Enemy Adventurer. The 4 base classes (Level 1) are Brawler, Acolyte, Scout, and Guard (which advance into Level 2 and Level 3 classes in their respective Class Trees, such as Warrior, Mage, Ranger, Knight, etc.). Class Tree properties (such as Guard's ally collision protection, Boss collision damage, and class colour coding) apply to the base class and its advanced classes.
+The type (occupation) of an Enemy Adventurer. The 4 base classes (Level 1) are Brawler, Acolyte, Scout, and Guard (which advance into Level 2 and Level 3 classes in their respective Class Trees, such as Warrior, Mage, Ranger, Knight, etc.). Class Tree properties (such as class colour coding and inherited base skills) apply to the base class and its advanced classes; collision modifiers belong to equipped Unit Skills rather than hardcoded class rules.
 
 ## Battlefield
 
@@ -74,11 +74,11 @@ The time-ordered list of pending `Damage DO` records accumulated on a unit durin
 
 ## Frenzy Power
 
-A percentage damage multiplier (baseline `100.0%`, floor `50.0%`, displayed to 1 d.p. on the right of each Boss Monster's 2-cell Unit Display). Increases by `+10%` when colliding with an opponent Adventurer, and is dynamically reduced by passive skills such as Guard's `SPA10001 Protect` (`-X * (4% + Lv * 1%)` where `X` is the number of non-Guard-tree teammates, offsetting the normal `+10%`). Multiplies opponent Adventurer scalable damage at `Settle Time`, and decays via `new_frenzy = (current_frenzy / 2) + 50%` after each `Settle Time`.
+A percentage damage multiplier (baseline `100.0%`, floor `50.0%`, displayed to 1 d.p. on the right of each Boss Monster's 2-cell Unit Display). Increases by `+10%` when colliding with an opponent Adventurer, and is dynamically reduced by passive skills such as Guard's `SPA10001 Protect` (`-Y% = -X * (4% + Lv * 1%)` where `X` is the number of non-defeated, non-Guard-tree teammates in the same Adventurer Team, including pocketed teammates, offsetting the normal `+10%`; doubled to `-2 * Y%` if that Guard puck is the very first puck the Boss Monster hits in a shot). Multiplies opponent Adventurer scalable damage at `Settle Time`, and decays via `new_frenzy = (current_frenzy / 2) + 50%` after each `Settle Time`.
 
 ## Hit Level
 
-A per-unit integer (default `0`, `+1` when an Adventurer hits a Cushion during `Puck-puck Time!`, resets to `0` after `Settle Time`) that scales damage exponentially by $1.1^{\text{Hit Level}}$. 
+A per-unit integer (default `0`, `+1` when any non-Boss unit puck hits a Cushion during `Puck-puck Time!`, increased by attack skills with `Hit Level+?`) that scales damage exponentially by $1.1^{\text{Hit Level}}$. Persists across turns and resets to `0` only after the `Settle Time` of the last turn (Turn 12) of each 12-turn Action Cycle. 
 
 # Cue and Collision System
 
@@ -140,13 +140,13 @@ Everything waits for exactly one player action: one cue-shot, one card, or cance
 
 ## Action Time
 
-The units whose Action Tags reached the goal act in a deterministic order (buff/debuff first — TBC; normal actions in spawn order; cue-shot actions last), without waiting for the previous unit's animation or movement to finish before starting the next unit's action. Everyone else spectates.
+The units whose Action Countdown reached `0` act across three sequential skill phases — **all Active Skills first, then all Attack Skills, then all Move Skills** — with units within each phase ordered by **`SPD` (speed)** descending (tie-broken by their order in the game). Move Skills execute unit by unit and stop their glide immediately upon colliding with another puck or Cushion. Everyone else spectates.
 
 ## Action Tag
 
-A marker an Adventurer or Minion places on a slot of the *Time Board*, meaning "this unit acts when the tag reaches the goal (upper-left slot)." Tags are independent of energy. Every 12 turns is an *Action Cycle*: each Adventurer has a single fixed *Action Countdown* that must be a factor of 12 (`3`, `4`, or `6` — typically `4` for Guard and Brawler trees, `3` for Scout tree, `6` for Acolyte tree, modifiable by passive skills to another fixed factor), so Action Time only occurs at turns `3, 4, 6, 8, 9, 12` of the 12-turn cycle (with 12-interval tags highlighted in a special colour). Individual Attack and Active Skills have their own *Skill Countdown* checked in `Active Skill → Attack Skill → Move Skill` order when the unit acts, and the unit's Action Tag resets at the end of *Settle Time*.
+A marker on the *Time Board* marking the turns of each 12-Turn *Action Cycle* (`3, 4, 6, 8, 9, 12`, with 12-interval tags highlighted in a special colour) where units potentially act. Tags are independent of energy. Each Adventurer has a single fixed *Action Countdown* that must be a factor of 12 (`3`, `4`, or `6` — typically `4` for Guard and Brawler trees, `3` for Scout tree, `6` for Acolyte tree, modifiable by passive skills to another fixed factor), and every non-defeated Adventurer contributes `+1` to all multiples of its interval (`3, 4, 6, 8, 9, 12`), even while pocketed (a pocketed unit returns to the table at its next Action Time). Cycle tags exist at `3, 4, 6, 8, 9, 12` even if `0` units act on that turn. Individual Attack and Active Skills have their own *Skill Countdown* checked in `Active Skill → Attack Skill → Move Skill` order when the unit acts, and the unit's Action Countdown resets at the end of *Settle Time*.
 
-Displayed as a simple arrow pointing into the bar, with two integers — how many units share the tag, and how many *Turns* until the goal. The Turns integer is also shown on each unit's icon in the canvas. During *Action Time* the firing tag stays at the goal, and its replacement tags are placed when Action Time / Settle Time completes.
+Displayed as an arrow with a circle on top showing the acting unit count for tags within 10 Turns (the upper bar); if a tag has `0` count, the circle and number disappear. Each unit's personal *Action Countdown* turns left is shown on its *Unit Display*. When a `0`-count tag reaches the goal, it is removed without entering *Action Time*.
 
 ## Puck-puck Time!
 

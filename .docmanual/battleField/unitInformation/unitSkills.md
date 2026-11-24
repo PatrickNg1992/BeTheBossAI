@@ -4,7 +4,7 @@ This document describes the Skill system. It explains skill types and their gene
 
 There are mainly 4 types of skills. For simplicity, an Adventurer unit has one *Move Skill*, one *Attack Skill*, at most one *Active Skill* and multiple *Passive Skills* (TBC). This design avoids players wasting too much time learning different Adventurer actions at every stage. All Adventurer behaviours are presented as skills, and the number is limited. All skills should be checkable in the Unit Display Detail window. 
 
-In Action Time, always check the skills in this order: Active Skill, Attack Skill, Move Skill.
+In Action Time, skills across all acting units are checked by skill category in three sequential phases: **all Active Skills first, then all Attack Skills, then all Move Skills** (rather than running all skills of one unit before the next unit). Within each phase, acting units are ordered by their **`SPD` (speed)** from highest to lowest; units with the same `SPD` are checked according to their order in the game (spawn / registration order).
 
 Each skill has a name, icon, type and description. Attack Skills should have an attack power. Some Attack and Active Skills have Skill Countdowns. All this information should be displayed when the player checks the Unit Information Display system.
 
@@ -13,16 +13,19 @@ Each Skill has a unique name. Notice that skills with LV? at the end are Upgrada
 Whenever a unit uses its Attack Skills or Active Skills, an animation should be played. The effects should display at almost the end of the animation.
 
 Read ./.docmanual/codexList/skills/index.md to find the skills document.
+Read ./commonSkillEffects.md if you need to know skill effects in more detail. Avoid doing it if your task is not related. 
 
 ## Move Skill
 
-It defines how a Unit moves. Every unit, except a Boss Monster, has exactly one. It defines the distance, directions, and other conditions or effects. Sometimes a unit that attacked and used active skills will skip the Move Skill. 
+It defines how a Unit moves. Every unit, except a Boss Monster, has exactly one. It defines the distance, directions, and other conditions or effects. By default, all distance checks in Move Skills are measured **centre-to-centre**. Sometimes a unit that attacked or used an active skill with `Skip Movement` will skip its Move Skill. 
 
-When pucks move by Move Skill in Action, ignore puck collisions until they all stop. Then resolve the overlap if any. 
+In the Move Skill phase of Action Time, moving units execute their glide movements **unit by unit** (ordered by `SPD` descending, tie-broken by game order). A gliding puck stops its glide immediately once it collides with another puck or a Cushion (and never enters or stops on a Pocket Area), without applying physical impulse or collision damage. 
 
 ## Attack Skill
 
-It defines how a Unit attacks. Every unit, except a Boss Monster, has exactly one. It defines the attack method, power, and conditions of basic attacks. Typically, a unit needs suitable range and charge time to attack. Some attacks allow movement at the same time, but some do not.
+It defines how a Unit attacks. Every unit, except a Boss Monster, has exactly one. It defines the attack method, ratio, and conditions of basic attacks. Typically, a unit needs suitable range and charge time to attack. Some attacks allow movement at the same time, but some do not.
+
+The damage value dealt by an attack skill = `unit's POW * skill ratio`
 
 ## Active Skill
 
@@ -45,51 +48,24 @@ Then create 4 abstract subclasses: Move Skill, Attack Skill, Active Skill and Pa
 In the unit's Action Times, check Active Skill, Attack Skill, and Move Skill, and make the pucks act accordingly.
 
 For Passive Skills, create multiple checking functions and run the checks for different types of effects. Checking times are: 
-
 - When created,
-
 - Collision with pucks or the cushion,
-
 - Pucks are falling into the pocket area,
-
 - Pucks are put back on the cue table, 
-
 - Making or receiving Damage DO,
-
 - Units are defeated,
-
 - Before or after movement or attack,
-
 - When a player plays a card,
-
 - When a player makes a cue shot,
-
 - When a card is completed and goes to the discard pile,
-
 - When a player draws a card
 
 This list should be managed. Add comments to the Skill Classes for that. Can use event listener pattern if it is better, but need to consider the return value.
 
-## Common Skill Effects
+## How to display Unit Skills
 
-### Skill Countdown
+In the Unit Detail Display, the bottom part shows all skills of that unit. 
 
-Some skills will not take effect every Action Time a unit participates. Skill Countdown is the minimum number of turns that must pass before the skill can activate again. The Skill Countdown of a skill start with the value, but not 0. The countdown resets only when the skill fulfilled its activation conditions and activated.
+Skills are displayed as Icons. When player hover the mouse on the icon. A *Skill Display* window will appear, showing the name, type, skill Lv, description of the skill. The Description should allow styling. Keywords and variable value are highlight in different color. At the bottom of the Skill Display, show the meaning of the keywords.
 
-For example, if a Guard has a skill with Skill Countdown 9 while it has Action Countdown 4, it means the skill takes at least 3 Action Time to take effect again. 
-
-### On the cue table
-
-This condition means that 
-
-- the unit is not defeated, and
-
-- there is at least one puck of that unit on the table, not including fallen into the pocket area;
-
-- If the unit is in conditions like invisible, it still counts.
-
-### Pocket Area Damage +/-?%
-
-When a unit falls into the Pocket Area, calculate all the passive effects to adjust the damage it should take. The default Pocket Area Damage value is 50% of the max HP for all units (only count 1 HP bar). The resulting value must be within 0 to 100%, and the resulting `Damage DO` is marked `is_fixed = true` (meaning it is not affected by `Hit Level` or `Frenzy Power` during Damage Settlement). 
-
-For example, if two Scouts with skill apply -10% each to teammates and a Boss monster skill apply +15% to all enemies, a unit should take 45% damage when fallen into pocket.
+The first row, with proper spacing shows the three Move, Attack and Active Skills Icon. Below it shows all Passive Skills. 

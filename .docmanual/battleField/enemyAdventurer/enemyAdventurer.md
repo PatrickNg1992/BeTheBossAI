@@ -53,7 +53,7 @@ The Profile shows a box for each adventurer in that wave. It displays the follow
 
 If an adventurer is defeated, the icon turns grey, and a red cross mark appears on it. Hide the HP bar and all turn information.
 
-If an adventurer is temporarily taken out of the game (like pocketed), the icon turns grey. Shows the turn number needed for it to come back instead. 
+If an adventurer is temporarily taken out of the game (like pocketed), the icon turns grey. If not defeated, it comes back at its next Action Time (its Action Countdown continues as normal and the Time Board Action Tag counts remain unchanged; returning consumes its action for that turn, and it respawns after all on-table acting units finish moving, ordered by `SPD` descending).
 
 Each adventurer is represented by a puck on the table. The pucks are distinguished by the colour and number of the adventurer.
 
@@ -61,11 +61,13 @@ In Action timing, or "Puck-puck Time!", when the adventurers take damage, the da
 
 ## Action Tags
 
-Adventurers mark the turns left for their next action (*Action Countdown*), and this information is also displayed on the *Time Board Display* as an *Action Tag*. See `./adventurerActions.md` for the full 12-turn Action Cycle design.
+Action Tags marks the turns that adventurers potentially take actions. Therefore, the 3,4,6,8,9,12 turns of each 12-turn cycle have Action Tags. For each Action Tags with in 10 turns(the upper Timeboard bar), there is a number indicating the number of advanturers who will act. Action Tag exist even if a turn has no adventurer to move. The Action tags count all advanturers no matter their teams. (If a guard move in 4-turn interval, the Action Tags at 4,8,12 should all `+1`) Action tags at 12 are sightly larger and in different color.
 
-Adventurers with the same turns left for their upcoming action share the same tag. An action tag marks 2 numbers: the count of adventurers using this tag and the turns remaining. 
+The tags appeared as a arrow with a circle on top. Inside the circle indicate the number. If a tag has 0 count, the circle and the number disappear.
 
-Each adventurer has a fixed Action Countdown that is a factor of 12 (`3`, `4`, or `6`). When an adventurer enters the game or completes an action (resetting at the end of Settle Time), it places/joins the action tag for its Action Countdown. If a tag for that turn is already there, increment the count of adventurers; otherwise, create a tag with `count = 1`. Remove an action tag when its count reaches `0`. Individual Attack and Active Skills have their own `Skill Countdown` checked when the unit acts in Action Time (see `./adventurerSkills.md` and `../unitInformation/unitSkills.md`).
+Adventurers mark the turns left for their next action (*Action Countdown*) on the right on the Unit Display. See `./adventurerActions.md` for the full 12-turn Action Cycle design. When a unit is defeated, update the Action tags and unit display.
+
+Each adventurer has a fixed Action Countdown that is a factor of 12 (`3`, `4`, or `6`). Remove an action tag when its countdown reaches `0`. Individual Attack and Active Skills have their own `Skill Countdown` checked when the unit acts in Action Time (see `./adventurerSkills.md` and `../unitInformation/unitSkills.md`).
 
 ## Focusing State and Attack
 
@@ -74,7 +76,7 @@ Existing base skills take effect immediately in Action Time and are non-interrup
 For specific future/advanced interruptible skills, a unit (puck) can change to a **Focusing** state before its attack lands, giving the player time to take appropriate counter-actions. When a puck is focusing, it has lighting visual effects, and players are often recommended to hit focusing pucks in "Puck-puck time!" (except classes in the Guard tree).
 ## Adventurer move
 
-Most adventurers move at constant speed without a physical engine in Action timing. No collision detection is needed. 
+Most adventurers move at constant speed without a physical impulse engine in Action timing. Move Skills execute unit by unit (ordered by `SPD` descending, tie-broken by game order) and stop their glide immediately once they collide with another puck or a cushion (dealing no collision damage). 
 
 ## Number size
 

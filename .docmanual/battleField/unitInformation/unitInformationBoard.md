@@ -22,9 +22,9 @@ If the unit is an enemy adventurer, a *Class Mark* icon appears directly in the 
 
 When a player hovers the mouse over a Unit Display, the corresponding puck on the table will be highlighted so they can spot the puck easily. When a player clicks on the Unit Display, a small pop-up window named *Unit Detail Display* will appear to the side.
 
-Defeated units will have a grey Unit Display with a red cross mark over the unit portrait, and their HP bar, Damage Stack count mark, and Action Tag turn numbers will disappear. Temporarily removed units (such as pocketed units) will have a grey Unit Display, keep their HP bar visible, and show the pocket return turn countdown in place of normal Action Tag turn numbers. 
+Defeated units will have a grey Unit Display with a red cross mark over the unit portrait, and their HP bar, Damage Stack count mark, and Action Tag turn numbers will disappear. Temporarily removed units (such as pocketed units) will have a grey Unit Display, keep their HP bar and normal Action Countdown turn number visible (since they return at their next Action Time, keeping Time Board Action Tag counts unchanged). 
 
-The Unit Display should show the Ghost HP bar according to the Damage Stack and Hit Level. (Check the Unit Information Manager and Damage Calculation documents) On the left of the HP bar, a small circle mark displays the Damage Stack count (how many times damage has been taken, invisible when 0). On the right/lower-right of the unit image, the Action Tag turn countdown integer(s) (or pocket return countdown) are displayed.
+The Unit Display should show the Ghost HP bar according to the Damage Stack and Hit Level. (Check the Unit Information Manager and Damage Calculation documents) On the left of the HP bar, a small circle mark displays the Damage Stack count (how many times damage has been taken, invisible when 0). On the right/lower-right of the unit image, the Action Countdown turn integer is displayed.
 
 ### Unit Detail Display
 
@@ -33,20 +33,15 @@ The Unit Detail Display shows more detail about a unit. It appears when the play
 (TBC) Information to be shown:
 
 - Unit name
-
 - Detail class name and the Class mark icon of the unit, if it is an adventurer
-
 - HP bar with numeric HP / Max HP value (plus remaining health bar count if Boss Monster)
-
 - Skills of the unit
-
 - Special Condition of a unit
-
 - Attack power of the unit
-
 - Mass and radius of the puck
-
 - Unit's status: buff, debuff, conditional status
+
+Read ./unitSkills For how to display skills in details. Avoid doing it if your task don't need it
 
 ### Skill and Damage effects
 

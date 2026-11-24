@@ -161,7 +161,7 @@ func register_boss(unit_id: String, seat: String, config: Dictionary = {}) -> Un
 	u.current_hp = int(config.get("current_hp", u.max_hp))
 	u.max_bars = int(config.get("max_bars", 15))
 	u.bars_remaining = int(config.get("bars_remaining", u.max_bars))
-	u.power = int(config.get("power", 25))
+	u.power = int(config.get("power", 400))
 	u.mass = float(config.get("mass", 3.2))
 	u.radius = float(config.get("radius", 0.8))
 	u.frenzy_power = float(config.get("frenzy_power", 1.0))
@@ -547,9 +547,9 @@ func modify_frenzy_power(boss_unit_id: String, delta: float) -> float:
 	return set_frenzy_power(boss_unit_id, u.frenzy_power + delta)
 
 
-## Adjusts a Boss Monster's Frenzy Power when colliding with an Enemy Adventurer puck:
-##   - Non-Guard Adventurer: +10% (DEFAULT_FRENZY_GAIN_NON_KNIGHT)
-##   - Guard Adventurer: -20% (DEFAULT_FRENZY_LOSS_KNIGHT), clamped to >= 50% floor
+## Adjusts a Boss Monster's Frenzy Power when colliding with an opponent Enemy Adventurer puck:
+##   - Default baseline on hit: +10% (DEFAULT_FRENZY_GAIN_NON_KNIGHT).
+##   - Any reduction (such as Guard's SPA10001 Protect passive skill) is applied by equipped skills rather than hardcoded class rules.
 func record_boss_collision_frenzy(boss_unit_id: String, struck_unit_id: String) -> float:
 	var boss := get_unit(boss_unit_id)
 	var struck := get_unit(struck_unit_id)
@@ -557,8 +557,6 @@ func record_boss_collision_frenzy(boss_unit_id: String, struck_unit_id: String) 
 		return DEFAULT_FRENZY_BASELINE
 	if struck.unit_kind != "enemy_adventurer":
 		return boss.frenzy_power
-	if struck.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD:
-		return modify_frenzy_power(boss_unit_id, -DEFAULT_FRENZY_LOSS_KNIGHT)
 	return modify_frenzy_power(boss_unit_id, DEFAULT_FRENZY_GAIN_NON_KNIGHT)
 
 
@@ -725,7 +723,7 @@ func heal_unit(unit_id: String, amount: int) -> void:
 
 
 ## Called by `PuckVelocityManager` when a puck hits a Cushion during "Puck-puck Time!":
-## When an Enemy Adventurer puck collides with a Cushion, its Hit Level increases by +1.
+## When any unit puck except a Boss Monster collides with a Cushion, its Hit Level increases by +1.
 func handle_puck_cushion_collision(puck: BasePuck) -> int:
 	if puck == null:
 		return 0
@@ -735,7 +733,7 @@ func handle_puck_cushion_collision(puck: BasePuck) -> int:
 	var u := get_unit(uid)
 	if u == null or u.is_dead:
 		return 0
-	if u.unit_kind == "enemy_adventurer":
+	if u.unit_kind != "boss":
 		return modify_hit_level(uid, 1)
 	return u.hit_level
 
@@ -789,23 +787,22 @@ func set_unit_highlighted(unit_id: String, highlighted: bool) -> void:
 			p.call("set_highlighted", highlighted)
 
 
-static func calculate_linear_collision_damage(impulse_scalar: float) -> float:
-	if impulse_scalar <= 0.0:
+static func calculate_linear_collision_damage(impulse_scalar: float, hitter_power: int = 100) -> float:
+	if impulse_scalar <= 0.0 or hitter_power <= 0:
 		return 0.0
-	return maxf(1.0, impulse_scalar * COLLISION_DAMAGE_PER_IMPULSE)
+	return maxf(1.0, (impulse_scalar / 10.0) * float(hitter_power))
 
 
 ## Handles a physical Puck–Puck collision resolved in `PuckVelocityManager`:
 ## 1. Notifies both units of the collision Impulse scalar `j_mag` so their Unit Displays shake.
-## 2. Calculates decimal linear collision damage `j_mag * COLLISION_DAMAGE_PER_IMPULSE` (~50..200 range).
-## 3. Enforces the collision matrix (including 2-Player Versus friendly vs. opponent rules):
-##    - Boss Monster vs. Boss Monster: 0 damage to both Boss Monsters.
+## 2. Calculates decimal collision damage `(j_mag / 10.0) * hitter.power` for each victim puck.
+## 3. Enforces the default collision rules (all class-specific collision modifiers belong to Unit Skills):
+##    - Boss Monster: takes 0 collision damage by default from all puck impacts.
 ##    - Boss Monster vs. Friendly Adventurer (same owner_seat): 1/4 (0.25x) collision damage to the Adventurer,
-##      skips Frenzy Power adjustment, and settles at 100% baseline Frenzy Power (friendly Knight does not hurt its own Boss).
+##      skips Frenzy Power adjustment, and settles at 100% baseline Frenzy Power.
 ##    - Boss Monster vs. Opponent Adventurer: full (1.0x) collision damage attributed to the hitting Boss Monster,
-##      adjusts the hitting Boss Monster's Frenzy Power (+10% vs non-Knight, -20% vs Knight, floor 50%),
-##      and an opponent Knight deals collision damage back to the Boss Monster.
-##    - Adventurer vs. Adventurer: Knight collision protection (0 damage) applies only between Adventurers on the same team.
+##      and adjusts the hitting Boss Monster's Frenzy Power (+10% baseline on hit, modified by equipped passive skills such as SPA10001 Protect).
+##    - Non-Boss vs. Non-Boss: both pucks take normal collision damage by default (modifiable by equipped skills such as SPA10001 Protect).
 func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 	if p1 == null or p2 == null or j_mag <= 0.0001:
 		return
@@ -836,19 +833,19 @@ func handle_puck_collision(p1: BasePuck, p2: BasePuck, j_mag: float) -> void:
 		if not _are_units_friendly(u2, u1):
 			record_boss_collision_frenzy(u2.unit_id, u1.unit_id)
 
-	var base_dmg := calculate_linear_collision_damage(j_mag)
-	if base_dmg <= 0.0:
-		return
-
-	# Check whether u1 takes collision damage from u2, and whether u2 takes collision damage from u1
+	# Check whether u1 takes collision damage from u2 (using u2.power), and whether u2 takes collision damage from u1 (using u1.power)
 	if _does_unit_take_collision_damage_from(u1, u2):
-		var mult_u1 := 0.25 if (u2.unit_kind == "boss" and _are_units_friendly(u1, u2)) else 1.0
-		var boss_owner_for_u1 := _resolve_collision_boss_owner(u2, u1)
-		push_damage(u1.unit_id, base_dmg * mult_u1, u2.unit_id, boss_owner_for_u1, "collision")
+		var dmg_to_u1 := calculate_linear_collision_damage(j_mag, u2.power)
+		if dmg_to_u1 > 0.0:
+			var mult_u1 := 0.25 if (u2.unit_kind == "boss" and _are_units_friendly(u1, u2)) else 1.0
+			var boss_owner_for_u1 := _resolve_collision_boss_owner(u2, u1)
+			push_damage(u1.unit_id, dmg_to_u1 * mult_u1, u2.unit_id, boss_owner_for_u1, "collision")
 	if _does_unit_take_collision_damage_from(u2, u1):
-		var mult_u2 := 0.25 if (u1.unit_kind == "boss" and _are_units_friendly(u2, u1)) else 1.0
-		var boss_owner_for_u2 := _resolve_collision_boss_owner(u1, u2)
-		push_damage(u2.unit_id, base_dmg * mult_u2, u1.unit_id, boss_owner_for_u2, "collision")
+		var dmg_to_u2 := calculate_linear_collision_damage(j_mag, u1.power)
+		if dmg_to_u2 > 0.0:
+			var mult_u2 := 0.25 if (u1.unit_kind == "boss" and _are_units_friendly(u2, u1)) else 1.0
+			var boss_owner_for_u2 := _resolve_collision_boss_owner(u1, u2)
+			push_damage(u2.unit_id, dmg_to_u2 * mult_u2, u1.unit_id, boss_owner_for_u2, "collision")
 
 
 func _are_units_friendly(a: UnitInformationDO, b: UnitInformationDO) -> bool:
@@ -865,19 +862,7 @@ func _does_unit_take_collision_damage_from(victim: UnitInformationDO, hitter: Un
 	if victim == null or hitter == null or victim.is_dead:
 		return false
 	if victim.unit_kind == "boss":
-		if hitter.unit_kind == "boss":
-			return false
-		# Only an OPPONENT Guard's impacts damage a Boss Monster (a friendly Guard never hurts its own Boss)
-		if _are_units_friendly(victim, hitter):
-			return false
-		return hitter.unit_kind == "enemy_adventurer" and hitter.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD
-	if victim.unit_kind == "enemy_adventurer":
-		# Guard protects its allies on the SAME team: no collision damage when colliding with a same-team Guard
-		if hitter.unit_kind == "enemy_adventurer" and _are_units_friendly(victim, hitter):
-			if victim.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD or hitter.adventurer_class == EnemyAdventurer.AdventurerClass.GUARD:
-				return false
-		return true
-	# Minions / Target Pucks suffer collision damage from any impact
+		return false
 	return true
 
 

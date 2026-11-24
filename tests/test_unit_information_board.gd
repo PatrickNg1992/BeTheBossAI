@@ -437,13 +437,13 @@ func test_two_player_coop_per_source_frenzy_knight_penalty_floor_and_boss_one_ba
 	board.bind_manager(mgr)
 	board.set_local_role("a")
 
-	# 1. Player B Boss collides with a Knight 3 times: 100% -> 80% -> 60% -> 50% (clamped at 50% floor!)
-	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
-	assert_true(is_equal_approx(boss_b.frenzy_power, 0.8), "Hitting a Knight decreases Boss B Frenzy Power by -20% to 80%")
-	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
-	assert_true(is_equal_approx(boss_b.frenzy_power, 0.6), "2nd Knight hit decreases Boss B Frenzy Power to 60%")
-	mgr.record_boss_collision_frenzy("boss_b", "adv_knight")
-	assert_true(is_equal_approx(boss_b.frenzy_power, 0.5), "3rd Knight hit clamps Boss B Frenzy Power at 50% minimum floor")
+	# 1. Player B Boss Frenzy Power decreases can be clamped at 50% minimum floor!
+	mgr.modify_frenzy_power("boss_b", -0.20)
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.8), "Reducing Boss B Frenzy Power by -20% lowers it to 80%")
+	mgr.modify_frenzy_power("boss_b", -0.20)
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.6), "2nd -20% reduction lowers Boss B Frenzy Power to 60%")
+	mgr.modify_frenzy_power("boss_b", -0.20)
+	assert_true(is_equal_approx(boss_b.frenzy_power, 0.5), "3rd reduction clamps Boss B Frenzy Power at 50% minimum floor")
 
 	# 2. Per-DamageDO source Boss Frenzy Power in 2-Player Co-op:
 	#    Mage takes:
@@ -605,7 +605,7 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	assert_true(pvm.resolve_puck_puck_collision(boss, warrior), "Boss and Warrior collide")
 	assert_eq(warrior_do.damage_stack.size(), 1, "Collision pushed 1 DamageDO onto Warrior's Damage Stack")
 	var dmg_1: float = float(warrior_do.damage_stack[0].value)
-	assert_true(dmg_1 >= 50.0 and dmg_1 <= 200.0, "Moderate collision damage is in 50..200 range (got %.2f)" % dmg_1)
+	assert_true(dmg_1 >= 100.0 and dmg_1 <= 600.0, "Collision damage scales with (J / 10) * Boss POW 400 (got %.2f)" % dmg_1)
 	assert_eq(warrior_do.damage_stack[0].owner_boss_unit_id, "boss_a", "DamageDO attributes owner_boss_unit_id to boss_a")
 	assert_eq(boss_do.damage_stack.size(), 0, "Boss Monster takes no collision damage from non-Knight Warrior")
 	assert_true(is_equal_approx(boss_do.frenzy_power, 1.10), "Boss Frenzy Power increased by +10% to 110% on hitting Warrior")
@@ -632,36 +632,36 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	assert_eq(warrior_do.damage_stack.size(), 3, "Warrior took collision damage from hitting Mage")
 	assert_eq(mage_do.damage_stack.size(), 1, "Mage took collision damage from being hit by Warrior")
 
-	# 4. Knight protection rule: when a Knight collides with an allied Adventurer (Mage),
-	#    NEITHER the Knight nor the allied Mage takes collision damage!
+	# 4. Default collision rule (without skills): when a Guard collides with an allied Adventurer (Mage),
+	#    both non-Boss pucks take default collision damage (ally damage reduction is handled by SPA10001 Protect skill)!
 	var mage_hits_before: int = mage_do.damage_stack.size()
 	knight.global_position = Vector3(-5.0, 1.7, 0.0)
 	mage.global_position = Vector3(-3.85, 1.675, 0.0) # combined radius = 0.65 + 0.55 = 1.20
 	knight.velocity = Vector3(5.0, 0.0, 0.0)
 	mage.velocity = Vector3.ZERO
-	assert_true(pvm.resolve_puck_puck_collision(knight, mage), "Knight and allied Mage collide")
-	assert_eq(mage_do.damage_stack.size(), mage_hits_before, "Knight protects allied Mage from collision damage")
-	assert_eq(knight_do.damage_stack.size(), 0, "Knight takes no collision damage from colliding with allied Mage")
+	assert_true(pvm.resolve_puck_puck_collision(knight, mage), "Guard and allied Mage collide")
+	assert_eq(mage_do.damage_stack.size(), mage_hits_before + 1, "Default collision without skill deals collision damage to allied Mage")
+	assert_eq(knight_do.damage_stack.size(), 1, "Default collision without skill deals collision damage to Guard")
 
-	# 5. Boss Monster vs. Knight collision:
-	#    BOTH the Knight AND the Boss Monster take collision damage, and the Boss Monster's Frenzy Power decreases by -20%!
+	# 5. Boss Monster vs. Guard default collision (without skills):
+	#    Guard takes collision damage, Boss Monster takes 0 default collision damage, and Boss Frenzy Power increases by +10% baseline!
 	var frenzy_before_knight: float = float(boss_do.frenzy_power) # currently 1.20 (from 2 Warrior hits)
 	boss.global_position = Vector3(0.0, 1.8, 4.0)
 	knight.global_position = Vector3(1.40, 1.7, 4.0) # combined radius = 0.8 + 0.65 = 1.45
 	boss.velocity = Vector3(5.0, 0.0, 0.0)
 	knight.velocity = Vector3.ZERO
-	assert_true(pvm.resolve_puck_puck_collision(boss, knight), "Boss and Knight collide")
-	assert_eq(knight_do.damage_stack.size(), 1, "Knight takes collision damage from Boss impact")
-	assert_eq(boss_do.damage_stack.size(), 1, "Boss Monster takes collision damage from Knight impact")
-	assert_true(is_equal_approx(boss_do.frenzy_power, frenzy_before_knight - 0.20),
-		"Boss Frenzy Power decreased by -20% on colliding with Knight (120% -> 100%)")
+	assert_true(pvm.resolve_puck_puck_collision(boss, knight), "Boss and Guard collide")
+	assert_eq(knight_do.damage_stack.size(), 2, "Guard takes collision damage from Boss impact")
+	assert_eq(boss_do.damage_stack.size(), 0, "Boss Monster takes 0 default collision damage from Guard impact")
+	assert_true(is_equal_approx(boss_do.frenzy_power, frenzy_before_knight + 0.10),
+		"Boss Frenzy Power increases by +10% baseline on colliding with Guard when no skill overrides it (120% -> 130%)")
 
 	# 6. End-to-end Settle Time: when all pucks come to rest in Puck-puck Time!, TimingManager enters Settle Time
 	#    and UnitInformationManager settles the Damage Stacks into actual HP reductions!
 	assert_eq(warrior_do.current_hp, 2200, "Warrior actual HP is still 2200 before Settle Time")
 	mgr.settle_all_damage()
 	assert_true(warrior_do.current_hp < 2200, "Warrior HP reduced after Settle Time resolves collision Damage Stack")
-	assert_true(boss_do.current_hp < 1000, "Boss Monster HP reduced after Settle Time resolves Knight collision damage")
+	assert_eq(boss_do.current_hp, 1000, "Boss Monster HP remains 1000 when no skill dealt damage to Boss")
 
 	# 7. Pocket Area fall damage & 80% middle respawn:
 	#    Give Mage an odd max_hp (1501) -> ceil(1501 / 2.0) = 751 fixed damage, immune to Boss Frenzy (150%) and Hit Level (3)!
@@ -685,12 +685,15 @@ func test_puck_velocity_manager_linear_impulse_collision_damage_matrix_and_frenz
 	warrior.velocity = Vector3(-4.0, 0.0, -4.0)
 	assert_false(pvm.resolve_puck_puck_collision(warrior, mage), "A puck falling in a Pocket Area has its collider disabled and never blocks a second puck entering the same hole")
 
-	# 9. Enemy Adventurer hitting a Cushion during Puck-puck Time! increases its Hit Level by +1 in PuckVelocityManager:
-	assert_eq(warrior_do.hit_level, 0, "Warrior Hit Level starts at 0 after Settle Time")
+	# 9. Any non-Boss unit puck hitting a Cushion during Puck-puck Time! increases its Hit Level by +1 in PuckVelocityManager (Boss pucks do not):
+	mgr.set_hit_level("adv_warrior", 0)
 	warrior.global_position = Vector3(14.8, 1.675, 0.0) # Past right Cushion boundary (15.0 - 0.6 = 14.4)
 	warrior.velocity = Vector3(5.0, 0.0, 0.0)
+	boss.global_position = Vector3(-14.8, 1.8, 0.0) # Past left Cushion boundary
+	boss.velocity = Vector3(-5.0, 0.0, 0.0)
 	pvm.step_velocities(0.05, 1.0)
-	assert_eq(warrior_do.hit_level, 1, "Enemy Adventurer hitting a Cushion in PuckVelocityManager increases Hit Level by +1")
+	assert_eq(warrior_do.hit_level, 1, "Non-Boss unit puck hitting a Cushion in PuckVelocityManager increases Hit Level by +1")
+	assert_eq(boss_do.hit_level, 0, "Boss Monster puck hitting a Cushion does NOT increase Hit Level")
 
 	tree.root.remove_child(root)
 	root.free()
