@@ -464,6 +464,8 @@ func sync_time_board(payload: Dictionary = {}, transfer_mode: int = MpTransport.
 		data["has_player_b"] = has_player_b()
 	if not data.has("action_tags"):
 		data["action_tags"] = time_board_model.get_state().get("tags", {}) if time_board_model != null else []
+	if not data.has("cycle_tags") and time_board_model != null:
+		data["cycle_tags"] = time_board_model.get_state().get("cycle_tags", [])
 	if not data.has("unit_tag_turns"):
 		data["unit_tag_turns"] = {}
 	_dispatch_sync("time_board", data, transfer_mode)
@@ -609,14 +611,17 @@ func _apply_sync(category: String, payload: Dictionary) -> void:
 				timing_manager._energy_b = clampf(snappedf(energy_b, 0.5), 0.0, TimingManager.MAX_ENERGY)
 			if time_board != null:
 				time_board.set_perspective_role(get_local_role())
-				time_board.apply_state({
+				var tb_state := {
 					"energy": energy_a,
 					"energy_a": energy_a,
 					"energy_b": energy_b,
 					"has_player_b": two_p,
 					"charge": progress,
 					"action_tags": payload.get("action_tags", []),
-				})
+				}
+				if payload.has("cycle_tags"):
+					tb_state["cycle_tags"] = payload["cycle_tags"]
+				time_board.apply_state(tb_state)
 		"aiming":
 			if cue_shot_manager != null and cue_shot_manager.has_method("apply_synced_aiming"):
 				cue_shot_manager.apply_synced_aiming(payload)

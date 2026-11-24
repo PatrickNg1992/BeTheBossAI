@@ -236,6 +236,18 @@ func test_unit_detail_display_two_row_skill_icons_and_hover_skill_display_toolti
 	assert_true(bool(row1_slots[2].get("is_empty_slot", false)), "Row 1 Slot 2 is an empty Active Skill slot frame when unit has no Active Skill")
 	assert_eq(row2_slots[0].get("skill_id"), "SPA10001", "Row 2 Slot 0 is Passive Skill SPA10001 Protect")
 
+	# Verify square icon sizes, passive 3x10 grid capacity (30 max, ~40% of Row-1 size), and Skill Lv on icons:
+	var r1_sz: Vector2 = detail_info.get("row1_icon_size", Vector2.ZERO)
+	var p_sz: Vector2 = detail_info.get("passive_icon_size", Vector2.ZERO)
+	assert_true(is_equal_approx(r1_sz.x, r1_sz.y) and r1_sz.x > 0.0, "Row-1 skill icons are square (%s)" % str(r1_sz))
+	assert_true(is_equal_approx(p_sz.x, p_sz.y) and p_sz.x > 0.0, "Passive skill icons are square (%s)" % str(p_sz))
+	assert_true(p_sz.x <= r1_sz.x * 0.50, "Passive skill icon size is ~40% of Row-1 icon size (%.1f vs %.1f)" % [p_sz.x, r1_sz.x])
+	assert_eq(int(detail_info.get("passive_grid_capacity", 0)), 30, "Passive skill grid supports up to 30 passive skills")
+	assert_eq(int(detail_info.get("passive_grid_columns", 0)), 10, "Passive skill grid has 10 columns per row")
+	assert_eq(int(detail_info.get("passive_grid_rows", 0)), 3, "Passive skill grid reserves 3 rows")
+	assert_true(str(row1_slots[1].get("lv_text", "")).contains("1"), "Row-1 skill icon shows Skill Lv")
+	assert_true(str(row2_slots[0].get("lv_text", "")).contains("1"), "Passive skill icon shows Skill Lv")
+
 	# 3. Hover over Guard's Attack Skill icon (Row 1, Slot 1 -> SAA10001 Lance, Lv 1):
 	#    Skill Display window opens showing:
 	#    - Name ("Lance"), Type ("Attack Skill"), Skill Lv ("Lv 1")
@@ -262,8 +274,18 @@ func test_unit_detail_display_two_row_skill_icons_and_hover_skill_display_toolti
 	#    ?X = 3 non-Guard teammates, ?Y = 3 * (4 + 1*1) = 15%
 	detail_node.simulate_skill_hover(2, 0, true)
 	sd_info = detail_node.get_skill_display_info()
+	var sd_min_sz: Vector2 = sd_info.get("min_size", Vector2.ZERO)
+	assert_true(sd_min_sz.x >= 390.0 and sd_min_sz.y >= 200.0, "Skill Display window is 20% larger (%s)" % str(sd_min_sz))
+	assert_true(bool(sd_info.get("icon_visible", false)), "Skill Display shows the skill icon in the upper-right corner")
+	assert_eq(sd_info.get("icon_size", Vector2.ZERO), r1_sz, "Skill Display upper-right icon size matches Move Skill icon size (68x68)")
 	desc_plain = str(sd_info.get("description_plain", ""))
 	assert_true(desc_plain.contains("15%"), "Protect Skill Display resolves ?Y = 15% with 3 non-Guard teammates at Lv 1 (got: %s)" % desc_plain)
+
+	# 5. Simulate a Time Board Action Tag Turn tick (`uim.set_unit_action_turns`) while Skill Display is hovered:
+	#    Skill Display must remain open and never close or flash!
+	uim.set_unit_action_turns("u_guard", [3])
+	assert_true(bool(detail_node.get_skill_display_info().get("visible", false)),
+		"Skill Display stays open without closing or flashing when Time Board Action Tags tick")
 
 	# Moving mouse off the skill icon closes Skill Display
 	detail_node.simulate_skill_hover(2, 0, false)

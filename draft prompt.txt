@@ -1,12 +1,7 @@
-I have re-phased some keywords so i need you to scan the project to refactor the existing resource. Here is the target refactors:
-
-- re-phase "hero" to "adventurer" except the concept of "legenary hero". Now a Hero should means a superior Adventurer with a Exceptional Class. Especially "Hero team" should be Adventurer Team.
-- re-phase base class name: knight to guard, warrior to brawler, ranger to scout, mage to acolyte. the 4 base classes are renamed. Now, knight, warrior, ranger and mage should be Level 2 classes. Beware not to change the wording that means upper level classes.
-
-
-Check the content meaning. Do not just global search and replace. Keep the letter cases. Ask me if you are not sure. 
-
-This time, no need to work on the source code in ./src folder. It will be done later. Focus on these folder: `./docmanual`, `./.docs`, `./.scratch` . Also check the markdown files in the project root folder.
-Also, while reading the documents, spec and ticket, detect any idea are contractic in different documents now. There are so many to maintenance. Tell me to clarify if contraction is found. 
-
-
+the look-and-feel of the time board is bad after adding the moving action tags.
+try the following adjustments:
+- redraw the tag shape. the circle and number should be 50% larger. the triangle side should match the edge of the circle. 
+- hightlight the 6th tag with light red, 4 and 8th with light blue, 12 with light purple (red + blue). make the 12th tag 20% larger than others.
+- don't show the action tags at lower bar and shift to upper bar. it looks chaostic. however, in order to show a full cycle. make the slots shorter and add two slot which is always empty on the upper so that there will be 12 slots at the upper bar. 
+- since the lower bar no longer need action tag, move the two bar lower. leave more space for the action tags above
+- take up the action tag stand at the goal to highlight it

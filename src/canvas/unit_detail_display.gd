@@ -10,12 +10,23 @@ extends PanelContainer
 ## - Current Hit Level and Frenzy Power (if Boss Monster)
 ## - Special condition (Normal, Focusing, Pocketed + turns, Defeated)
 ## - Statuses (buffs/debuffs/conditional statuses)
-## - Two-row Skill Icons at the bottom:
-##     Row 1 (3 spaced slots): Move Skill | Attack Skill | Active Skill (empty slot frame if no Active Skill)
-##     Row 2: All Passive Skills
-## - Hovering any skill icon opens a floating `Skill Display` window showing:
-##     Name, Type, Skill Lv, styled Description with resolved variables & *keyword* highlights,
-##     and the meanings of those keywords at the bottom.
+## - Skill Icons at the bottom:
+##     * Row 1 (3 spaced SQUARE 68x68 slots): Move Skill | Attack Skill | Active Skill
+##       (empty square slot frame if no Active Skill), displaying Skill Lv ("Lv 1") and countdown badge.
+##     * Passive Grid below (3 rows x 10 columns = 30 SQUARE 30x30 slots, ~40% of Row-1 size,
+##       allowing up to 30 Passive Skills for future Heroes), displaying Skill Lv ("Lv1").
+## - Hovering any populated skill icon opens the larger (+20%, 400x210) floating `Skill Display`
+##   window showing Name, Type, Skill Lv, styled Description with resolved variables & *keyword*
+##   highlights, and keyword meanings at the bottom.
+## - Persistent Slot Controls: skill slot nodes are pre-allocated and updated in place so
+##   per-Turn Time Board Action Tag updates never destroy hovered nodes or flash/close `Skill Display`.
+
+const MAX_PASSIVE_SLOTS := 30
+const PASSIVE_GRID_COLUMNS := 10
+const PASSIVE_GRID_ROWS := 3
+const ROW1_ICON_SIZE := Vector2(68, 68)
+const PASSIVE_ICON_SIZE := Vector2(30, 30)
+const SKILL_DISPLAY_MIN_SIZE := Vector2(400, 210)
 
 const TEX_CLASS_KNIGHT := preload("res://src/resource/battlefield/class_knight.png")
 const TEX_CLASS_WARRIOR := preload("res://src/resource/battlefield/class_warrior.png")
@@ -48,15 +59,24 @@ var _condition_label: Label = null
 var _statuses_label: Label = null
 var _skills_header_label: Label = null
 var _skill_row1_box: HBoxContainer = null
-var _skill_row2_box: HBoxContainer = null
+var _passive_grid_box: GridContainer = null
+
+# Persistent pre-allocated slot controls so per-Turn refreshes never flash or drop hover state
+var _row1_slot_controls: Array[Dictionary] = []
+var _passive_slot_controls: Array[Dictionary] = []
 
 var _skill_display_panel: PanelContainer = null
 var _sd_title_label: Label = null
 var _sd_meta_label: Label = null
+var _sd_icon_frame: PanelContainer = null
+var _sd_icon_style: StyleBoxFlat = null
+var _sd_icon_rect: TextureRect = null
 var _sd_desc_rtl: RichTextLabel = null
 var _sd_kw_sep: HSeparator = null
 var _sd_kw_rtl: RichTextLabel = null
 
+var _hovered_skill_row: int = 0
+var _hovered_skill_slot: int = -1
 var _row1_slot_meta: Array[Dictionary] = []
 var _row2_slot_meta: Array[Dictionary] = []
 var _skill_display_info: Dictionary = {"visible": false}
@@ -64,7 +84,7 @@ var _cached_info: Dictionary = {}
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(390, 410)
+	custom_minimum_size = Vector2(396, 470)
 	z_index = 30
 	visible = false
 	_build_ui()
@@ -83,7 +103,7 @@ func _build_ui() -> void:
 
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 6)
+	vbox.add_theme_constant_override("separation", 5)
 	add_child(vbox)
 
 	# Title row: Reference Mark + Unit Name + Unit Lv
@@ -113,13 +133,13 @@ func _build_ui() -> void:
 	vbox.add_child(_class_row)
 
 	_class_icon = TextureRect.new()
-	_class_icon.custom_minimum_size = Vector2(26, 26)
+	_class_icon.custom_minimum_size = Vector2(24, 24)
 	_class_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_class_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_class_row.add_child(_class_icon)
 
 	_class_label = Label.new()
-	_class_label.add_theme_font_size_override("font_size", 18)
+	_class_label.add_theme_font_size_override("font_size", 17)
 	_class_label.add_theme_color_override("font_color", Color(0.92, 0.86, 0.70, 1.0))
 	_class_row.add_child(_class_label)
 
@@ -129,7 +149,7 @@ func _build_ui() -> void:
 	vbox.add_child(hp_hbox)
 
 	_hp_bar_frame = PanelContainer.new()
-	_hp_bar_frame.custom_minimum_size = Vector2(240, 26)
+	_hp_bar_frame.custom_minimum_size = Vector2(240, 24)
 	_hp_bar_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var hp_style := StyleBoxFlat.new()
 	hp_style.bg_color = Color(0.05, 0.05, 0.05, 0.98)
@@ -156,14 +176,14 @@ func _build_ui() -> void:
 	_hp_value_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hp_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hp_value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_hp_value_label.add_theme_font_size_override("font_size", 16)
+	_hp_value_label.add_theme_font_size_override("font_size", 15)
 	_hp_value_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.92, 1.0))
 	_hp_value_label.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.02, 0.98))
 	_hp_value_label.add_theme_constant_override("outline_size", 4)
 	_hp_bar_bg.add_child(_hp_value_label)
 
 	_bars_value_label = Label.new()
-	_bars_value_label.add_theme_font_size_override("font_size", 18)
+	_bars_value_label.add_theme_font_size_override("font_size", 17)
 	_bars_value_label.add_theme_color_override("font_color", Color(0.98, 0.86, 0.36, 1.0))
 	hp_hbox.add_child(_bars_value_label)
 
@@ -174,7 +194,8 @@ func _build_ui() -> void:
 	_condition_label = _make_stat_label(vbox)
 	_statuses_label = _make_stat_label(vbox)
 
-	# Bottom section: Two-row Skill Icons (Row 1: Move | Attack | Active; Row 2: Passives)
+	# Bottom section: Row 1 (3 square 68x68 slots: Move | Attack | Active) +
+	# Passive Grid below (3 rows x 10 columns = 30 square 30x30 slots)
 	var sep := HSeparator.new()
 	vbox.add_child(sep)
 
@@ -185,11 +206,164 @@ func _build_ui() -> void:
 	_skill_row1_box.add_theme_constant_override("separation", 18)
 	vbox.add_child(_skill_row1_box)
 
-	_skill_row2_box = HBoxContainer.new()
-	_skill_row2_box.add_theme_constant_override("separation", 12)
-	vbox.add_child(_skill_row2_box)
+	for i in range(3):
+		_row1_slot_controls.append(_create_persistent_row1_slot(i))
+
+	_passive_grid_box = GridContainer.new()
+	_passive_grid_box.columns = PASSIVE_GRID_COLUMNS
+	_passive_grid_box.add_theme_constant_override("h_separation", 6)
+	_passive_grid_box.add_theme_constant_override("v_separation", 6)
+	vbox.add_child(_passive_grid_box)
+
+	for i in range(MAX_PASSIVE_SLOTS):
+		_passive_slot_controls.append(_create_persistent_passive_slot(i))
 
 	_build_skill_display_tooltip()
+
+
+func _create_persistent_row1_slot(slot_idx: int) -> Dictionary:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = ROW1_ICON_SIZE
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(4)
+	frame.add_theme_stylebox_override("panel", style)
+
+	var canvas := Control.new()
+	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(canvas)
+
+	var empty_lbl := Label.new()
+	empty_lbl.text = "—"
+	empty_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	empty_lbl.add_theme_color_override("font_color", Color(0.45, 0.42, 0.38, 0.75))
+	empty_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(empty_lbl)
+
+	var icon_rect := TextureRect.new()
+	icon_rect.custom_minimum_size = Vector2(28, 28)
+	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	icon_rect.offset_left = -14
+	icon_rect.offset_right = 14
+	icon_rect.offset_top = -16
+	icon_rect.offset_bottom = 12
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(icon_rect)
+
+	var lv_lbl := Label.new()
+	lv_lbl.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	lv_lbl.offset_left = 1
+	lv_lbl.offset_right = 34
+	lv_lbl.offset_top = -1
+	lv_lbl.offset_bottom = 14
+	lv_lbl.add_theme_font_size_override("font_size", 10)
+	lv_lbl.add_theme_color_override("font_color", Color(0.86, 0.94, 1.0, 0.98))
+	lv_lbl.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.02, 0.98))
+	lv_lbl.add_theme_constant_override("outline_size", 3)
+	lv_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(lv_lbl)
+
+	var badge_lbl := Label.new()
+	badge_lbl.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	badge_lbl.offset_left = -30
+	badge_lbl.offset_right = -1
+	badge_lbl.offset_top = -1
+	badge_lbl.offset_bottom = 14
+	badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	badge_lbl.add_theme_font_size_override("font_size", 10)
+	badge_lbl.add_theme_color_override("font_color", Color(1.0, 0.86, 0.32, 1.0))
+	badge_lbl.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.02, 0.98))
+	badge_lbl.add_theme_constant_override("outline_size", 3)
+	badge_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(badge_lbl)
+
+	var name_lbl := Label.new()
+	name_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	name_lbl.offset_top = -16
+	name_lbl.offset_bottom = 0
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
+	name_lbl.clip_text = true
+	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(name_lbl)
+
+	frame.mouse_entered.connect(func() -> void:
+		simulate_skill_hover(1, slot_idx, true)
+	)
+	frame.mouse_exited.connect(func() -> void:
+		if _hovered_skill_row == 1 and _hovered_skill_slot == slot_idx:
+			simulate_skill_hover(1, slot_idx, false)
+	)
+	_skill_row1_box.add_child(frame)
+	return {
+		"frame": frame,
+		"style": style,
+		"empty_lbl": empty_lbl,
+		"icon_rect": icon_rect,
+		"lv_lbl": lv_lbl,
+		"badge_lbl": badge_lbl,
+		"name_lbl": name_lbl,
+	}
+
+
+func _create_persistent_passive_slot(slot_idx: int) -> Dictionary:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = PASSIVE_ICON_SIZE
+	var style := StyleBoxFlat.new()
+	style.set_corner_radius_all(4)
+	style.set_content_margin_all(2)
+	frame.add_theme_stylebox_override("panel", style)
+
+	var canvas := Control.new()
+	canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(canvas)
+
+	var icon_rect := TextureRect.new()
+	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	icon_rect.offset_left = 2
+	icon_rect.offset_right = -2
+	icon_rect.offset_top = 2
+	icon_rect.offset_bottom = -2
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(icon_rect)
+
+	var lv_lbl := Label.new()
+	lv_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	lv_lbl.offset_left = -26
+	lv_lbl.offset_right = 0
+	lv_lbl.offset_top = -12
+	lv_lbl.offset_bottom = 1
+	lv_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lv_lbl.add_theme_font_size_override("font_size", 9)
+	lv_lbl.add_theme_color_override("font_color", Color(1.0, 0.92, 0.46, 1.0))
+	lv_lbl.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.01, 0.98))
+	lv_lbl.add_theme_constant_override("outline_size", 3)
+	lv_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	canvas.add_child(lv_lbl)
+
+	frame.mouse_entered.connect(func() -> void:
+		simulate_skill_hover(2, slot_idx, true)
+	)
+	frame.mouse_exited.connect(func() -> void:
+		if _hovered_skill_row == 2 and _hovered_skill_slot == slot_idx:
+			simulate_skill_hover(2, slot_idx, false)
+	)
+	_passive_grid_box.add_child(frame)
+	return {
+		"frame": frame,
+		"style": style,
+		"icon_rect": icon_rect,
+		"lv_lbl": lv_lbl,
+	}
 
 
 func _build_skill_display_tooltip() -> void:
@@ -197,7 +371,7 @@ func _build_skill_display_tooltip() -> void:
 	_skill_display_panel.name = "SkillDisplayTooltip"
 	_skill_display_panel.top_level = true
 	_skill_display_panel.z_index = 60
-	_skill_display_panel.custom_minimum_size = Vector2(330, 170)
+	_skill_display_panel.custom_minimum_size = SKILL_DISPLAY_MIN_SIZE
 	_skill_display_panel.visible = false
 	_skill_display_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -206,35 +380,70 @@ func _build_skill_display_tooltip() -> void:
 	sd_box.border_color = Color(0.94, 0.78, 0.32, 0.98)
 	sd_box.set_border_width_all(2)
 	sd_box.set_corner_radius_all(8)
-	sd_box.set_content_margin_all(12)
+	sd_box.set_content_margin_all(15)
 	sd_box.shadow_color = Color(0, 0, 0, 0.75)
 	sd_box.shadow_size = 8
 	_skill_display_panel.add_theme_stylebox_override("panel", sd_box)
 	add_child(_skill_display_panel)
 
 	var sd_vbox := VBoxContainer.new()
-	sd_vbox.add_theme_constant_override("separation", 6)
+	sd_vbox.add_theme_constant_override("separation", 8)
 	sd_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_skill_display_panel.add_child(sd_vbox)
 
+	# Header row: Title + Type/Lv on the left, and the 68x68 square Skill Icon in the upper-right corner
+	var sd_header_hbox := HBoxContainer.new()
+	sd_header_hbox.add_theme_constant_override("separation", 12)
+	sd_header_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sd_vbox.add_child(sd_header_hbox)
+
+	var sd_title_vbox := VBoxContainer.new()
+	sd_title_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sd_title_vbox.add_theme_constant_override("separation", 4)
+	sd_title_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sd_header_hbox.add_child(sd_title_vbox)
+
 	_sd_title_label = Label.new()
-	_sd_title_label.add_theme_font_size_override("font_size", 19)
+	_sd_title_label.add_theme_font_size_override("font_size", 22)
 	_sd_title_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.62, 1.0))
+	_sd_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_sd_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sd_vbox.add_child(_sd_title_label)
+	sd_title_vbox.add_child(_sd_title_label)
 
 	_sd_meta_label = Label.new()
-	_sd_meta_label.add_theme_font_size_override("font_size", 14)
+	_sd_meta_label.add_theme_font_size_override("font_size", 16)
 	_sd_meta_label.add_theme_color_override("font_color", Color(0.76, 0.84, 0.92, 1.0))
 	_sd_meta_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sd_vbox.add_child(_sd_meta_label)
+	sd_title_vbox.add_child(_sd_meta_label)
+
+	_sd_icon_frame = PanelContainer.new()
+	_sd_icon_frame.custom_minimum_size = ROW1_ICON_SIZE
+	_sd_icon_frame.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_sd_icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_sd_icon_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sd_icon_style = StyleBoxFlat.new()
+	_sd_icon_style.bg_color = Color(0.15, 0.12, 0.09, 0.96)
+	_sd_icon_style.border_color = Color(0.68, 0.46, 0.92, 0.95)
+	_sd_icon_style.set_border_width_all(2)
+	_sd_icon_style.set_corner_radius_all(6)
+	_sd_icon_style.set_content_margin_all(8)
+	_sd_icon_frame.add_theme_stylebox_override("panel", _sd_icon_style)
+	sd_header_hbox.add_child(_sd_icon_frame)
+
+	_sd_icon_rect = TextureRect.new()
+	_sd_icon_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sd_icon_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_sd_icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_sd_icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_sd_icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sd_icon_frame.add_child(_sd_icon_rect)
 
 	_sd_desc_rtl = RichTextLabel.new()
 	_sd_desc_rtl.bbcode_enabled = true
 	_sd_desc_rtl.fit_content = true
 	_sd_desc_rtl.scroll_active = false
-	_sd_desc_rtl.custom_minimum_size = Vector2(300, 48)
-	_sd_desc_rtl.add_theme_font_size_override("normal_font_size", 15)
+	_sd_desc_rtl.custom_minimum_size = Vector2(368, 58)
+	_sd_desc_rtl.add_theme_font_size_override("normal_font_size", 18)
 	_sd_desc_rtl.add_theme_color_override("default_color", Color(0.94, 0.90, 0.82, 1.0))
 	_sd_desc_rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sd_vbox.add_child(_sd_desc_rtl)
@@ -247,8 +456,8 @@ func _build_skill_display_tooltip() -> void:
 	_sd_kw_rtl.bbcode_enabled = true
 	_sd_kw_rtl.fit_content = true
 	_sd_kw_rtl.scroll_active = false
-	_sd_kw_rtl.custom_minimum_size = Vector2(300, 32)
-	_sd_kw_rtl.add_theme_font_size_override("normal_font_size", 13)
+	_sd_kw_rtl.custom_minimum_size = Vector2(368, 40)
+	_sd_kw_rtl.add_theme_font_size_override("normal_font_size", 15)
 	_sd_kw_rtl.add_theme_color_override("default_color", Color(0.78, 0.76, 0.70, 1.0))
 	_sd_kw_rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sd_vbox.add_child(_sd_kw_rtl)
@@ -256,7 +465,7 @@ func _build_skill_display_tooltip() -> void:
 
 func _make_stat_label(parent_box: VBoxContainer) -> Label:
 	var lbl := Label.new()
-	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_font_size_override("font_size", 15)
 	lbl.add_theme_color_override("font_color", Color(0.92, 0.86, 0.74, 1.0))
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	parent_box.add_child(lbl)
@@ -267,26 +476,28 @@ func show_for_unit(u: UnitInformationDO, grid_id: String = "", p_manager: UnitIn
 	if u == null:
 		close_popup()
 		return
+	var switched_unit := (inspected_unit != u)
 	inspected_unit = u
 	inspected_grid_id = grid_id if not grid_id.is_empty() else u.grid_id
 	if p_manager != null:
 		unit_manager = p_manager
 	visible = true
-	_hide_skill_display()
+	if switched_unit:
+		_hide_skill_display()
 
 	# Position alongside Left or Right board
 	if inspected_grid_id.begins_with("L"):
 		set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
 		offset_left = 260
-		offset_right = 660
-		offset_top = -210
-		offset_bottom = 210
+		offset_right = 656
+		offset_top = -235
+		offset_bottom = 235
 	else:
 		set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
-		offset_left = -660
+		offset_left = -656
 		offset_right = -260
-		offset_top = -210
-		offset_bottom = 210
+		offset_top = -235
+		offset_bottom = 235
 
 	_ref_label.text = "[%s]" % u.reference_mark
 	_name_label.text = Loc.t(u.name_key)
@@ -347,7 +558,9 @@ func show_for_unit(u: UnitInformationDO, grid_id: String = "", p_manager: UnitIn
 	var sk_str := ", ".join(sk_list) if not sk_list.is_empty() else Loc.t("udd_none")
 	_skills_header_label.text = "%s:" % Loc.t("udd_skills")
 
-	_rebuild_skill_icon_rows(u)
+	_update_skill_icon_rows_in_place(u)
+	if not switched_unit and _hovered_skill_row > 0 and _hovered_skill_slot >= 0 and _skill_display_panel.visible:
+		simulate_skill_hover(_hovered_skill_row, _hovered_skill_slot, true)
 
 	_cached_info = {
 		"visible": true,
@@ -370,17 +583,17 @@ func show_for_unit(u: UnitInformationDO, grid_id: String = "", p_manager: UnitIn
 		"statuses_text": st_str,
 		"skill_row1_slots": _row1_slot_meta.duplicate(true),
 		"skill_row2_slots": _row2_slot_meta.duplicate(true),
+		"passive_grid_capacity": MAX_PASSIVE_SLOTS,
+		"passive_grid_columns": PASSIVE_GRID_COLUMNS,
+		"passive_grid_rows": PASSIVE_GRID_ROWS,
+		"row1_icon_size": ROW1_ICON_SIZE,
+		"passive_icon_size": PASSIVE_ICON_SIZE,
+		"skill_display_min_size": SKILL_DISPLAY_MIN_SIZE,
 	}
 	_refresh_hp_fill()
 
 
-func _rebuild_skill_icon_rows(u: UnitInformationDO) -> void:
-	for child in _skill_row1_box.get_children():
-		_skill_row1_box.remove_child(child)
-		child.queue_free()
-	for child in _skill_row2_box.get_children():
-		_skill_row2_box.remove_child(child)
-		child.queue_free()
+func _update_skill_icon_rows_in_place(u: UnitInformationDO) -> void:
 	_row1_slot_meta.clear()
 	_row2_slot_meta.clear()
 
@@ -411,52 +624,82 @@ func _rebuild_skill_icon_rows(u: UnitInformationDO) -> void:
 			elif built != null:
 				passive_skills.append(built)
 
-	# Row 1: always 3 spaced slots -> [0: Move, 1: Attack, 2: Active]
+	# Row 1: 3 persistent square 68x68 slots -> [0: Move, 1: Attack, 2: Active]
 	var row1_skills: Array = [move_skill, attack_skill, active_skill]
 	var row1_categories: Array[String] = [UnitSkill.CATEGORY_MOVE, UnitSkill.CATEGORY_ATTACK, UnitSkill.CATEGORY_ACTIVE]
 	for idx in range(3):
 		var sk: UnitSkill = row1_skills[idx]
-		var slot_meta := _make_skill_slot_control(_skill_row1_box, 1, idx, sk, row1_categories[idx])
-		_row1_slot_meta.append(slot_meta)
+		var meta := _populate_row1_slot(idx, sk, row1_categories[idx])
+		_row1_slot_meta.append(meta)
 
-	# Row 2: all Passive skills
-	for idx in range(passive_skills.size()):
-		var sk := passive_skills[idx]
-		var slot_meta := _make_skill_slot_control(_skill_row2_box, 2, idx, sk, UnitSkill.CATEGORY_PASSIVE)
-		_row2_slot_meta.append(slot_meta)
+	# Passive Grid below: 3 rows x 10 columns = 30 persistent square 30x30 slots
+	var lv_prefix := Loc.t("udd_lv") if Loc != null else "Lv"
+	for idx in range(MAX_PASSIVE_SLOTS):
+		var ctrl_info: Dictionary = _passive_slot_controls[idx]
+		var style: StyleBoxFlat = ctrl_info["style"]
+		var icon_rect: TextureRect = ctrl_info["icon_rect"]
+		var lv_lbl: Label = ctrl_info["lv_lbl"]
+
+		if idx < passive_skills.size():
+			var sk := passive_skills[idx]
+			style.bg_color = Color(0.15, 0.12, 0.09, 0.96)
+			style.border_color = Color(0.68, 0.46, 0.92, 0.95)
+			style.set_border_width_all(2)
+			icon_rect.visible = true
+			icon_rect.texture = _resolve_skill_icon_texture(sk)
+			lv_lbl.visible = true
+			var lv_text := "%s%d" % [lv_prefix, sk.skill_lv]
+			if sk.counter > 0:
+				lv_text = "x%d" % sk.counter
+			lv_lbl.text = lv_text
+			_row2_slot_meta.append({
+				"row": 2,
+				"slot_index": idx,
+				"is_empty_slot": false,
+				"skill_id": sk.skill_id,
+				"name_text": sk.get_localized_name(),
+				"category": UnitSkill.CATEGORY_PASSIVE,
+				"skill_lv": sk.skill_lv,
+				"lv_text": lv_text,
+				"current_countdown": sk.current_countdown,
+				"max_countdown": sk.max_countdown,
+				"counter": sk.counter,
+				"icon_size": PASSIVE_ICON_SIZE,
+				"skill": sk,
+			})
+		else:
+			style.bg_color = Color(0.07, 0.06, 0.05, 0.35)
+			style.border_color = Color(0.26, 0.22, 0.18, 0.35)
+			style.set_border_width_all(1)
+			icon_rect.visible = false
+			lv_lbl.visible = false
 
 
-func _make_skill_slot_control(
-	parent_row: HBoxContainer,
-	row_num: int,
-	slot_idx: int,
-	sk: UnitSkill,
-	category: String
-) -> Dictionary:
-	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(74, 58)
-	var style := StyleBoxFlat.new()
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(4)
+func _populate_row1_slot(slot_idx: int, sk: UnitSkill, category: String) -> Dictionary:
+	var ctrl_info: Dictionary = _row1_slot_controls[slot_idx]
+	var style: StyleBoxFlat = ctrl_info["style"]
+	var empty_lbl: Label = ctrl_info["empty_lbl"]
+	var icon_rect: TextureRect = ctrl_info["icon_rect"]
+	var lv_lbl: Label = ctrl_info["lv_lbl"]
+	var badge_lbl: Label = ctrl_info["badge_lbl"]
+	var name_lbl: Label = ctrl_info["name_lbl"]
 
 	if sk == null:
 		style.bg_color = Color(0.08, 0.07, 0.06, 0.55)
 		style.border_color = Color(0.32, 0.28, 0.24, 0.55)
 		style.set_border_width_all(1)
-		frame.add_theme_stylebox_override("panel", style)
-		var empty_lbl := Label.new()
-		empty_lbl.text = "—"
-		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		empty_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		empty_lbl.add_theme_color_override("font_color", Color(0.45, 0.42, 0.38, 0.75))
-		frame.add_child(empty_lbl)
-		parent_row.add_child(frame)
+		empty_lbl.visible = true
+		icon_rect.visible = false
+		lv_lbl.visible = false
+		badge_lbl.visible = false
+		name_lbl.visible = false
 		return {
-			"row": row_num,
+			"row": 1,
 			"slot_index": slot_idx,
 			"is_empty_slot": true,
 			"skill_id": "",
 			"category": category,
+			"icon_size": ROW1_ICON_SIZE,
 			"skill": null,
 		}
 
@@ -471,78 +714,40 @@ func _make_skill_slot_control(
 		_:
 			style.border_color = Color(0.68, 0.46, 0.92, 0.95)
 	style.set_border_width_all(2)
-	frame.add_theme_stylebox_override("panel", style)
 
-	var inner := VBoxContainer.new()
-	inner.add_theme_constant_override("separation", 2)
-	inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(inner)
-
-	var top_bar := Control.new()
-	top_bar.custom_minimum_size = Vector2(64, 26)
-	top_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	inner.add_child(top_bar)
-
-	var icon_rect := TextureRect.new()
-	icon_rect.custom_minimum_size = Vector2(24, 24)
-	icon_rect.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	icon_rect.offset_left = -12
-	icon_rect.offset_right = 12
-	icon_rect.offset_top = -12
-	icon_rect.offset_bottom = 12
-	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	empty_lbl.visible = false
+	icon_rect.visible = true
 	icon_rect.texture = _resolve_skill_icon_texture(sk)
-	top_bar.add_child(icon_rect)
+
+	var lv_prefix := Loc.t("udd_lv") if Loc != null else "Lv"
+	var lv_str := "%s%d" % [lv_prefix, sk.skill_lv]
+	lv_lbl.text = lv_str
+	lv_lbl.visible = true
 
 	var badge_text := ""
 	if sk.max_countdown > 0:
 		badge_text = "%dT" % sk.current_countdown
 	elif sk.counter > 0:
 		badge_text = "x%d" % sk.counter
-	if not badge_text.is_empty():
-		var badge_lbl := Label.new()
-		badge_lbl.text = badge_text
-		badge_lbl.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-		badge_lbl.offset_left = -28
-		badge_lbl.offset_right = 0
-		badge_lbl.offset_top = -2
-		badge_lbl.offset_bottom = 14
-		badge_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		badge_lbl.add_theme_font_size_override("font_size", 11)
-		badge_lbl.add_theme_color_override("font_color", Color(1.0, 0.86, 0.32, 1.0))
-		badge_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		top_bar.add_child(badge_lbl)
+	badge_lbl.text = badge_text
+	badge_lbl.visible = not badge_text.is_empty()
 
-	var name_lbl := Label.new()
 	name_lbl.text = sk.get_localized_name()
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 11)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.78, 1.0))
-	name_lbl.clip_text = true
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	inner.add_child(name_lbl)
-
-	frame.mouse_entered.connect(func() -> void:
-		simulate_skill_hover(row_num, slot_idx, true)
-	)
-	frame.mouse_exited.connect(func() -> void:
-		simulate_skill_hover(row_num, slot_idx, false)
-	)
-	parent_row.add_child(frame)
+	name_lbl.visible = true
 
 	return {
-		"row": row_num,
+		"row": 1,
 		"slot_index": slot_idx,
 		"is_empty_slot": false,
 		"skill_id": sk.skill_id,
 		"name_text": sk.get_localized_name(),
 		"category": category,
 		"skill_lv": sk.skill_lv,
+		"lv_text": lv_str,
 		"current_countdown": sk.current_countdown,
 		"max_countdown": sk.max_countdown,
 		"counter": sk.counter,
+		"icon_size": ROW1_ICON_SIZE,
 		"skill": sk,
 	}
 
@@ -564,13 +769,28 @@ func simulate_skill_hover(row_num: int, slot_index: int, hovered: bool) -> void:
 		_hide_skill_display()
 		return
 
+	_hovered_skill_row = row_num
+	_hovered_skill_slot = slot_index
+
 	var formatted := sk.format_display_description(inspected_unit, unit_manager)
 	var s_name := sk.get_localized_name()
 	var s_type := sk.get_localized_type()
 	var lv_str := "%s %d" % [Loc.t("udd_lv") if Loc != null else "Lv", sk.skill_lv]
 
-	_sd_title_label.text = s_name
+	_sd_title_label.text = "%s   (%s)" % [s_name, lv_str]
 	_sd_meta_label.text = "%s  •  %s" % [s_type, lv_str]
+	if _sd_icon_rect != null:
+		_sd_icon_rect.texture = _resolve_skill_icon_texture(sk)
+	if _sd_icon_style != null:
+		match sk.skill_category:
+			UnitSkill.CATEGORY_MOVE:
+				_sd_icon_style.border_color = Color(0.28, 0.78, 0.56, 0.95)
+			UnitSkill.CATEGORY_ATTACK:
+				_sd_icon_style.border_color = Color(0.92, 0.34, 0.24, 0.95)
+			UnitSkill.CATEGORY_ACTIVE:
+				_sd_icon_style.border_color = Color(0.96, 0.78, 0.22, 0.95)
+			_:
+				_sd_icon_style.border_color = Color(0.68, 0.46, 0.92, 0.95)
 	_sd_desc_rtl.text = str(formatted.get("bbcode_text", ""))
 
 	var kw_list: Array = formatted.get("keywords", [])
@@ -589,17 +809,21 @@ func simulate_skill_hover(row_num: int, slot_index: int, hovered: bool) -> void:
 
 	var g_rect := get_global_rect()
 	if inspected_grid_id.begins_with("L"):
-		_skill_display_panel.global_position = Vector2(g_rect.end.x + 10.0, g_rect.position.y + 80.0)
+		_skill_display_panel.global_position = Vector2(g_rect.end.x + 10.0, g_rect.position.y + 60.0)
 	else:
-		_skill_display_panel.global_position = Vector2(maxf(12.0, g_rect.position.x - 345.0), g_rect.position.y + 80.0)
+		_skill_display_panel.global_position = Vector2(maxf(12.0, g_rect.position.x - (SKILL_DISPLAY_MIN_SIZE.x + 12.0)), g_rect.position.y + 60.0)
 	_skill_display_panel.visible = true
 
 	_skill_display_info = {
 		"visible": true,
 		"skill_id": sk.skill_id,
 		"name_text": s_name,
+		"title_text": _sd_title_label.text,
 		"type_text": s_type,
 		"skill_lv": sk.skill_lv,
+		"min_size": _skill_display_panel.custom_minimum_size,
+		"icon_visible": _sd_icon_rect != null and _sd_icon_rect.texture != null,
+		"icon_size": _sd_icon_frame.custom_minimum_size if _sd_icon_frame != null else Vector2.ZERO,
 		"description_plain": str(formatted.get("plain_text", "")),
 		"description_bbcode": str(formatted.get("bbcode_text", "")),
 		"keywords": kw_list,
@@ -609,6 +833,8 @@ func simulate_skill_hover(row_num: int, slot_index: int, hovered: bool) -> void:
 
 
 func _hide_skill_display() -> void:
+	_hovered_skill_row = 0
+	_hovered_skill_slot = -1
 	if _skill_display_panel != null:
 		_skill_display_panel.visible = false
 	_skill_display_info = {"visible": false}

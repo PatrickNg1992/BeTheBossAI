@@ -160,11 +160,14 @@ func test_zero_count_tag_skips_action_time_pocketed_keeps_count_and_turn_12_rese
 
 	# 4. Complete Turn 4:
 	#    At Turn 4, Guard's tag (count = 1) reaches the goal -> triggers Action Time!
-	#    Give Guard Hit Level = 2 and some damage before settling Turn 4 -> verify Hit Level PERSISTS after Turn 4's Settle Time!
+	#    While Guard's tag stands at the goal (slot 19, turns = 0), its next-cycle replacement
+	#    must NOT have appeared at turns = 12 (slot 7) yet!
 	tm.complete_charge_slot() # Turn 4
 	assert_eq(tm.get_current_timing(), TimingManager.TIMING_ACTION, "Turn 4 tag with count 1 triggers Action Time")
 	assert_eq(uim.get_unit("u_guard").next_action_turns, 0, "Guard Action Countdown reached 0 at Turn 4")
-	assert_true(model.get_state().get("tags", {}).has(19), "Firing tag pins at the goal slot (19) during Action Time")
+	assert_eq(model.get_cycle_tags().size(), 6, "Model always maintains a fixed list of 6 persistent cycle tags")
+	assert_true(model.get_state().get("tags", {}).has(19), "Firing tag stands at the goal slot (19) during Action Time")
+	assert_false(model.get_state().get("tags", {}).has(7), "Next-cycle replacement has NOT appeared at turns=12 while the tag still stands at the goal")
 
 	uim.modify_hit_level("u_guard", 2)
 	uim.push_damage("u_guard", 100.0, "boss_a", "boss_a", "collision")
@@ -174,6 +177,8 @@ func test_zero_count_tag_skips_action_time_pocketed_keeps_count_and_turn_12_rese
 	model.on_settle_time_resolved()
 	tm.notify_settle_finished()
 
+	assert_false(model.get_state().get("tags", {}).has(19), "Goal tag disappears after Settle Time")
+	assert_true(model.get_state().get("tags", {}).has(7), "Only after disappearing from the goal does the tag reset to turns=12 (ready to glide into slot 11 on the next Turn)")
 	assert_eq(uim.get_unit("u_guard").hit_level, 2, "Hit Level (2) PERSISTS after Turn 4 Settle Time (only resets at Turn 12)")
 	assert_eq(uim.get_unit("u_guard").next_action_turns, 4, "Acted Guard resets its personal Action Countdown to 4 at end of Settle Time")
 
@@ -215,86 +220,110 @@ func test_time_board_view_upper_bar_count_circle_zero_count_hiding_and_12_cycle_
 	var board: TimeBoard = packed.instantiate()
 	tree.root.add_child(board)
 
-	# Render a state with:
-	# - Upper bar tag at slot 15 (4 turns) with count = 2, is_cycle_12 = false -> arrow visible, count circle visible
-	# - Upper bar tag at slot 16 (3 turns) with count = 0, is_cycle_12 = false -> arrow visible, count circle HIDDEN
-	# - Upper bar tag at slot 11 (8 turns) with count = 4, is_cycle_12 = true  -> arrow highlighted, count circle visible
-	# - Lower bar tag at slot 7 (12 turns) with count = 4, is_cycle_12 = true  -> arrow highlighted, count circle HIDDEN (>10 turns)
+	# 1. Verify 11-slot upper bar (10 Energy slots + 1 empty extension slot), 6 persistent tag nodes,
+	#    and 2nd player's secondary bar positioned BELOW LowerBar
+	assert_eq(board.get_upper_slot_count(), 11, "Upper bar has 11 slots (10 Energy slots + 1 always-empty extension slot; 12th slot removed)")
+	assert_eq(board.get_cycle_tag_node_count(), 6, "TimeBoard uses a fixed list of 6 persistent tag nodes")
+	assert_true(board.is_secondary_bar_below_lower_bar(), "Second player's bar (SecondaryBarBox) is positioned below LowerBar")
+
+	# 2. Render a state with 6 tags:
+	# - Goal slot 19 (0 turns, stopped at goal): lifted up (`is_lifted_at_goal == true`)
+	# - Upper bar tag at slot 16 (3 turns, cycle_step=3) with count = 0 -> count circle HIDDEN
+	# - Upper bar tag at slot 15 (4 turns, cycle_step=4) with count = 2 -> light_blue, count circle visible
+	# - Upper bar tag at slot 13 (6 turns, cycle_step=6) with count = 2 -> light_red, count circle visible
+	# - Upper bar tag at slot 11 (8 turns, cycle_step=8) with count = 2 -> light_blue, count circle visible
+	# - Upper bar tag at slot 8  (11 turns, cycle_step=12) with count = 4 -> light_purple, +20% larger (scale_mult = 1.2), visible at slot 11!
 	board.render_state({
 		"energy": 10.0,
 		"charge": 0.0,
 		"tags": {
-			16: {"count": 0, "turns": 3, "is_cycle_12": false},
-			15: {"count": 2, "turns": 4, "is_cycle_12": false},
-			11: {"count": 4, "turns": 8, "is_cycle_12": true},
-			7: {"count": 4, "turns": 12, "is_cycle_12": true},
+			19: {"count": 1, "turns": 0, "cycle_step": 9},
+			16: {"count": 0, "turns": 3, "cycle_step": 3},
+			15: {"count": 2, "turns": 4, "cycle_step": 4},
+			13: {"count": 2, "turns": 6, "cycle_step": 6},
+			11: {"count": 2, "turns": 8, "cycle_step": 8},
+			8: {"count": 4, "turns": 11, "cycle_step": 12, "is_cycle_12": true},
 		},
 	})
+
+	var info_19 := board.tag_info(19)
+	assert_true(bool(info_19.get("is_lifted_at_goal", false)), "Tag standing at the goal (slot 19) is lifted up to highlight it")
 
 	var info_15 := board.tag_info(15)
 	assert_true(bool(info_15.get("count_circle_visible", false)), "Upper-bar tag with count > 0 displays the count circle")
 	assert_false(bool(info_15.get("turns_label_visible", true)), "Time Board tag does not display a redundant turns-to-goal integer")
-	assert_false(bool(info_15.get("is_cycle_12_highlighted", true)), "Non-12 tag uses normal arrow colour")
+	assert_eq(str(info_15.get("highlight_kind", "")), "light_blue", "4th tag is highlighted with light blue")
+
+	var info_13 := board.tag_info(13)
+	assert_eq(str(info_13.get("highlight_kind", "")), "light_red", "6th tag is highlighted with light red")
 
 	var info_16 := board.tag_info(16)
-	assert_false(bool(info_16.get("count_circle_visible", true)), "Upper-bar tag with count == 0 hides the count circle and number (keeping the arrow)")
+	assert_false(bool(info_16.get("count_circle_visible", true)), "Upper-bar tag with count == 0 hides the count circle and number")
 
 	var info_11 := board.tag_info(11)
-	assert_true(bool(info_11.get("count_circle_visible", false)), "Upper-bar 12-cycle tag with count > 0 displays the count circle")
-	assert_true(bool(info_11.get("is_cycle_12_highlighted", false)), "12-cycle tag on upper bar is highlighted in special colour")
+	assert_true(bool(info_11.get("count_circle_visible", false)), "8th tag with count > 0 displays the count circle")
+	assert_eq(str(info_11.get("highlight_kind", "")), "light_blue", "8th tag is highlighted with light blue")
 
-	var info_7 := board.tag_info(7)
-	assert_false(bool(info_7.get("count_circle_visible", true)), "Lower-bar tag (> 10 turns) hides the count circle even when count > 0")
-	assert_true(bool(info_7.get("is_cycle_12_highlighted", false)), "12-cycle tag on lower bar is highlighted in special colour")
+	var info_8 := board.tag_info(8)
+	assert_true(bool(info_8.get("visible_on_board", false)), "Tag at 11 turns (slot 8, right edge of 11th slot) is visible on the upper bar")
+	assert_true(bool(info_8.get("count_circle_visible", false)), "12th cycle tag displays its count circle")
+	assert_eq(str(info_8.get("highlight_kind", "")), "light_purple", "12th tag is highlighted with light purple (red + blue)")
+	assert_true(is_equal_approx(float(info_8.get("scale_mult", 1.0)), 1.2), "12th tag is 20% larger than other tags")
 
-	# Verify adjacent cycle tags (15 & 16, 10 & 11, 3 & 4) ALL glide smoothly without teleporting,
-	# and per-frame charge updates do NOT clobber the running glide tweens!
+	# 3. Verify that:
+	#    (a) A tag at turns=12 (slot 7) is hidden off-bar, and when the next Turn advances it to turns=11 (slot 8),
+	#        it GLIDES IN smoothly to slot 11!
+	#    (b) A tag advancing from turns=1 (slot 18) to turns=0 (slot 19, the Goal) starts at y = 0.0 (NOT lifted while gliding)
+	#        and only lifts up after stopping at the goal!
+	#    (c) Adjacent tags (e.g. turns 4 & 3 at slots 15 & 16) both glide independently via the 6 persistent tag nodes!
 	board.render_state({
 		"energy": 10.0,
 		"charge": 0.0,
 		"tags": {
-			16: {"count": 1, "turns": 3, "cycle_step": 3},
+			18: {"count": 1, "turns": 1, "cycle_step": 3},
 			15: {"count": 2, "turns": 4, "cycle_step": 4},
+			13: {"count": 2, "turns": 6, "cycle_step": 6},
 			11: {"count": 2, "turns": 8, "cycle_step": 8},
 			10: {"count": 1, "turns": 9, "cycle_step": 9},
-			9: {"count": 2, "turns": 10, "cycle_step": 8},
-			8: {"count": 1, "turns": 11, "cycle_step": 9},
+			7: {"count": 4, "turns": 12, "cycle_step": 12, "is_cycle_12": true},
 		},
 	})
+	assert_false(bool(board.tag_info(7).get("visible_on_board", true)), "Tag at turns=12 (slot 7) is waiting off-bar before gliding into slot 11")
+
 	board.apply_state({
 		"energy": 11.0,
 		"charge": 0.0,
 		"tags": {
-			17: {"count": 1, "turns": 2, "cycle_step": 3},
+			19: {"count": 1, "turns": 0, "cycle_step": 3},
 			16: {"count": 2, "turns": 3, "cycle_step": 4},
+			14: {"count": 2, "turns": 5, "cycle_step": 6},
 			12: {"count": 2, "turns": 7, "cycle_step": 8},
 			11: {"count": 1, "turns": 8, "cycle_step": 9},
-			10: {"count": 2, "turns": 9, "cycle_step": 8},
-			9: {"count": 1, "turns": 10, "cycle_step": 9},
+			8: {"count": 4, "turns": 11, "cycle_step": 12, "is_cycle_12": true},
 		},
 	})
-	assert_true(board._tag_tweens.has(17) and board._tag_tweens[17].is_running(), "Front tag 16->17 is gliding smoothly")
-	assert_true(board._tag_tweens.has(16) and board._tag_tweens[16].is_running(), "Adjacent trailing tag 15->16 is ALSO gliding smoothly (not teleporting)")
-	assert_true(board._tag_tweens.has(12) and board._tag_tweens[12].is_running(), "Front tag 11->12 is gliding smoothly")
-	assert_true(board._tag_tweens.has(11) and board._tag_tweens[11].is_running(), "Adjacent trailing tag 10->11 is ALSO gliding smoothly (not teleporting)")
-	assert_true(board._tag_tweens.has(10) and board._tag_tweens[10].is_running(), "Crossing tag 9->10 is fading in smoothly")
-	assert_true(board._tag_tweens.has(9) and board._tag_tweens[9].is_running(), "Trailing tag 8->9 glides into slot 9 simultaneously with 9->10 fade-teleport")
+	assert_true(board.is_tag_gliding_at_slot(19), "Tag arriving at goal (18->19) is gliding")
+	assert_true(is_equal_approx(float(board.tag_info(19).get("mover_y", -99.0)), 0.0),
+		"Tag gliding into goal (18->19) stays at y=0.0 while moving and only lifts up after stopping at goal")
+	assert_true(board.is_tag_gliding_at_slot(8), "Replacement tag (turns 12->11, slot 7->8) glides in smoothly to slot 11")
+	assert_true(board.is_tag_gliding_at_slot(12), "Tag 11->12 glides smoothly")
+	assert_true(board.is_tag_gliding_at_slot(11), "Adjacent trailing tag 10->11 ALSO glides smoothly without depending on slot 11's previous occupant")
 
 	# Per-frame charge progress update while tags are unchanged must NOT kill the running tag tweens!
 	board.apply_state({
 		"energy": 11.0,
 		"charge": 0.25,
 		"tags": {
-			17: {"count": 1, "turns": 2, "cycle_step": 3},
+			19: {"count": 1, "turns": 0, "cycle_step": 3},
 			16: {"count": 2, "turns": 3, "cycle_step": 4},
+			14: {"count": 2, "turns": 5, "cycle_step": 6},
 			12: {"count": 2, "turns": 7, "cycle_step": 8},
 			11: {"count": 1, "turns": 8, "cycle_step": 9},
-			10: {"count": 2, "turns": 9, "cycle_step": 8},
-			9: {"count": 1, "turns": 10, "cycle_step": 9},
+			8: {"count": 4, "turns": 11, "cycle_step": 12, "is_cycle_12": true},
 		},
 	})
-	assert_true(board._tag_tweens.has(16) and board._tag_tweens[16].is_running(), "Per-frame charge update preserves in-flight glide tween on slot 16")
-	assert_true(board._tag_tweens.has(11) and board._tag_tweens[11].is_running(), "Per-frame charge update preserves in-flight glide tween on slot 11")
+	assert_true(board.is_tag_gliding_at_slot(8), "Per-frame charge update preserves in-flight glide-in tween at slot 11 (index 8)")
+	assert_true(board.is_tag_gliding_at_slot(11), "Per-frame charge update preserves in-flight glide tween on slot 11")
 
 	tree.root.remove_child(board)
 	board.free()

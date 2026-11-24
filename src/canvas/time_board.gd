@@ -2,54 +2,107 @@ class_name TimeBoard
 extends Control
 
 ## The Time Board view: a dumb renderer for board state fed to it.
-## Two serpentine 10-slot bars — slot 0 lower-left, slot 9 lower-right,
-## slot 10 upper-right, slot 19 (the goal) upper-left. The Energy fill grows
-## from slot 0 along the path; the charging slot fills smoothly over the
-## Turn. Tags are pennant arrows above the upper bar / below the lower bar,
-## resting ON slot edges (the leading edge in the path direction) with the
-## unit count printed on the arrow and the Turns-to-goal integer outside it.
-## The integers count down exactly when a gliding arrow lands on the next
-## edge — never while it sits mid-box.
-##
-## All motion lives here and only here: smooth charging, a pop when a slot
-## completes, the one-slot tag glide, the 9→10 fade-teleport wrap, and the
-## spend-Energy rewind. No board rules — the view renders and animates
-## whatever state it is fed.
-##
-## `demo_mode` is ticket-01 scaffolding (crafted placeholder states so the
-## look and feel can be tuned before the model exists); ticket 02 removes it.
-
-## Crafted/model state shape:
-## {"energy": int 0..20, "charge": float 0..1, "tags": {slot: {"count", "turns"}}}
+## - Energy Bar: two serpentine 10-slot bars — slot 0..9 on the lower bar (left→right),
+##   slot 10..19 on the upper bar (right→left toward the goal at slot 19, upper-left).
+## - Upper Bar 11-Slot Layout: the upper bar has 11 visual slots (10 Energy slots 19..10
+##   plus 1 always-empty extension slot on the upper-right, slot 11).
+## - Fixed Pool of 6 Action Tags (`_cycle_tag_nodes`, one for each cycle step `[3, 4, 6, 8, 9, 12]`):
+##   * Each of the 6 tags is an independent node tracking its own `turns` (`0..12`);
+##     a tag's position and glide animation never depend on any other tag or slot container.
+##   * While a tag stands at the goal (`turns == 0`), it has NOT respawned on the right;
+##     only after it disappears from the goal does it reset to `turns = 12` (off-bar) and
+##     glide in to slot 11 (`turns = 11`) on the following Turn.
+##   * A tag arriving at the goal (`1 → 0`) lifts up (`GOAL_LIFT_Y`) ONLY after it finishes
+##     gliding horizontally and stops at the goal.
+## - Second Player's Bar (`SecondaryBarBox` in 2-player multiplayer): positioned BELOW
+##   `LowerBar` (where the removed lower-bar action tags used to be) so the Time Board
+##   always has clean space for both players' bars.
 
 const SLOT_COUNT := 20
 const BAR_SIZE := 10
+const UPPER_SLOT_COUNT := 11
+const EXTRA_UPPER_EMPTY_SLOTS := 1
 const GOAL_SLOT := 19
+const MAX_VISIBLE_TURNS := 11 # Slot 11's right edge is turns = 11 (slot = 8); turns = 12 is off-bar ready to glide in
+const CYCLE_TAG_COUNT := 6
+const CYCLE_STEPS: Array[int] = [3, 4, 6, 8, 9, 12]
+const GOAL_LIFT_Y := -8.0
 
-@export var slot_size := Vector2(44, 15)
-@export var secondary_slot_size := Vector2(44, 6)
+@export var slot_size := Vector2(38, 13)
+@export var secondary_slot_size := Vector2(38, 6)
 @export var slot_gap := 3.0
-## Turn duration — the single configurable time knob (default 1s). Tag
-## glides run this long so indicators slide continuously.
 @export var turn_duration := 1.0
-## How long the charging fill takes to tween to a newly reported fraction
-## (kept under the demo tick so motion reads as continuous).
 @export var charge_tween_duration := 0.15
-## Duration per slot when rewinding spent Energy sequentially from highest slot to lowest.
 @export var rewind_slot_duration := 0.08
 @export var slot_color := Color(0.1, 0.09, 0.09, 0.85)
+@export var empty_extension_slot_color := Color(0.07, 0.06, 0.06, 0.55)
 @export var goal_color := Color(0.55, 0.16, 0.14, 0.9)
 @export var energy_color := Color(0.95, 0.72, 0.18, 1.0)
 @export var charging_color := Color(0.95, 0.72, 0.18, 0.4)
 @export var consume_preview_color := Color(0.26, 0.82, 0.96, 0.95)
 @export var overdrag_preview_color := Color(0.92, 0.18, 0.16, 0.95)
-@export var turns_color := Color(0.92, 0.86, 0.68, 1.0)
-@export var count_color := Color(0.18, 0.08, 0.04, 1.0)
-@export var cycle_12_arrow_color := Color(1.0, 0.36, 0.24, 1.0)
-@export var arrow_down_texture: Texture2D = preload("res://src/resource/battlefield/arrow_down.png")
-@export var arrow_up_texture: Texture2D = preload("res://src/resource/battlefield/arrow_up.png")
-## Ticket-01 scaffolding: cycle a crafted state to preview the animations.
+
+@export var tag_default_color := Color(0.95, 0.88, 0.72, 1.0)
+@export var tag_cycle_6_light_red := Color(1.0, 0.54, 0.56, 1.0)
+@export var tag_cycle_4_8_light_blue := Color(0.52, 0.78, 1.0, 1.0)
+@export var tag_cycle_12_light_purple := Color(0.82, 0.56, 1.0, 1.0)
+@export var count_color := Color(0.14, 0.06, 0.03, 1.0)
 @export var demo_mode := false
+
+
+## Custom-drawn Pin + Count Label for an Action Tag:
+## - Circle is 50% larger (diameter 24px, radius 12px; 12th tag is +20% larger = 1.2x).
+## - Triangle sides match the left/right tangent edges of the circle.
+## - When `show_circle` is false (`count == 0`), only the bottom triangle pointer renders.
+class TagPinDrawer extends Control:
+	var fill_color: Color = Color(0.95, 0.88, 0.72, 1.0)
+	var border_color: Color = Color(0.22, 0.11, 0.06, 0.98)
+	var show_circle: bool = true
+	var scale_mult: float = 1.0
+	var is_at_goal: bool = false
+
+	func _draw() -> void:
+		var tip := Vector2(0.0, 0.0)
+		var out_col := Color(1.0, 0.88, 0.32, 1.0) if is_at_goal else border_color
+		var border_w := 2.2 if is_at_goal else 1.6
+
+		if not show_circle:
+			var tri_h := 10.5 * scale_mult
+			var tri_hw := 6.8 * scale_mult
+			var out_pts := PackedVector2Array([
+				Vector2(-tri_hw - border_w, -tri_h - border_w * 0.6),
+				Vector2(tri_hw + border_w, -tri_h - border_w * 0.6),
+				Vector2(0.0, border_w),
+			])
+			draw_colored_polygon(out_pts, out_col)
+			var in_pts := PackedVector2Array([
+				Vector2(-tri_hw, -tri_h),
+				Vector2(tri_hw, -tri_h),
+				tip,
+			])
+			draw_colored_polygon(in_pts, fill_color)
+			return
+
+		var r := 11.5 * scale_mult
+		var hc := 19.5 * scale_mult
+		var center := Vector2(0.0, -hc)
+		var sin_a := clampf(r / hc, 0.1, 0.95)
+		var cos_a := sqrt(maxf(0.0, 1.0 - sin_a * sin_a))
+
+		var r_out := r + border_w
+		var tip_out := Vector2(0.0, border_w * 1.1)
+		var l_out := Vector2(-r_out * cos_a, -hc + r_out * sin_a)
+		var r_pt_out := Vector2(r_out * cos_a, -hc + r_out * sin_a)
+		draw_colored_polygon(PackedVector2Array([l_out, r_pt_out, tip_out]), out_col)
+		draw_circle(center, r_out, out_col)
+
+		var l_in := Vector2(-r * cos_a, -hc + r * sin_a)
+		var r_pt_in := Vector2(r * cos_a, -hc + r * sin_a)
+		draw_colored_polygon(PackedVector2Array([l_in, r_pt_in, tip]), fill_color)
+		draw_circle(center, r, fill_color)
+
+		draw_arc(center, r - 1.2, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.35), 1.1)
+
 
 @onready var _secondary_bar_box: VBoxContainer = $Frame/Margin/Content/Board/SecondaryBarBox
 @onready var _secondary_upper_bar: HBoxContainer = $Frame/Margin/Content/Board/SecondaryBarBox/SecondaryUpperBarRow
@@ -67,15 +120,16 @@ var _secondary_fills: Array[ColorRect] = []
 var _secondary_charging_fills: Array[ColorRect] = []
 var _secondary_consume_fills: Array[ColorRect] = []
 var _secondary_overdrag_fills: Array[ColorRect] = []
-var _tag_movers: Array[Control] = []
-var _tag_turns: Array[Label] = []
-var _tag_counts: Array[Label] = []
-var _tag_circles: Array[Panel] = []
-var _tag_arrows: Array[TextureRect] = []
-var _tag_tweens: Dictionary = {}
-var _wrap_out_mover: Control = null
-var _wrap_out_arrow: TextureRect = null
-var _wrap_out_tween: Tween = null
+
+## Fixed list of 6 persistent Action Tag objects (`0..5` -> `[3, 4, 6, 8, 9, 12]`).
+var _upper_tags_layer: Control = null
+var _cycle_tag_nodes: Array[Control] = []
+var _cycle_tag_pins: Array[TagPinDrawer] = []
+var _cycle_tag_counts: Array[Label] = []
+var _cycle_tag_tweens: Array[Tween] = []
+var _cycle_tag_state: Array[Dictionary] = []
+var _slot_to_tag_index: Dictionary = {} # slot -> tag_index (0..5)
+
 var _fill_tweens: Dictionary = {}
 var _rewind_tween: Tween = null
 var _secondary_rewind_tween: Tween = null
@@ -85,30 +139,28 @@ var _secondary_target_energy_ratios: Array[float] = []
 var _secondary_target_charging_ratios: Array[float] = []
 var _perspective_role: String = "a"
 
-## The animation kind the last apply_state() requested — "glide",
-## "fade_teleport", "rewind", or "" for none. The observable animation seam
-## for tests (tween parameters are never asserted).
 var last_animation_kind := ""
-
 var _state: Dictionary = {"energy": 0.0, "charge": 0.0, "preview_cost": 0.0, "tags": {}}
-var _demo_timer: Timer = null
-var _demo_state: Dictionary = {}
-var _demo_tick := 0
 
 
 func _ready() -> void:
 	_build_board()
 	render_state(_state)
-	if demo_mode:
-		_start_demo()
 
 
-# ----- construction (all generated: tuning happens via the exports) -----
+# ----- construction -----
 
 func _build_board() -> void:
-	for row in [_lower_bar, _upper_bar, _lower_tags, _upper_tags, _secondary_lower_bar, _secondary_upper_bar]:
+	for row in [_lower_bar, _upper_bar, _secondary_lower_bar, _secondary_upper_bar]:
 		if row != null:
 			row.add_theme_constant_override("separation", int(slot_gap))
+	if _lower_tags != null:
+		_lower_tags.visible = false
+	if _secondary_bar_box != null and _secondary_bar_box.get_parent() != null:
+		# Ensure the 2nd player's bar sits below LowerBar (where lower action tags used to be)
+		var board_parent := _secondary_bar_box.get_parent()
+		board_parent.move_child(_secondary_bar_box, _lower_bar.get_index() + 1)
+
 	_fills.resize(SLOT_COUNT)
 	_charging_fills.resize(SLOT_COUNT)
 	_consume_fills.resize(SLOT_COUNT)
@@ -125,23 +177,112 @@ func _build_board() -> void:
 	_secondary_target_energy_ratios.fill(0.0)
 	_secondary_target_charging_ratios.resize(SLOT_COUNT)
 	_secondary_target_charging_ratios.fill(0.0)
-	_tag_movers.resize(SLOT_COUNT)
-	_tag_turns.resize(SLOT_COUNT)
-	_tag_counts.resize(SLOT_COUNT)
-	_tag_circles.resize(SLOT_COUNT)
-	_tag_arrows.resize(SLOT_COUNT)
-	# Lower bar: slots 0..9 left→right. Upper bar: slots 19..10 left→right.
+
+	# Lower bar: 10 Energy slots (0..9) left→right, plus 1 invisible spacer so lower bar aligns with the 11-slot upper bar.
 	for slot in range(BAR_SIZE):
 		_lower_bar.add_child(_make_slot_cell(slot, false))
-		_lower_tags.add_child(_make_tag_cell(slot, false))
 		if _secondary_lower_bar != null:
 			_secondary_lower_bar.add_child(_make_secondary_slot_cell(slot, false))
-	for column in range(BAR_SIZE):
+	for _ext in range(EXTRA_UPPER_EMPTY_SLOTS):
+		_lower_bar.add_child(_make_spacer_cell(slot_size))
+		if _secondary_lower_bar != null:
+			_secondary_lower_bar.add_child(_make_spacer_cell(secondary_slot_size))
+
+	# Upper bar: 11 slots total (columns 0..9 are Energy slots 19..10; column 10 is 1 always-empty extension slot).
+	for column in range(UPPER_SLOT_COUNT):
 		var slot := GOAL_SLOT - column
-		_upper_bar.add_child(_make_slot_cell(slot, true))
-		_upper_tags.add_child(_make_tag_cell(slot, true))
-		if _secondary_upper_bar != null:
-			_secondary_upper_bar.add_child(_make_secondary_slot_cell(slot, true))
+		if column < BAR_SIZE:
+			_upper_bar.add_child(_make_slot_cell(slot, true))
+			if _secondary_upper_bar != null:
+				_secondary_upper_bar.add_child(_make_secondary_slot_cell(slot, true))
+		else:
+			_upper_bar.add_child(_make_empty_extension_slot_cell(slot_size))
+			if _secondary_upper_bar != null:
+				_secondary_upper_bar.add_child(_make_empty_extension_slot_cell(secondary_slot_size))
+
+	_build_six_persistent_tags()
+
+
+func _build_six_persistent_tags() -> void:
+	_upper_tags_layer = Control.new()
+	_upper_tags_layer.name = "UpperTagsLayer"
+	var total_w := float(UPPER_SLOT_COUNT) * slot_size.x + float(UPPER_SLOT_COUNT - 1) * slot_gap
+	_upper_tags_layer.custom_minimum_size = Vector2(total_w, 42.0)
+	_upper_tags_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_upper_tags.add_child(_upper_tags_layer)
+
+	_cycle_tag_nodes.resize(CYCLE_TAG_COUNT)
+	_cycle_tag_pins.resize(CYCLE_TAG_COUNT)
+	_cycle_tag_counts.resize(CYCLE_TAG_COUNT)
+	_cycle_tag_tweens.resize(CYCLE_TAG_COUNT)
+	_cycle_tag_state.resize(CYCLE_TAG_COUNT)
+
+	for i in range(CYCLE_TAG_COUNT):
+		var mover := Control.new()
+		mover.name = "CycleTag_%d" % CYCLE_STEPS[i]
+		mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mover.modulate.a = 0.0
+		mover.position = Vector2(_x_for_turns(CYCLE_STEPS[i]), 0.0)
+		_upper_tags_layer.add_child(mover)
+
+		var pin := TagPinDrawer.new()
+		pin.position = Vector2(0.0, 41.0)
+		pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mover.add_child(pin)
+
+		var count := Label.new()
+		count.modulate = count_color
+		count.add_theme_font_size_override("font_size", 15)
+		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		count.size = Vector2(36.0, 28.0)
+		count.position = Vector2(-18.0, 41.0 - 19.5 - 14.0)
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mover.add_child(count)
+
+		_cycle_tag_nodes[i] = mover
+		_cycle_tag_pins[i] = pin
+		_cycle_tag_counts[i] = count
+		_cycle_tag_tweens[i] = null
+		_cycle_tag_state[i] = {}
+
+
+func _x_for_turns(turns_to_goal: int) -> float:
+	var pitch := slot_size.x + slot_gap
+	return float(turns_to_goal) * pitch - slot_gap * 0.5
+
+
+func get_upper_slot_count() -> int:
+	return UPPER_SLOT_COUNT
+
+
+func get_cycle_tag_node_count() -> int:
+	return _cycle_tag_nodes.size()
+
+
+func is_secondary_bar_below_lower_bar() -> bool:
+	if _secondary_bar_box == null or _lower_bar == null:
+		return false
+	return _secondary_bar_box.get_index() > _lower_bar.get_index()
+
+
+func _make_spacer_cell(sz: Vector2) -> Control:
+	var cell := Control.new()
+	cell.custom_minimum_size = sz
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return cell
+
+
+func _make_empty_extension_slot_cell(sz: Vector2) -> Control:
+	var cell := Control.new()
+	cell.custom_minimum_size = sz
+	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := ColorRect.new()
+	bg.color = empty_extension_slot_color
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cell.add_child(bg)
+	return cell
 
 
 func _make_secondary_slot_cell(slot: int, upper: bool) -> Control:
@@ -213,107 +354,8 @@ func _make_bar_rect(color: Color, upper: bool) -> ColorRect:
 	return rect
 
 
-## A tag cell holds one slot's tag. The mover (arrow + top count circle on
-## the upper bar) rests with the arrow centered on the slot's LEADING edge.
-## No turns-to-goal integer is rendered on the Time Board tag itself.
-func _make_tag_cell(slot: int, upper: bool) -> Control:
-	var cell := Control.new()
-	cell.custom_minimum_size = Vector2(slot_size.x, 26.0)
-	cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mover := Control.new()
-	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mover.modulate.a = 0.0
-	mover.position.x = _edge_offset(upper)
-	cell.add_child(mover)
-	var turns := Label.new()
-	turns.modulate = turns_color
-	turns.add_theme_font_size_override("font_size", 11)
-	turns.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	turns.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	turns.size = Vector2(slot_size.x, 11)
-	turns.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	turns.visible = false
-	mover.add_child(turns)
-
-	var arrow_frame := Control.new()
-	arrow_frame.size = Vector2(slot_size.x, 12.0)
-	arrow_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var arrow := TextureRect.new()
-	arrow.texture = arrow_down_texture if upper else arrow_up_texture
-	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	arrow_frame.add_child(arrow)
-	mover.add_child(arrow_frame)
-
-	# Circle badge on top of the arrow showing the unit count (visible on upper bar when count > 0)
-	var circle := Panel.new()
-	circle.size = Vector2(16.0, 16.0)
-	circle.position = Vector2((slot_size.x - 16.0) * 0.5, 0.0 if upper else 10.0)
-	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var circle_style := StyleBoxFlat.new()
-	circle_style.bg_color = Color(0.95, 0.88, 0.72, 0.98)
-	circle_style.border_color = Color(0.45, 0.22, 0.12, 0.98)
-	circle_style.set_border_width_all(1)
-	circle_style.set_corner_radius_all(8)
-	circle.add_theme_stylebox_override("panel", circle_style)
-	mover.add_child(circle)
-
-	var count := Label.new()
-	count.modulate = count_color
-	count.add_theme_font_size_override("font_size", 10)
-	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	count.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	circle.add_child(count)
-
-	if upper:
-		circle.position = Vector2((slot_size.x - 16.0) * 0.5, 0.0)
-		arrow_frame.position = Vector2(0, 14.0)
-	else:
-		arrow_frame.position = Vector2(0, 0.0)
-		circle.position = Vector2((slot_size.x - 16.0) * 0.5, 11.0)
-		circle.visible = false
-	_tag_movers[slot] = mover
-	_tag_arrows[slot] = arrow
-	_tag_circles[slot] = circle
-	_tag_counts[slot] = count
-	_tag_turns[slot] = turns
-	if slot == 9 and not upper:
-		var wrap_mover := Control.new()
-		wrap_mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wrap_mover.modulate.a = 0.0
-		wrap_mover.position.x = _edge_offset(false)
-		var wrap_frame := Control.new()
-		wrap_frame.size = Vector2(slot_size.x, 12.0)
-		wrap_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var wrap_arrow := TextureRect.new()
-		wrap_arrow.texture = arrow_up_texture
-		wrap_arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		wrap_arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		wrap_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		wrap_frame.add_child(wrap_arrow)
-		wrap_mover.add_child(wrap_frame)
-		cell.add_child(wrap_mover)
-		_wrap_out_mover = wrap_mover
-		_wrap_out_arrow = wrap_arrow
-	return cell
-
-
-## The mover's resting x inside its cell: the slot's leading edge (right on
-## the lower bar, left on the upper bar — the path direction).
-func _edge_offset(upper: bool) -> float:
-	var direction := -1.0 if upper else 1.0
-	return direction * (slot_size.x / 2.0 + slot_gap / 2.0)
-
-
 # ----- public view API (the model→view seam) -----
 
-## Sets the local viewer's seat role ("a", "b", or "spectator") so that in
-## 2-player mode a seated player always sees their own Energy on the main
-## bottom bar and the opponent's Energy on the secondary top bar (while
-## Spectators see Player A on the main bar and Player B on the secondary bar).
 func set_perspective_role(role: String) -> void:
 	var normalized := role if (role == "a" or role == "b") else "spectator"
 	if _perspective_role == normalized:
@@ -362,6 +404,8 @@ func _normalize_state(raw: Dictionary) -> Dictionary:
 					tag_map[int(item["slot"])] = {
 						"count": int(item.get("count", 0)),
 						"turns": int(item.get("turns", 0)),
+						"cycle_step": int(item.get("cycle_step", 0)),
+						"is_cycle_12": bool(item.get("is_cycle_12", false)),
 					}
 			s["tags"] = tag_map
 		else:
@@ -382,6 +426,93 @@ func _secondary_energy_of(s: Dictionary) -> float:
 	return float(s.get("energy_b", 0.0))
 
 
+## Maps incoming state (`cycle_tags` list of 6, or `tags` dictionary keyed by slot)
+## onto the 6 persistent tag slots `0..5`.
+func _extract_six_tags(s: Dictionary) -> Array[Dictionary]:
+	var result: Array[Dictionary] = [{}, {}, {}, {}, {}, {}]
+	_slot_to_tag_index.clear()
+
+	if s.has("cycle_tags") and s["cycle_tags"] is Array:
+		var ct_arr: Array = s["cycle_tags"]
+		for i in range(mini(CYCLE_TAG_COUNT, ct_arr.size())):
+			if ct_arr[i] is Dictionary:
+				var d: Dictionary = (ct_arr[i] as Dictionary).duplicate(true)
+				var t_rem := int(d.get("turns", CYCLE_STEPS[i]))
+				var slot := GOAL_SLOT - t_rem
+				d["slot"] = slot
+				d["tag_index"] = i
+				result[i] = d
+				_slot_to_tag_index[slot] = i
+		return result
+
+	var tags_dict: Dictionary = s.get("tags", {})
+	var used_indices: Dictionary = {}
+	var unassigned_slots: Array[int] = []
+
+	# Pass 1: explicit tag_index or cycle_step match
+	for raw_slot in tags_dict.keys():
+		var slot := int(raw_slot)
+		var d: Dictionary = (tags_dict[raw_slot] as Dictionary).duplicate(true)
+		var t_rem := int(d.get("turns", GOAL_SLOT - slot))
+		d["turns"] = t_rem
+		d["slot"] = slot
+		var idx := -1
+		if d.has("tag_index"):
+			var candidate := int(d["tag_index"])
+			if candidate >= 0 and candidate < CYCLE_TAG_COUNT and not used_indices.has(candidate):
+				idx = candidate
+		if idx < 0 and d.has("cycle_step"):
+			var step_idx := CYCLE_STEPS.find(int(d["cycle_step"]))
+			if step_idx >= 0 and not used_indices.has(step_idx):
+				idx = step_idx
+		if idx >= 0:
+			used_indices[idx] = true
+			d["tag_index"] = idx
+			result[idx] = d
+			_slot_to_tag_index[slot] = idx
+		else:
+			unassigned_slots.append(slot)
+
+	# Pass 2: match any unassigned slot to the persistent tag that was at `slot - 1` or `slot` previously
+	unassigned_slots.sort()
+	var still_unassigned: Array[int] = []
+	for slot in unassigned_slots:
+		var d: Dictionary = (tags_dict[slot] as Dictionary).duplicate(true)
+		var t_rem := int(d.get("turns", GOAL_SLOT - slot))
+		d["turns"] = t_rem
+		d["slot"] = slot
+		var matched_idx := -1
+		for i in range(CYCLE_TAG_COUNT):
+			if used_indices.has(i) or _cycle_tag_state[i].is_empty():
+				continue
+			var prev_slot := int(_cycle_tag_state[i].get("slot", -99))
+			if (prev_slot == slot - 1 or prev_slot == slot) and int(_cycle_tag_state[i].get("count", -1)) == int(d.get("count", -2)):
+				matched_idx = i
+				break
+		if matched_idx >= 0:
+			used_indices[matched_idx] = true
+			d["tag_index"] = matched_idx
+			result[matched_idx] = d
+			_slot_to_tag_index[slot] = matched_idx
+		else:
+			still_unassigned.append(slot)
+
+	# Pass 3: fill any remaining unassigned slots into free indices 0..5
+	for slot in still_unassigned:
+		var d: Dictionary = (tags_dict[slot] as Dictionary).duplicate(true)
+		d["turns"] = int(d.get("turns", GOAL_SLOT - slot))
+		d["slot"] = slot
+		for i in range(CYCLE_TAG_COUNT):
+			if not used_indices.has(i):
+				used_indices[i] = true
+				d["tag_index"] = i
+				result[i] = d
+				_slot_to_tag_index[slot] = i
+				break
+
+	return result
+
+
 ## Render a full board state instantly, no animation.
 func render_state(state: Dictionary) -> void:
 	_kill_all_tag_tweens()
@@ -396,10 +527,10 @@ func render_state(state: Dictionary) -> void:
 	if two_p:
 		_render_secondary_energy(sec_e, ch)
 	_render_all_previews()
-	_render_tags(_state.get("tags", {}))
+	var six_tags := _extract_six_tags(_state)
+	_render_six_tags_instant(six_tags)
 
 
-## Update only the aiming preview_cost on top of the current state.
 func set_preview_cost(cost: float, player_seat: String = "", in_deadzone: bool = false) -> void:
 	_state["preview_cost"] = maxf(cost, 0.0)
 	_state["preview_seat"] = player_seat
@@ -431,10 +562,6 @@ func get_preview_cost() -> float:
 	return float(_state.get("preview_cost", 0.0))
 
 
-## Reusable entry point for any Energy reduction (Cue-Shot spend, card cost,
-## enemy drain, or Prepare-Time reset): updates board Energy to `new_energy`
-## and runs the slot-by-slot sequential rewind animation from highest slot
-## to lowest.
 func animate_energy_reduction(new_energy: float, charge: float = -1.0) -> void:
 	var next := _state.duplicate(true)
 	var clamped := clampf(new_energy, 0.0, float(SLOT_COUNT))
@@ -449,10 +576,7 @@ func animate_energy_reduction(new_energy: float, charge: float = -1.0) -> void:
 	apply_state(next)
 
 
-
-## Apply a new state, animating the transition: the charging fill tweens
-## smoothly, a completing slot pops, spend-Energy rewinds, tag moves glide,
-## 9→10 wraps fade-teleport. Records last_animation_kind.
+## Apply a new state, animating each of the 6 persistent tags independently.
 func apply_state(state: Dictionary) -> void:
 	var old: Dictionary = _normalize_state(_state)
 	var next: Dictionary = _normalize_state(state)
@@ -466,26 +590,24 @@ func apply_state(state: Dictionary) -> void:
 	var old_sec_e := _secondary_energy_of(old)
 	var new_sec_e := _secondary_energy_of(next)
 
-	var old_tags: Dictionary = old.get("tags", {})
-	var new_tags: Dictionary = next.get("tags", {})
-	var tags_changed := not _tags_equal(old_tags, new_tags)
-	# Detect movement before rendering (same tag one slot further along
-	# the path = gliding; 9→10 wraps with a fade-teleport, even when adjacent
-	# slots like 3&4 or 8&9 move simultaneously).
-	var glides: Array = []
-	var teleports: Array = []
-	if tags_changed:
-		for slot in new_tags:
-			var s_idx := int(slot)
-			var prev: int = s_idx - 1
-			if old_tags.has(prev) and _did_tag_advance_from(old_tags, new_tags, prev, s_idx):
-				if prev == 9 and s_idx == 10:
-					teleports.append([prev, s_idx])
-				else:
-					glides.append([prev, s_idx])
-			elif s_idx == 0 and not old_tags.has(0) and not old_tags.is_empty():
-				# Newly entering cycle tag at slot 0 glides in from the left edge of slot 0
-				glides.append([-1, 0])
+	var prev_six := _cycle_tag_state.duplicate(true)
+	var next_six := _extract_six_tags(next)
+
+	var any_glide := false
+	var any_fade_teleport := false
+	for i in range(CYCLE_TAG_COUNT):
+		var old_t: Dictionary = prev_six[i]
+		var new_t: Dictionary = next_six[i]
+		if old_t.is_empty() or new_t.is_empty():
+			continue
+		var old_slot := int(old_t.get("slot", -99))
+		var new_slot := int(new_t.get("slot", -99))
+		if new_slot == old_slot + 1:
+			if old_slot == 9 and new_slot == 10 and not old_t.has("cycle_step"):
+				any_fade_teleport = true
+			else:
+				any_glide = true
+
 	var main_rewound := new_main_e < old_main_e - 0.001
 	var sec_rewound := two_p and (new_sec_e < old_sec_e - 0.001)
 	var is_rewinding := (_rewind_tween != null and _rewind_tween.is_running()) or (_secondary_rewind_tween != null and _secondary_rewind_tween.is_running())
@@ -494,9 +616,9 @@ func apply_state(state: Dictionary) -> void:
 	elif int(floorf(new_main_e + 0.001)) > int(floorf(old_main_e + 0.001)):
 		for slot in range(int(floorf(old_main_e + 0.001)), int(floorf(new_main_e + 0.001))):
 			_play_charge_pop(slot)
-	if not teleports.is_empty():
+	if any_fade_teleport:
 		kind = "fade_teleport"
-	elif not glides.is_empty():
+	elif any_glide:
 		kind = "glide"
 	last_animation_kind = kind
 	_state = next
@@ -511,31 +633,19 @@ func apply_state(state: Dictionary) -> void:
 		else:
 			_render_secondary_energy(new_sec_e, ch)
 	_render_all_previews()
-	# Only re-render and re-animate tags when the tag map actually changed, so
-	# per-frame charge progress updates never clobber in-flight tag glides/fades!
-	if tags_changed:
-		_kill_all_tag_tweens()
-		_render_tags(new_tags)
-		for pair in glides:
-			var old_t: Dictionary = old_tags.get(pair[0], new_tags[pair[1]])
-			_play_glide(pair[0], pair[1], old_t, new_tags[pair[1]])
-		for pair in teleports:
-			_play_fade_teleport(pair[0], pair[1], old_tags[pair[0]])
+	_animate_six_tags(prev_six, next_six)
 
 
-# ----- observable renderable output (test seam; never tween internals) -----
+# ----- observable renderable output (test seam) -----
 
 func slot_bar(slot: int) -> String:
 	return "upper" if slot >= BAR_SIZE else "lower"
 
 
-## Left-to-right screen column of a slot within its bar (0 = leftmost).
 func slot_column(slot: int) -> int:
 	return GOAL_SLOT - slot if slot >= BAR_SIZE else slot
 
 
-## Rendered fill ratio of a slot: 1.0 filled, 0.5 on a half-filled energy
-## slot, the fractional charge on a charging-only slot, 0.0 otherwise.
 func slot_fill_ratio(slot: int) -> float:
 	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_energy_ratios.size():
 		if _target_energy_ratios[slot] > 0.0001:
@@ -547,14 +657,12 @@ func slot_fill_ratio(slot: int) -> float:
 	return slot_charging_ratio(slot)
 
 
-## Rendered charging-progress ratio on a slot (0.0..1.0).
 func slot_charging_ratio(slot: int) -> float:
 	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_charging_ratios.size():
 		return _target_charging_ratios[slot]
 	return _charging_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Rendered fill kind of a slot's base fill ("energy", "charging", or "empty").
 func slot_fill_kind(slot: int) -> String:
 	var owned_ratio := _fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 	if _rewind_tween != null and _rewind_tween.is_running() and slot >= 0 and slot < _target_energy_ratios.size():
@@ -566,19 +674,14 @@ func slot_fill_kind(slot: int) -> String:
 	return "empty"
 
 
-## Rendered consume-preview ratio on a slot (0.0..1.0).
 func slot_consume_ratio(slot: int) -> float:
 	return _consume_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Rendered red over-drag ratio on a slot (0.0..1.0).
 func slot_overdrag_ratio(slot: int) -> float:
 	return _overdrag_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Rendered fill ratio of a slot on the secondary (2-player top) bar:
-## 1.0 filled, 0.5 on a half-filled energy slot, the fractional charge on a
-## charging-only slot, 0.0 otherwise.
 func secondary_slot_fill_ratio(slot: int) -> float:
 	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running() and slot >= 0 and slot < _secondary_target_energy_ratios.size():
 		if _secondary_target_energy_ratios[slot] > 0.0001:
@@ -590,38 +693,57 @@ func secondary_slot_fill_ratio(slot: int) -> float:
 	return secondary_slot_charging_ratio(slot)
 
 
-## Rendered charging-progress ratio on a slot of the secondary bar (0.0..1.0).
 func secondary_slot_charging_ratio(slot: int) -> float:
 	if _secondary_rewind_tween != null and _secondary_rewind_tween.is_running() and slot >= 0 and slot < _secondary_target_charging_ratios.size():
 		return _secondary_target_charging_ratios[slot]
 	return _secondary_charging_fills[slot].size.x / slot_size.x if slot_size.x > 0.0 else 0.0
 
 
-## Tag render info for a slot: {"side", "count", "turns", "arrow",
-## "count_circle_visible", "turns_label_visible", "is_cycle_12",
-## "is_cycle_12_highlighted"} from the committed state, or empty when no tag is
-## rendered there.
+func is_tag_gliding_at_slot(slot: int) -> bool:
+	if not _slot_to_tag_index.has(slot):
+		return false
+	var idx: int = int(_slot_to_tag_index[slot])
+	if idx < 0 or idx >= _cycle_tag_tweens.size():
+		return false
+	return _cycle_tag_tweens[idx] != null and _cycle_tag_tweens[idx].is_running()
+
+
 func tag_info(slot: int) -> Dictionary:
 	var tags: Dictionary = _state.get("tags", {})
 	if not tags.has(slot):
 		return {}
 	var tag: Dictionary = tags[slot]
-	var is_12 := bool(tag.get("is_cycle_12", false)) or int(tag.get("cycle_step", 0)) == 12
+	var idx: int = int(_slot_to_tag_index.get(slot, tag.get("tag_index", 0)))
+	var step := _resolve_cycle_step(slot, tag)
+	var is_12 := (step == 12) or bool(tag.get("is_cycle_12", false))
+	var t_rem := int(tag.get("turns", GOAL_SLOT - slot))
+	var on_upper := (t_rem >= 0 and t_rem <= MAX_VISIBLE_TURNS)
+	var pin := _cycle_tag_pins[clampi(idx, 0, CYCLE_TAG_COUNT - 1)]
+	var mover := _cycle_tag_nodes[clampi(idx, 0, CYCLE_TAG_COUNT - 1)]
+	var highlight_kind := _resolve_highlight_kind(step, is_12)
 	return {
-		"side": "above" if slot >= BAR_SIZE else "below",
+		"tag_index": idx,
+		"side": "above" if slot >= GOAL_SLOT - 12 else "below",
 		"count": int(tag.get("count", 0)),
-		"turns": int(tag.get("turns", GOAL_SLOT - slot)),
-		"arrow": "down" if _tag_arrows[slot].texture == arrow_down_texture else "up",
-		"count_circle_visible": _tag_circles[slot].visible,
-		"turns_label_visible": _tag_turns[slot].visible,
+		"turns": t_rem,
+		"arrow": "down" if slot >= GOAL_SLOT - 12 else "up",
+		"visible_on_board": on_upper and mover.modulate.a > 0.01,
+		"count_circle_visible": pin.show_circle,
+		"turns_label_visible": false,
+		"cycle_step": step,
 		"is_cycle_12": is_12,
 		"is_cycle_12_highlighted": is_12,
+		"highlight_kind": highlight_kind,
+		"fill_color": pin.fill_color,
+		"scale_mult": pin.scale_mult,
+		"is_lifted_at_goal": (slot == GOAL_SLOT and mover.position.y < -1.0),
+		"mover_y": mover.position.y,
 	}
 
 
 # ----- rendering -----
 
-func _render_energy(energy: float, charge: float, animate: bool) -> void:
+func _render_energy(energy: float, charge: float, _animate: bool) -> void:
 	if _rewind_tween != null and _rewind_tween.is_running():
 		var clamped_target := clampf(energy, 0.0, float(SLOT_COUNT))
 		var cur_target := 0.0
@@ -639,14 +761,8 @@ func _render_energy(energy: float, charge: float, animate: bool) -> void:
 		var fill := _fills[slot]
 		var energy_in_slot := clampf(clamped_energy - slot_f, 0.0, 1.0)
 		_target_energy_ratios[slot] = energy_in_slot
-		# Set owned Energy width immediately (charge progress already advanced smoothly
-		# over the Turn, and _play_charge_pop handles the completion flash — tweening
-		# _fills[slot] from 0 -> 1 over 0.15s after _charging_fills cleared caused a
-		# visible empty blink when a slot completed).
 		_set_fill(fill, slot, energy_in_slot, energy_color, false)
 
-		# Charging progress starts right where owned Energy ends (e.g. at 0.5 on a half-filled slot)
-		# and continues seamlessly without leaving any empty half-slot gap.
 		var ch_start := clampf(clamped_energy - slot_f, 0.0, 1.0)
 		var ch_end := clampf(charge_end - slot_f, 0.0, 1.0)
 		var ch_ratio := maxf(0.0, ch_end - ch_start)
@@ -682,10 +798,6 @@ func _render_secondary_energy(energy: float, charge: float) -> void:
 		var ch_ratio := maxf(0.0, ch_end - ch_start)
 		_secondary_target_charging_ratios[slot] = ch_ratio
 		_apply_segment(_secondary_charging_fills[slot], charging_color, ch_start, maxf(ch_start, ch_end))
-
-
-func _render_preview(energy: float, preview_cost: float) -> void:
-	_render_preview_on_arrays(energy, preview_cost, false, _consume_fills, _overdrag_fills)
 
 
 func _render_preview_on_arrays(energy: float, preview_cost: float, in_deadzone: bool, consume_arr: Array[ColorRect], overdrag_arr: Array[ColorRect]) -> void:
@@ -744,144 +856,171 @@ func _set_fill(fill: ColorRect, slot: int, ratio: float, color: Color, animate: 
 
 
 func _apply_fill_width(fill: ColorRect, width: float) -> void:
-	# Lower bar fills grow rightward from the left edge; upper bar fills grow
-	# leftward from the right edge (path direction).
 	if fill.anchor_right == 0.0:
 		fill.offset_right = width
 	else:
 		fill.offset_left = -width
 
 
-func _tags_equal(a: Dictionary, b: Dictionary) -> bool:
-	if a.size() != b.size():
-		return false
-	for k in a.keys():
-		if not b.has(k):
-			return false
-		var ta: Dictionary = a[k]
-		var tb: Dictionary = b[k]
-		if int(ta.get("count", -1)) != int(tb.get("count", -2)):
-			return false
-		if int(ta.get("turns", -1)) != int(tb.get("turns", -2)):
-			return false
-		if int(ta.get("cycle_step", -1)) != int(tb.get("cycle_step", -1)):
-			return false
-		if bool(ta.get("is_cycle_12", false)) != bool(tb.get("is_cycle_12", false)):
-			return false
-	return true
-
-
-func _did_tag_advance_from(old_tags: Dictionary, new_tags: Dictionary, prev: int, slot: int) -> bool:
-	var old_t: Dictionary = old_tags[prev]
-	var new_t: Dictionary = new_tags[slot]
-	if int(old_t.get("count", -1)) != int(new_t.get("count", -2)):
-		return false
-	if old_t.has("cycle_step") and new_t.has("cycle_step"):
-		if int(old_t["cycle_step"]) != int(new_t["cycle_step"]):
-			return false
-	# If `slot` was already in `old_tags` with identical state AND `slot + 1` did not receive it,
-	# then `slot` was stationary rather than receiving `prev`.
-	if old_tags.has(slot):
-		var prev_at_slot: Dictionary = old_tags[slot]
-		var same_stationary := (
-			int(prev_at_slot.get("count", -1)) == int(new_t.get("count", -2))
-			and int(prev_at_slot.get("cycle_step", -1)) == int(new_t.get("cycle_step", -2))
-			and not new_tags.has(slot + 1)
-		)
-		if same_stationary:
-			return false
-	return true
+func _kill_tag_tween(idx: int) -> void:
+	if idx < 0 or idx >= _cycle_tag_tweens.size():
+		return
+	if _cycle_tag_tweens[idx] != null and _cycle_tag_tweens[idx].is_running():
+		_cycle_tag_tweens[idx].kill()
+	_cycle_tag_tweens[idx] = null
 
 
 func _kill_all_tag_tweens() -> void:
-	for k in _tag_tweens.keys():
-		var tw: Tween = _tag_tweens[k]
-		if tw != null and tw.is_running():
-			tw.kill()
-	_tag_tweens.clear()
-	if _wrap_out_tween != null and _wrap_out_tween.is_running():
-		_wrap_out_tween.kill()
-	_wrap_out_tween = null
-	if _wrap_out_mover != null:
-		_wrap_out_mover.modulate.a = 0.0
-	for slot in range(SLOT_COUNT):
-		if _tag_movers[slot] != null:
-			_tag_movers[slot].position.x = _edge_offset(slot >= BAR_SIZE)
+	for i in range(_cycle_tag_tweens.size()):
+		_kill_tag_tween(i)
 
 
-func _render_tags(tags: Dictionary) -> void:
-	for slot in range(SLOT_COUNT):
-		var mover := _tag_movers[slot]
-		mover.position.x = _edge_offset(slot >= BAR_SIZE)
-		if tags.has(slot):
-			_set_tag_text(slot, tags[slot])
-			mover.modulate.a = 1.0
-		else:
+func _render_six_tags_instant(six_tags: Array[Dictionary]) -> void:
+	for i in range(CYCLE_TAG_COUNT):
+		var mover := _cycle_tag_nodes[i]
+		var d: Dictionary = six_tags[i] if i < six_tags.size() else {}
+		_cycle_tag_state[i] = d.duplicate(true)
+		if d.is_empty():
 			mover.modulate.a = 0.0
+			continue
+		var t_rem := int(d.get("turns", 12))
+		var at_goal := (t_rem == 0)
+		_set_single_tag_visual(i, d, at_goal)
+		mover.position.x = _x_for_turns(t_rem)
+		mover.position.y = GOAL_LIFT_Y if at_goal else 0.0
+		mover.modulate.a = 1.0 if (t_rem >= 0 and t_rem <= MAX_VISIBLE_TURNS) else 0.0
 
 
-func _set_tag_text(slot: int, tag: Dictionary) -> void:
+func _animate_six_tags(prev_six: Array[Dictionary], next_six: Array[Dictionary]) -> void:
+	for i in range(CYCLE_TAG_COUNT):
+		var mover := _cycle_tag_nodes[i]
+		var old_d: Dictionary = prev_six[i] if i < prev_six.size() else {}
+		var new_d: Dictionary = next_six[i] if i < next_six.size() else {}
+		_cycle_tag_state[i] = new_d.duplicate(true)
+
+		if new_d.is_empty():
+			_kill_tag_tween(i)
+			mover.modulate.a = 0.0
+			continue
+
+		var new_turns := int(new_d.get("turns", 12))
+		var old_turns := int(old_d.get("turns", -99)) if not old_d.is_empty() else -99
+
+		# If this tag's turns did NOT change on this frame (e.g. per-frame charge update),
+		# only refresh its count/visuals without touching its position or running tween!
+		if new_turns == old_turns:
+			var running := _cycle_tag_tweens[i] != null and _cycle_tag_tweens[i].is_running()
+			var at_goal_now := (new_turns == 0) and not running
+			_set_single_tag_visual(i, new_d, at_goal_now)
+			continue
+
+		_kill_tag_tween(i)
+
+		# 1. Tag is off-bar (> 11 turns, e.g. turns == 12 right after disappearing from the goal):
+		if new_turns > MAX_VISIBLE_TURNS or new_turns < 0:
+			_set_single_tag_visual(i, new_d, false)
+			mover.position = Vector2(_x_for_turns(new_turns), 0.0)
+			mover.modulate.a = 0.0
+			continue
+
+		# 2. Replacement tag gliding in to slot 11 (`12 → 11`):
+		if new_turns == MAX_VISIBLE_TURNS and (old_turns == MAX_VISIBLE_TURNS + 1 or old_turns <= 0):
+			_set_single_tag_visual(i, new_d, false)
+			mover.position = Vector2(_x_for_turns(MAX_VISIBLE_TURNS + 1), 0.0)
+			mover.modulate.a = 0.0
+			var tw := create_tween()
+			_cycle_tag_tweens[i] = tw
+			tw.tween_property(mover, "position:x", _x_for_turns(MAX_VISIBLE_TURNS), turn_duration * 0.9)
+			tw.parallel().tween_property(mover, "modulate:a", 1.0, turn_duration * 0.45)
+			continue
+
+		# 3. Tag gliding into the Goal (`1 → 0`):
+		#    Must glide horizontally at y = 0 FIRST, and lift up to GOAL_LIFT_Y ONLY AFTER it stops at the goal!
+		if new_turns == 0 and old_turns == 1:
+			_set_single_tag_visual(i, new_d, false)
+			mover.position = Vector2(_x_for_turns(1), 0.0)
+			mover.modulate.a = 1.0
+			var tw := create_tween()
+			_cycle_tag_tweens[i] = tw
+			tw.tween_property(mover, "position:x", _x_for_turns(0), turn_duration * 0.82)
+			tw.tween_callback(func() -> void:
+				_set_single_tag_visual(i, new_d, true)
+			)
+			tw.tween_property(mover, "position:y", GOAL_LIFT_Y, 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			continue
+
+		# 4. Normal one-slot glide along the upper bar (`old_turns → new_turns` where `old_turns == new_turns + 1`):
+		if old_turns == new_turns + 1:
+			_set_single_tag_visual(i, new_d, false)
+			mover.position = Vector2(_x_for_turns(old_turns), 0.0)
+			mover.modulate.a = 1.0
+			var tw := create_tween()
+			_cycle_tag_tweens[i] = tw
+			tw.tween_property(mover, "position:x", _x_for_turns(new_turns), turn_duration * 0.9)
+			continue
+
+		# 5. Direct placement fallback
+		var at_goal := (new_turns == 0)
+		_set_single_tag_visual(i, new_d, at_goal)
+		mover.position = Vector2(_x_for_turns(new_turns), GOAL_LIFT_Y if at_goal else 0.0)
+		mover.modulate.a = 1.0
+
+
+func _resolve_cycle_step(slot: int, tag: Dictionary) -> int:
+	if tag.has("cycle_step") and int(tag["cycle_step"]) > 0:
+		return int(tag["cycle_step"])
+	if bool(tag.get("is_cycle_12", false)):
+		return 12
+	var dist := int(tag.get("turns", GOAL_SLOT - slot))
+	if dist == 12:
+		return 12
+	return 0
+
+
+func _resolve_highlight_kind(step: int, is_12: bool) -> String:
+	if is_12 or step == 12:
+		return "light_purple"
+	if step == 6:
+		return "light_red"
+	if step == 4 or step == 8:
+		return "light_blue"
+	return "default"
+
+
+func _resolve_tag_color(step: int, is_12: bool) -> Color:
+	if is_12 or step == 12:
+		return tag_cycle_12_light_purple
+	if step == 6:
+		return tag_cycle_6_light_red
+	if step == 4 or step == 8:
+		return tag_cycle_4_8_light_blue
+	return tag_default_color
+
+
+func _set_single_tag_visual(idx: int, tag: Dictionary, is_stopped_at_goal: bool) -> void:
+	var slot := int(tag.get("slot", GOAL_SLOT - int(tag.get("turns", 0))))
 	var cnt := int(tag.get("count", 0))
-	var is_12 := bool(tag.get("is_cycle_12", false)) or int(tag.get("cycle_step", 0)) == 12
-	_tag_arrows[slot].self_modulate = cycle_12_arrow_color if is_12 else Color.WHITE
-	var show_circle := (slot >= BAR_SIZE) and (cnt > 0)
-	_tag_circles[slot].visible = show_circle
-	_tag_counts[slot].visible = show_circle
-	_tag_counts[slot].text = str(cnt) if show_circle else ""
-	_tag_turns[slot].visible = false
-	_tag_turns[slot].text = ""
+	var step := _resolve_cycle_step(slot, tag)
+	var is_12 := (step == 12) or bool(tag.get("is_cycle_12", false))
+	var scale_m := 1.20 if is_12 else 1.0
+	var show_circle := (cnt > 0)
+
+	var pin := _cycle_tag_pins[idx]
+	pin.fill_color = _resolve_tag_color(step, is_12)
+	pin.show_circle = show_circle
+	pin.scale_mult = scale_m
+	pin.is_at_goal = is_stopped_at_goal
+	pin.queue_redraw()
+
+	var count_lbl := _cycle_tag_counts[idx]
+	count_lbl.visible = show_circle
+	count_lbl.text = str(cnt) if show_circle else ""
+	var font_sz := 18 if is_12 else 15
+	count_lbl.add_theme_font_size_override("font_size", font_sz)
+	var hc := 19.5 * scale_m
+	count_lbl.position = Vector2(-18.0, 41.0 - hc - 14.0)
 
 
-# ----- animations (tuned visually in the editor; never asserted) -----
-
-## Smooth one-slot glide along the leading edges: the arrow slides to the
-## next edge over one Turn. Always uses canonical `_edge_offset` so an
-## interrupted glide never drifts.
-func _play_glide(_from_slot: int, to_slot: int, old_tag: Dictionary, new_tag: Dictionary) -> void:
-	var mover := _tag_movers[to_slot]
-	var upper := to_slot >= BAR_SIZE
-	var direction := -1.0 if upper else 1.0
-	var pitch := slot_size.x + slot_gap
-	var rest_x := _edge_offset(upper)
-	mover.position.x = rest_x - direction * pitch
-	mover.modulate.a = 1.0
-	_set_tag_text(to_slot, new_tag if upper else old_tag)
-	var tween := create_tween()
-	_tag_tweens[to_slot] = tween
-	tween.tween_property(mover, "position:x", rest_x, turn_duration * 0.9)
-	tween.tween_callback(_set_tag_text.bind(to_slot, new_tag))
-
-
-## The 9→10 wrap: fade out at the lower-right edge (using the dedicated
-## `_wrap_out_mover` so slot 9's main mover remains free if an 8→9 glide happens
-## on the same Turn!), and fade in + glide at the upper-right edge (slot 10).
-func _play_fade_teleport(from_slot: int, to_slot: int, old_tag: Dictionary) -> void:
-	var new_mover := _tag_movers[to_slot]
-	var is_12 := bool(old_tag.get("is_cycle_12", false)) or int(old_tag.get("cycle_step", 0)) == 12
-	if _wrap_out_mover != null and from_slot == 9:
-		if _wrap_out_arrow != null:
-			_wrap_out_arrow.self_modulate = cycle_12_arrow_color if is_12 else Color.WHITE
-		_wrap_out_mover.position.x = _edge_offset(false)
-		_wrap_out_mover.modulate.a = 1.0
-		_wrap_out_tween = create_tween()
-		_wrap_out_tween.tween_property(_wrap_out_mover, "modulate:a", 0.0, 0.18)
-	else:
-		var old_mover := _tag_movers[from_slot]
-		_set_tag_text(from_slot, old_tag)
-		old_mover.modulate.a = 1.0
-		var out_tween := create_tween()
-		_tag_tweens[from_slot] = out_tween
-		out_tween.tween_property(old_mover, "modulate:a", 0.0, 0.15)
-
-	new_mover.position.x = _edge_offset(true)
-	new_mover.modulate.a = 0.0
-	var in_tween := create_tween()
-	_tag_tweens[to_slot] = in_tween
-	in_tween.tween_property(new_mover, "modulate:a", 1.0, 0.22)
-
-
-## Spend-Energy rewind: drains slots sequentially one-by-one from the highest
-## filled slot down to new_energy (from more to less).
 func _play_rewind_sequential(old_energy: float, new_energy: float, charge: float) -> void:
 	if _rewind_tween != null and _rewind_tween.is_running():
 		_rewind_tween.kill()
@@ -896,7 +1035,6 @@ func _play_rewind_sequential(old_energy: float, new_energy: float, charge: float
 	var clamped_charge := clampf(charge, 0.0, 1.0)
 	var charge_end := clampf(clamped_new + clamped_charge, 0.0, float(SLOT_COUNT))
 
-	# Record target ratios and ensure all slots start at their pre-spend widths
 	for slot in range(SLOT_COUNT):
 		var slot_f := float(slot)
 		var fill := _fills[slot]
@@ -993,61 +1131,8 @@ func _play_secondary_rewind_sequential(old_energy: float, new_energy: float, cha
 	)
 
 
-## A slot finished charging: a quick bright pop on the new Energy.
 func _play_charge_pop(slot: int) -> void:
 	var fill := _fills[slot]
 	var tween := create_tween()
 	tween.tween_property(fill, "modulate", Color(1.7, 1.7, 1.7), 0.08)
 	tween.tween_property(fill, "modulate", Color.WHITE, 0.18)
-
-
-# ----- ticket-01 demo scaffolding (removed when the model lands) -----
-
-func _start_demo() -> void:
-	_demo_state = {
-		"energy": 8,
-		"charge": 0.0,
-		"tags": {
-			3: {"count": 2, "turns": 16},
-			12: {"count": 1, "turns": 7},
-			17: {"count": 4, "turns": 2},
-		},
-	}
-	render_state(_demo_state)
-	_demo_timer = Timer.new()
-	_demo_timer.wait_time = 0.2
-	_demo_timer.timeout.connect(_demo_step)
-	add_child(_demo_timer)
-	_demo_timer.start()
-
-
-func _demo_step() -> void:
-	_demo_tick += 1
-	var next: Dictionary = _demo_state.duplicate(true)
-	# Smooth charging: a slot completes every second of demo time.
-	var charge: float = next.get("charge", 0.0) + 0.2
-	var energy: int = next.get("energy", 0)
-	if charge >= 1.0:
-		charge = 0.0
-		energy = mini(SLOT_COUNT, energy + 1)
-	next["charge"] = charge
-	next["energy"] = energy
-	# Tags advance one slot per second; the goal consumes them; a fresh tag
-	# appears periodically so the loop never empties. Turns count down as
-	# they glide (turns = distance to goal).
-	if _demo_tick % 5 == 0:
-		var next_tags := {}
-		for slot in next.get("tags", {}):
-			if slot + 1 <= GOAL_SLOT:
-				next_tags[slot + 1] = {"count": next["tags"][slot]["count"], "turns": GOAL_SLOT - slot - 1}
-		next["tags"] = next_tags
-	if _demo_tick % 15 == 0:
-		var spawn_slot := 2 + (_demo_tick / 15 % 5)
-		var tags: Dictionary = next["tags"]
-		tags[spawn_slot] = {"count": 1 + _demo_tick % 3, "turns": GOAL_SLOT - spawn_slot}
-	# Every so often a spend rewinds the fill.
-	if _demo_tick % 40 == 39:
-		next["energy"] = maxi(0, energy - 4)
-		next["charge"] = 0.0
-	_demo_state = next
-	apply_state(_demo_state)

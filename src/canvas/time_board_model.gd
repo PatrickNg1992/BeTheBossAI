@@ -2,16 +2,17 @@ class_name TimeBoardModel
 extends RefCounted
 
 ## Pure logical model for the Time Board under the Fixed 12-Turn Action Cycle:
-## - Holds Energy (Player A and Player B), 20-cap, fractional charge progress,
-##   freeze state per Timing, and the per-slot cycle Action Tag map.
-## - Places permanent cycle Action Tags at turns 3, 4, 6, 8, 9, 12 of each
-##   repeating 12-turn Action Cycle (even when count == 0), flagging 12-interval
-##   tags with `is_cycle_12 = true`.
-## - Every non-defeated Adventurer contributes +1 to all multiples of its fixed
-##   Action Countdown (3, 4, or 6), including while pocketed.
-## - When a 0-count tag reaches the goal slot (19), it clears immediately without
-##   entering Action Time; when a >0-count tag reaches the goal, it pins at slot 19
-##   and triggers Action Time.
+## - Maintains a fixed list of 6 persistent Action Tag objects (`_cycle_tags`),
+##   one for each cycle step `[3, 4, 6, 8, 9, 12]`.
+## - Each of the 6 tags tracks its own `turns` remaining (`0..12`), independent
+##   of every other tag.
+## - When a tag reaches the goal (`turns == 0`):
+##   * If `count == 0`: it clears immediately (`turns` resets to `12`, off-bar)
+##     without entering Action Time.
+##   * If `count > 0`: it stays at `turns = 0` (standing at the goal) throughout
+##     Action Time and Settle Time — its next-cycle replacement does NOT appear
+##     until the goal tag disappears at the end of Action/Settle Time (when its
+##     `turns` resets to `12`, ready to glide into slot 11 on the next Turn).
 ## - At Settle Time, settles damage (resetting Hit Level only at Turn 12 of the
 ##   12-turn cycle), removes defeated units from future tag counts, and resets
 ##   acted units' personal Action Countdown.
@@ -34,8 +35,25 @@ var elapsed_turns: int = 0
 var last_triggered_cycle_step: int = 0
 var has_player_b: bool = false
 var _turn_step_accum: float = 0.0
-var _pinned_goal_tag: Dictionary = {}
+var _cycle_tags: Array[Dictionary] = []
 var _tags: Dictionary = {}
+
+
+func _init() -> void:
+	_reset_cycle_tags()
+
+
+func _reset_cycle_tags() -> void:
+	_cycle_tags.clear()
+	for i in range(CYCLE_TAG_STEPS.size()):
+		var step: int = CYCLE_TAG_STEPS[i]
+		_cycle_tags.append({
+			"tag_index": i,
+			"cycle_step": step,
+			"turns": step,
+			"count": 0,
+			"is_cycle_12": (step == CYCLE_LENGTH),
+		})
 
 
 func bind(
@@ -52,7 +70,7 @@ func bind(
 	elapsed_turns = 0
 	last_triggered_cycle_step = 0
 	_turn_step_accum = 0.0
-	_pinned_goal_tag.clear()
+	_reset_cycle_tags()
 
 	if unit_information_manager != null:
 		unit_information_manager.current_cycle_turn = 0
@@ -110,6 +128,10 @@ func get_cycle_turn() -> int:
 	return ((elapsed_turns - 1) % CYCLE_LENGTH) + 1
 
 
+func get_cycle_tags() -> Array[Dictionary]:
+	return _cycle_tags.duplicate(true)
+
+
 func _initialize_unit_action_countdowns() -> void:
 	if unit_information_manager == null:
 		return
@@ -141,7 +163,7 @@ func _on_units_changed(_u: UnitInformationDO = null) -> void:
 
 
 func _on_units_cleared() -> void:
-	_pinned_goal_tag.clear()
+	_reset_cycle_tags()
 	refresh_tags()
 
 
@@ -150,7 +172,7 @@ func _on_timing_changed(new_timing: String, old_timing: String) -> void:
 		elapsed_turns = 0
 		last_triggered_cycle_step = 0
 		_turn_step_accum = 0.0
-		_pinned_goal_tag.clear()
+		_reset_cycle_tags()
 		if unit_information_manager != null:
 			unit_information_manager.current_cycle_turn = 0
 		if timing_manager != null:
@@ -162,7 +184,7 @@ func _on_timing_changed(new_timing: String, old_timing: String) -> void:
 		return
 
 	if new_timing == TimingManager.TIMING_CHARGING and (old_timing == TimingManager.TIMING_ACTION or old_timing == TimingManager.TIMING_SETTLE):
-		_pinned_goal_tag.clear()
+		_clear_goal_tags_to_back_of_cycle()
 		_reset_acted_unit_countdowns()
 		refresh_tags()
 		return
@@ -188,6 +210,12 @@ func _on_charge_slot_completed(_new_energy: float) -> void:
 	_advance_one_turn()
 
 
+func _clear_goal_tags_to_back_of_cycle() -> void:
+	for i in range(_cycle_tags.size()):
+		if int(_cycle_tags[i].get("turns", 12)) <= 0:
+			_cycle_tags[i]["turns"] = CYCLE_LENGTH
+
+
 func _advance_one_turn() -> void:
 	elapsed_turns += 1
 	last_triggered_cycle_step = ((elapsed_turns - 1) % CYCLE_LENGTH) + 1
@@ -196,6 +224,15 @@ func _advance_one_turn() -> void:
 
 	if unit_skill_manager != null:
 		unit_skill_manager.tick_all_skill_countdowns(1)
+
+	# Any tag still at 0 wraps to 12 before stepping all 6 tags down by 1
+	_clear_goal_tags_to_back_of_cycle()
+	var reached_goal_idx := -1
+	for i in range(_cycle_tags.size()):
+		var t_rem := int(_cycle_tags[i].get("turns", 12)) - 1
+		_cycle_tags[i]["turns"] = t_rem
+		if t_rem == 0:
+			reached_goal_idx = i
 
 	var acting_count := 0
 	if unit_information_manager != null:
@@ -211,26 +248,21 @@ func _advance_one_turn() -> void:
 				acting_count += 1
 			unit_information_manager.unit_updated.emit(u)
 
-	var is_cycle_tag_turn := CYCLE_TAG_STEPS.has(last_triggered_cycle_step)
-	if is_cycle_tag_turn and acting_count > 0:
-		_pinned_goal_tag = {
-			"count": acting_count,
-			"turns": 0,
-			"cycle_step": last_triggered_cycle_step,
-			"is_cycle_12": last_triggered_cycle_step == CYCLE_LENGTH,
-		}
+	if reached_goal_idx >= 0 and acting_count > 0:
+		# Keep this tag at `turns = 0` (standing at the goal); its replacement does NOT appear yet!
 		refresh_tags()
 		if timing_manager != null and timing_manager.get_current_timing() == TimingManager.TIMING_CHARGING:
 			timing_manager.enter_action_time()
 	else:
-		# Either not a cycle tag turn or a 0-count cycle tag reached the goal -> clear without Action Time
-		_pinned_goal_tag.clear()
+		# 0-count tag reached the goal -> immediately disappears and wraps to turns = 12 without Action Time
+		if reached_goal_idx >= 0:
+			_cycle_tags[reached_goal_idx]["turns"] = CYCLE_LENGTH
 		refresh_tags()
 
 
 ## Called when Settle Time resolves:
-## - Settles all pending Damage Stacks (resetting Hit Level to 0 only when Turn 12 of the 12-turn cycle settles)
-## - Unpins the firing goal tag
+## - Settles all pending Damage Stacks (resetting Hit Level to 0 only when Turn 12 settles)
+## - Disappears the firing goal tag (wrapping its `turns` from 0 to 12 so it glides into slot 11 on the next Turn)
 ## - Resets acted units' personal Action Countdown to their fixed interval
 ## - Updates future cycle tag counts (excluding newly defeated units)
 func on_settle_time_resolved() -> Dictionary:
@@ -238,7 +270,7 @@ func on_settle_time_resolved() -> Dictionary:
 	if unit_information_manager != null:
 		unit_information_manager.current_cycle_turn = last_triggered_cycle_step
 		res = unit_information_manager.settle_all_damage()
-	_pinned_goal_tag.clear()
+	_clear_goal_tags_to_back_of_cycle()
 	_reset_acted_unit_countdowns()
 	refresh_tags()
 	return res
@@ -259,24 +291,25 @@ func _reset_acted_unit_countdowns() -> void:
 			unit_information_manager.unit_updated.emit(u)
 
 
-## Recomputes the per-slot cycle Action Tag map across slots 0..19.
+## Updates each of the 6 persistent tags' unit counts and rebuilds the slot map.
 func refresh_tags(emit_signal_after: bool = true) -> void:
+	if _cycle_tags.size() != CYCLE_TAG_STEPS.size():
+		_reset_cycle_tags()
 	_tags.clear()
-	if not _pinned_goal_tag.is_empty():
-		_tags[GOAL_SLOT] = _pinned_goal_tag.duplicate(true)
-
-	for dist in range(1, SLOT_COUNT):
-		var slot := GOAL_SLOT - dist
-		var future_turn := elapsed_turns + dist
-		var cycle_step := ((future_turn - 1) % CYCLE_LENGTH) + 1
-		if not CYCLE_TAG_STEPS.has(cycle_step):
-			continue
-		var unit_count := _count_units_acting_at_cycle_step(cycle_step)
+	for i in range(_cycle_tags.size()):
+		var step: int = int(_cycle_tags[i].get("cycle_step", CYCLE_TAG_STEPS[i]))
+		var t_rem: int = clampi(int(_cycle_tags[i].get("turns", step)), 0, CYCLE_LENGTH)
+		var unit_count := _count_units_acting_at_cycle_step(step)
+		_cycle_tags[i]["count"] = unit_count
+		_cycle_tags[i]["turns"] = t_rem
+		_cycle_tags[i]["is_cycle_12"] = (step == CYCLE_LENGTH)
+		var slot := GOAL_SLOT - t_rem
 		_tags[slot] = {
+			"tag_index": i,
 			"count": unit_count,
-			"turns": dist,
-			"cycle_step": cycle_step,
-			"is_cycle_12": cycle_step == CYCLE_LENGTH,
+			"turns": t_rem,
+			"cycle_step": step,
+			"is_cycle_12": (step == CYCLE_LENGTH),
 		}
 
 	if emit_signal_after:
@@ -319,6 +352,7 @@ func get_state() -> Dictionary:
 		"frozen": is_frozen(),
 		"elapsed_turns": elapsed_turns,
 		"cycle_turn": get_cycle_turn(),
+		"cycle_tags": _cycle_tags.duplicate(true),
 		"tags": _tags.duplicate(true),
 		"action_tags": _tags.duplicate(true),
 	}
