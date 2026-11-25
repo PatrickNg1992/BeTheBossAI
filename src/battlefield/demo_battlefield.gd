@@ -715,8 +715,8 @@ func _setup_demo_unit_information() -> void:
 	if _player is BaseBossMonster:
 		var boss_a := _player as BaseBossMonster
 		unit_information_manager.register_boss("boss_a", "a", {
-			"max_hp": 1000,
-			"current_hp": 1000,
+			"max_hp": 1500,
+			"current_hp": 1500,
 			"bars_remaining": 15,
 			"max_bars": 15,
 			"power": 400,

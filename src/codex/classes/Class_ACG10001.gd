@@ -12,10 +12,10 @@ func _init() -> void:
 	action_countdown = 4
 	mass = 1.75
 	radius = 0.65
-	base_hp = 2250
+	base_hp = 2070
 	base_pow = 180
 	base_spd = 100
-	hp_per_lv = 250
+	hp_per_lv = 230
 	pow_per_lv = 20
 	spd_per_lv = 5
 	base_skill_ids = ["SMA10001", "SAA10001", "SPA10001"]

@@ -6,7 +6,7 @@ extends BaseBossMonster
 
 
 func _ready() -> void:
-	mass = 3.2
+	mass = 2.5
 	radius = 0.8
 	super()
 

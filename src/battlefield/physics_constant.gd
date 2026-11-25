@@ -12,7 +12,7 @@ const COLLISION_DAMAGE_IMPULSE_DIVISOR: float = 40.0
 
 # ==================== TIMING & GLIDE SPEED ====================
 ## Energy charging speed multiplier in live gameplay (0.50 = 50% slower than 1.0 slot/sec -> 2.0s per slot).
-const ENERGY_CHARGING_SPEED: float = 0.50
+const ENERGY_CHARGING_SPEED: float = 0.70
 ## Adventurer Move Skill constant glide speed in table units/sec (20% slower than 7.5 -> 6.0).
 const GLIDE_SPEED_UNITS_PER_SEC: float = 6.0
 

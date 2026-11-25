@@ -9,7 +9,7 @@
 - Trait: defence-focused
 - puck mass: 1.75
 - puck radius: 0.65
-- stat: 2250/180/100 + 250/20/5
+- stat: 2070/180/100 + 230/20/5
 
 ## Name: Sentinel
 - ID: ACG20001
