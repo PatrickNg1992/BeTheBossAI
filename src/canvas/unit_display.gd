@@ -564,10 +564,15 @@ func render_unit(u: UnitInformationDO, local_role: String) -> void:
 		_bars_label.visible = false
 
 	# Action Tag turn countdown integer(s) on lower-right of portrait (or pocket return countdown)
+	# When a unit is acting in Action Time (`turns_str == "0"`), highlight it as a larger Red 0!
 	var turns_str := u.get_display_action_turns_text()
 	_action_turns_badge.visible = not turns_str.is_empty()
 	_action_turns_label.text = turns_str
-	if u.is_pocketed:
+	var is_acting_zero := (turns_str == "0")
+	_action_turns_label.add_theme_font_size_override("font_size", 26 if is_acting_zero else 20)
+	if is_acting_zero:
+		_action_turns_label.add_theme_color_override("font_color", Color(1.0, 0.20, 0.18, 1.0))
+	elif u.is_pocketed:
 		_action_turns_label.add_theme_color_override("font_color", Color(0.68, 0.88, 1.0, 1.0))
 	else:
 		_action_turns_label.add_theme_color_override("font_color", Color(0.98, 0.92, 0.72, 1.0))
@@ -819,6 +824,7 @@ func get_info() -> Dictionary:
 		"red_cross_visible": _red_cross_overlay.visible,
 		"action_turns_visible": _action_turns_badge.visible,
 		"action_turns_text": _action_turns_label.text if _action_turns_badge.visible else "",
+		"action_turns_is_acting_red_zero": (_action_turns_badge.visible and _action_turns_label.text == "0"),
 		"last_skill_popup_text": _last_skill_popup_text,
 		"is_hover_highlighted": _is_hover_highlighted,
 		"scale": scale,

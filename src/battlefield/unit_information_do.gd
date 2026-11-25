@@ -99,14 +99,17 @@ func get_display_action_turns_text() -> String:
 	if is_dead or unit_kind == "boss":
 		return ""
 	if is_pocketed:
-		return str(maxi(1, pocket_return_turns))
+		if next_action_turns == 0 and pocket_return_turns == 0:
+			return "0"
+		var p_turns := pocket_return_turns if pocket_return_turns > 0 else next_action_turns
+		return str(maxi(1, p_turns))
 	if not action_tag_turns.is_empty():
 		var parts: Array[String] = []
 		for t in action_tag_turns:
-			if int(t) > 0:
+			if int(t) >= 0:
 				parts.append(str(int(t)))
 		if not parts.is_empty():
 			return " / ".join(parts)
-	if next_action_turns > 0:
+	if next_action_turns >= 0:
 		return str(next_action_turns)
 	return ""

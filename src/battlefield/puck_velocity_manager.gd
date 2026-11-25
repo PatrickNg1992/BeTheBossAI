@@ -424,13 +424,21 @@ func _on_puck_entered_pocket(puck: BasePuck) -> void:
 	_resolve_references()
 	if unit_information_manager != null:
 		unit_information_manager.push_pocket_fall_damage_for_puck(puck)
+		var uid := puck.get_unit_id() if puck != null else ""
+		if not uid.is_empty():
+			var u_do := unit_information_manager.get_unit(uid)
+			if u_do != null and u_do.unit_kind != "boss":
+				unit_information_manager.set_unit_pocketed(uid, true, maxi(1, u_do.next_action_turns))
 	if timing_manager != null:
 		timing_manager.record_settle_event({"type": "pocket", "puck": puck.get_unit_id()})
 
 
-## Once all non-pocketed Pucks come to rest, respawns any Puck that fell into
-## a Pocket Area at a random empty, non-pocket Tile inside the middle 80% of
-## the Cue Table (with no other pucks and no pocket area).
+## Once all non-pocketed Pucks come to rest:
+## - Surviving pocketed Boss Monster pucks respawn at a random empty, non-pocket Tile
+##   inside the middle 80% of the Cue Table so the game can continue.
+## - Surviving pocketed Enemy Adventurers stay pocketed (`is_pocketed = true`, keeping
+##   their Action Countdown and Time Board Action Tag counts unchanged) and return
+##   in Phase 4 of their next Action Time via `AutoFightManager`.
 func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 	if battlefield == null:
 		return
@@ -449,9 +457,15 @@ func _respawn_pocketed_pucks(pucks: Array[BasePuck]) -> void:
 			var uid := puck.get_unit_id()
 			if not uid.is_empty():
 				var u_do := unit_information_manager.get_unit(uid)
-				if u_do != null and (u_do.is_dead or u_do.get_preview_ghost_hp() <= 0):
-					# Lethal pocket fall -> will be defeated at Settle Time; do not respawn!
-					continue
+				if u_do != null:
+					if u_do.unit_kind == "enemy_adventurer":
+						# Adventurers stay off-table and return at their next Action Time!
+						unit_information_manager.set_unit_pocketed(uid, true, maxi(1, u_do.next_action_turns))
+						continue
+					var lethal_boss := (u_do.unit_kind == "boss" and u_do.bars_remaining <= 1 and u_do.get_preview_ghost_hp() <= 0)
+					var lethal_other := (u_do.unit_kind != "boss" and u_do.get_preview_ghost_hp() <= 0)
+					if u_do.is_dead or lethal_boss or lethal_other:
+						continue
 		var middle_candidates: Array[TableBlock] = []
 		var fallback_candidates: Array[TableBlock] = []
 		for child in blocks_root.get_children():

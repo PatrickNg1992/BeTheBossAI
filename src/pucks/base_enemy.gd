@@ -22,6 +22,10 @@ func _ready() -> void:
 	_wander_target = global_position
 	_find_target()
 	_bind_timing_signals()
+	# Continuous physics-process AI is retired in favour of AutoFightManager's
+	# three-phase SPD-ordered Action Time skill execution.
+	set_physics_process(false)
+	set_process(false)
 
 
 func _bind_timing_signals() -> void:

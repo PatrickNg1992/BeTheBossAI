@@ -1,7 +1,6 @@
-the look-and-feel of the time board is bad after adding the moving action tags.
-try the following adjustments:
-- redraw the tag shape. the circle and number should be 50% larger. the triangle side should match the edge of the circle. 
-- hightlight the 6th tag with light red, 4 and 8th with light blue, 12 with light purple (red + blue). make the 12th tag 20% larger than others.
-- don't show the action tags at lower bar and shift to upper bar. it looks chaostic. however, in order to show a full cycle. make the slots shorter and add two slot which is always empty on the upper so that there will be 12 slots at the upper bar. 
-- since the lower bar no longer need action tag, move the two bar lower. leave more space for the action tags above
-- take up the action tag stand at the goal to highlight it
+it is basically what i want. but there are a lot to fine tune.
+- I expected the distance wrongly. the move distance of adventurer is too short. please update the four move skills distance 2.5 times of original. also update the attack skill range of guard, brawl, scout to 2 times of original. update the doc as well
+- although i want to game action to be fast. but it is too fast now. make the glide speed 20% slower. (after adjust the distance, it should be much longer time)
+- during action time, highlight the action counts of the units that act in that turn. make it a larger Red 0. 
+- make the energy charging 50% slower. i think the rhythm is too fast that does not allow thinking time of players. put the speed in physic constant file
+- I tested in the multiplater scene. the time board is too packy. make the time board a bit taller. leave some space between the two players' bars. remove the extra 11th slot of upper bar of opponent because it does not have action tags

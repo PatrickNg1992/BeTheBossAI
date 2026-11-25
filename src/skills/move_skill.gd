@@ -37,3 +37,56 @@ func resolve_variables(_owner_unit: UnitInformationDO = null, _manager: UnitInfo
 	return {
 		"DIST": "%.1f-%.1f" % [get_min_distance(), get_max_distance()],
 	}
+
+
+static func find_opponent_boss_puck(actor_do: UnitInformationDO, uim: UnitInformationManager) -> BasePuck:
+	if actor_do == null or uim == null:
+		return null
+	for u in uim.get_all_units():
+		if u == null or u.is_dead or u.unit_kind != "boss":
+			continue
+		if AttackSkill.is_opponent_unit(actor_do, u) and not u.pucks.is_empty() and is_instance_valid(u.pucks[0]):
+			return u.pucks[0]
+	return null
+
+
+static func find_nearest_opponent_puck(actor_do: UnitInformationDO, actor_pos: Vector3, uim: UnitInformationManager) -> BasePuck:
+	if actor_do == null or uim == null:
+		return null
+	var nearest: BasePuck = null
+	var nearest_dist := INF
+	for u in uim.get_all_units():
+		if u == null or u.is_dead or not AttackSkill.is_opponent_unit(actor_do, u):
+			continue
+		if not UnitSkillManager.is_unit_on_cue_table(u):
+			continue
+		for p in u.pucks:
+			if not is_instance_valid(p) or p.is_dead or p.is_falling_in_pocket:
+				continue
+			var d := Vector2(p.global_position.x - actor_pos.x, p.global_position.z - actor_pos.z).length()
+			if d < nearest_dist:
+				nearest_dist = d
+				nearest = p
+	return nearest
+
+
+static func rotate_xz_direction(dir_xz: Vector2, angle_rad: float) -> Vector2:
+	var n := dir_xz.normalized() if dir_xz.length_squared() > 0.00001 else Vector2(1.0, 0.0)
+	return n.rotated(angle_rad)
+
+
+## Overridden by concrete `Skill_SMA*.gd` scripts to compute the raw Target Position
+## decided by the Move Skill's effect (`{"should_move": bool, "target_position": Vector3}`).
+func compute_raw_target_position(
+	_actor_do: UnitInformationDO,
+	actor_puck: BasePuck,
+	_uim: UnitInformationManager,
+	rng: RandomNumberGenerator = null
+) -> Dictionary:
+	var start_pos := actor_puck.global_position if actor_puck != null else Vector3.ZERO
+	var angle := randf_range(0.0, TAU) if rng == null else rng.randf_range(0.0, TAU)
+	var dist := roll_distance(rng)
+	return {
+		"should_move": true,
+		"target_position": Vector3(start_pos.x + cos(angle) * dist, start_pos.y, start_pos.z + sin(angle) * dist),
+	}

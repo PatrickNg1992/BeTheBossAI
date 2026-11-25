@@ -220,9 +220,11 @@ func test_time_board_view_upper_bar_count_circle_zero_count_hiding_and_12_cycle_
 	var board: TimeBoard = packed.instantiate()
 	tree.root.add_child(board)
 
-	# 1. Verify 11-slot upper bar (10 Energy slots + 1 empty extension slot), 6 persistent tag nodes,
+	# 1. Verify 11-slot main upper bar (10 Energy slots + 1 empty extension slot), 10-slot secondary opponent upper bar
+	#    (no 11th extension slot on opponent bar since it has no Action Tags), 6 persistent tag nodes,
 	#    and 2nd player's secondary bar positioned BELOW LowerBar
-	assert_eq(board.get_upper_slot_count(), 11, "Upper bar has 11 slots (10 Energy slots + 1 always-empty extension slot; 12th slot removed)")
+	assert_eq(board.get_upper_slot_count(), 11, "Main upper bar has 11 slots (10 Energy slots + 1 always-empty extension slot)")
+	assert_eq(board.get_secondary_upper_slot_count(), 10, "Opponent's secondary upper bar has 10 slots (extra 11th slot removed)")
 	assert_eq(board.get_cycle_tag_node_count(), 6, "TimeBoard uses a fixed list of 6 persistent tag nodes")
 	assert_true(board.is_secondary_bar_below_lower_bar(), "Second player's bar (SecondaryBarBox) is positioned below LowerBar")
 

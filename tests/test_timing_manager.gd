@@ -324,15 +324,9 @@ func test_battlefield_starts_in_charging_and_wires_play_button_space_and_5s_puck
 	assert_eq(bf.fast_play_button.text, "x1", "4th click cycles back to x1")
 	assert_eq(tm.get_effective_time_scale(), 1.0, "Time scale returns to 1.0 at x1")
 
-	# Temporary Action button enters Action Time and runs for 5 seconds before returning to Charging
-	assert_true(bf.action_button != null and bf.action_button.visible, "Temporary Action button exists")
-	assert_eq(bf.action_button.text, Loc.t("timing_action"), "Action button label is localized")
-	bf.action_button.emit_signal("pressed")
-	assert_eq(tm.get_current_timing(), TimingManager.TIMING_ACTION, "Action button enters Action Time")
-	bf._process(3.0)
-	assert_eq(tm.get_current_timing(), TimingManager.TIMING_ACTION, "Still in Action Time after 3s")
-	bf._process(2.0)
-	assert_eq(tm.get_current_timing(), TimingManager.TIMING_CHARGING, "Action Time ends after 5s and transitions to next timing phase")
+	# Temporary Action button is hidden/retired now that AutoFightManager and 12-turn cycle Action Tags drive Action Time
+	assert_true(bf.action_button == null or not bf.action_button.visible, "Temporary Action test button is hidden once Action Tags & AutoFightManager are wired")
+	assert_true(bf.auto_fight_manager != null, "AutoFightManager is wired into the battlefield")
 
 	# Verify PC 3:2 (1500x1000) scalable ratio layout zones on Canvas without overlapping the middle 900x600 Cue Table area
 	var left_unit_panel := bf.get_node_or_null("Canvas/LeftUnitPanel") as Control

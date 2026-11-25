@@ -27,6 +27,8 @@ const ROLE_SPECTATOR := "spectator"
 @onready var cue_shot_manager: CueShotManager = %CueShotManager
 @onready var unit_information_manager: UnitInformationManager = get_node_or_null("%UnitInformationManager") as UnitInformationManager
 var unit_skill_manager: UnitSkillManager = null
+var presentation_manager: PresentationManager = null
+var auto_fight_manager: AutoFightManager = null
 var time_board_model: TimeBoardModel = null
 @onready var time_board: TimeBoard = %TimeBoard
 @onready var play_button: Button = %PlayButton
@@ -157,6 +159,31 @@ func _ready() -> void:
 	if time_board_model == null:
 		time_board_model = TimeBoardModel.new()
 	time_board_model.bind(timing_manager, unit_information_manager, unit_skill_manager, has_player_b())
+	if presentation_manager == null:
+		presentation_manager = get_node_or_null("PresentationManager") as PresentationManager
+		if presentation_manager == null:
+			presentation_manager = PresentationManager.new()
+			presentation_manager.name = "PresentationManager"
+			add_child(presentation_manager)
+	if auto_fight_manager == null:
+		auto_fight_manager = get_node_or_null("AutoFightManager") as AutoFightManager
+		if auto_fight_manager == null:
+			auto_fight_manager = AutoFightManager.new()
+			auto_fight_manager.name = "AutoFightManager"
+			add_child(auto_fight_manager)
+	auto_fight_manager.bind(
+		timing_manager,
+		unit_information_manager,
+		unit_skill_manager,
+		presentation_manager,
+		get_node_or_null("Battlefield") as Battlefield,
+		time_board_model
+	)
+	auto_fight_manager.auto_trigger_on_action_timing = is_host
+	if not auto_fight_manager.action_time_completed.is_connected(_on_auto_fight_action_time_completed):
+		auto_fight_manager.action_time_completed.connect(_on_auto_fight_action_time_completed)
+	if action_button != null:
+		action_button.visible = false
 	timing_manager.set_energy(DEMO_INITIAL_ENERGY)
 	timing_manager.set_energy_b(DEMO_INITIAL_ENERGY if has_player_b() else 0.0)
 
@@ -175,6 +202,9 @@ func _ready() -> void:
 	Loc.language_changed.connect(_update_ui_labels)
 
 	time_board.set_perspective_role(get_local_role())
+	if timing_manager != null:
+		var scale_f := maxf(timing_manager.get_effective_time_scale(), 1.0)
+		time_board.turn_duration = timing_manager.turn_duration / maxf(0.05, timing_manager.energy_charging_speed * scale_f)
 	time_board.render_state(time_board_model.get_state())
 	_bind_unit_info_sync_signals()
 	if is_host:
@@ -195,6 +225,8 @@ func _apply_role_and_authority_mode() -> void:
 			timing_manager._energy_b = DEMO_INITIAL_ENERGY
 	if puck_velocity_manager != null:
 		puck_velocity_manager.set_process(is_host)
+	if auto_fight_manager != null:
+		auto_fight_manager.auto_trigger_on_action_timing = is_host
 	if time_board_model != null:
 		time_board_model.set_has_player_b(has_player_b())
 	if time_board != null:
@@ -204,8 +236,8 @@ func _apply_role_and_authority_mode() -> void:
 		canvas_node.call("set_local_role", get_local_role())
 	for child in get_children():
 		if child is BaseEnemy:
-			child.set_physics_process(is_host)
-			child.set_process(is_host)
+			child.set_physics_process(false)
+			child.set_process(false)
 		elif child is BasePuck and not is_host:
 			child.set_physics_process(false)
 			child.set_process(false)
@@ -965,7 +997,7 @@ func _on_timing_changed(new_timing: String, _old_timing: String) -> void:
 		active_player = ""
 	if time_board != null and timing_manager != null:
 		var scale_f := maxf(timing_manager.get_effective_time_scale(), 1.0)
-		time_board.turn_duration = timing_manager.turn_duration / scale_f
+		time_board.turn_duration = timing_manager.turn_duration / maxf(0.05, timing_manager.energy_charging_speed * scale_f)
 	_refresh_controls()
 	if is_host:
 		sync_timing()
@@ -1007,14 +1039,25 @@ func _on_host_unit_collision_impulse(u: UnitInformationDO, impulse_mag: float) -
 	})
 
 
+func _on_auto_fight_action_time_completed(_trace: Array) -> void:
+	if is_host:
+		sync_boss_stats()
+		sync_units()
+		sync_puck_positions({}, MpTransport.RELIABLE)
+		sync_timing()
+
+
 func resolve_settle_and_check_pvp_winner() -> void:
 	if not is_host or unit_information_manager == null:
 		return
 	var res: Dictionary = time_board_model.on_settle_time_resolved() if time_board_model != null else unit_information_manager.settle_all_damage()
+	if auto_fight_manager != null:
+		auto_fight_manager.respawn_pocketed_boss_units()
 	var settled_map: Dictionary = res.get("settled_damage", {})
 	sync_time_board({}, MpTransport.RELIABLE)
 	sync_boss_stats()
 	sync_units()
+	sync_puck_positions({}, MpTransport.RELIABLE)
 	if not settled_map.is_empty():
 		sync_effect_trigger({
 			"kind": "damage_settled",
@@ -1209,7 +1252,7 @@ func _on_fast_play_changed(enabled: bool) -> void:
 		_fast_play_index = idx if idx > 0 else 2
 	if time_board != null and timing_manager != null:
 		var scale_f := maxf(timing_manager.get_effective_time_scale(), 1.0)
-		time_board.turn_duration = timing_manager.turn_duration / scale_f
+		time_board.turn_duration = timing_manager.turn_duration / maxf(0.05, timing_manager.energy_charging_speed * scale_f)
 	_refresh_controls()
 
 

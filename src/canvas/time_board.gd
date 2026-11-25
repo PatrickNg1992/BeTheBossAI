@@ -28,8 +28,8 @@ const CYCLE_TAG_COUNT := 6
 const CYCLE_STEPS: Array[int] = [3, 4, 6, 8, 9, 12]
 const GOAL_LIFT_Y := -8.0
 
-@export var slot_size := Vector2(38, 13)
-@export var secondary_slot_size := Vector2(38, 6)
+@export var slot_size := Vector2(38, 15)
+@export var secondary_slot_size := Vector2(38, 8)
 @export var slot_gap := 3.0
 @export var turn_duration := 1.0
 @export var charge_tween_duration := 0.15
@@ -123,6 +123,7 @@ var _secondary_overdrag_fills: Array[ColorRect] = []
 
 ## Fixed list of 6 persistent Action Tag objects (`0..5` -> `[3, 4, 6, 8, 9, 12]`).
 var _upper_tags_layer: Control = null
+var _secondary_spacer: Control = null
 var _cycle_tag_nodes: Array[Control] = []
 var _cycle_tag_pins: Array[TagPinDrawer] = []
 var _cycle_tag_counts: Array[Label] = []
@@ -157,9 +158,16 @@ func _build_board() -> void:
 	if _lower_tags != null:
 		_lower_tags.visible = false
 	if _secondary_bar_box != null and _secondary_bar_box.get_parent() != null:
-		# Ensure the 2nd player's bar sits below LowerBar (where lower action tags used to be)
+		# Ensure the 2nd player's bar sits below LowerBar with a clear gap between the two players' bars
 		var board_parent := _secondary_bar_box.get_parent()
-		board_parent.move_child(_secondary_bar_box, _lower_bar.get_index() + 1)
+		_secondary_spacer = Control.new()
+		_secondary_spacer.name = "SecondaryBarSpacer"
+		_secondary_spacer.custom_minimum_size = Vector2(0, 8)
+		_secondary_spacer.visible = _secondary_bar_box.visible
+		_secondary_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		board_parent.add_child(_secondary_spacer)
+		board_parent.move_child(_secondary_spacer, _lower_bar.get_index() + 1)
+		board_parent.move_child(_secondary_bar_box, _secondary_spacer.get_index() + 1)
 
 	_fills.resize(SLOT_COUNT)
 	_charging_fills.resize(SLOT_COUNT)
@@ -178,17 +186,17 @@ func _build_board() -> void:
 	_secondary_target_charging_ratios.resize(SLOT_COUNT)
 	_secondary_target_charging_ratios.fill(0.0)
 
-	# Lower bar: 10 Energy slots (0..9) left→right, plus 1 invisible spacer so lower bar aligns with the 11-slot upper bar.
+	# Lower bar: 10 Energy slots (0..9) left→right, plus 1 invisible spacer on main lower bar only.
+	# Secondary opponent bars have ONLY 10 slots (no 11th extension slot, since opponent bar has no Action Tags).
 	for slot in range(BAR_SIZE):
 		_lower_bar.add_child(_make_slot_cell(slot, false))
 		if _secondary_lower_bar != null:
 			_secondary_lower_bar.add_child(_make_secondary_slot_cell(slot, false))
 	for _ext in range(EXTRA_UPPER_EMPTY_SLOTS):
 		_lower_bar.add_child(_make_spacer_cell(slot_size))
-		if _secondary_lower_bar != null:
-			_secondary_lower_bar.add_child(_make_spacer_cell(secondary_slot_size))
 
-	# Upper bar: 11 slots total (columns 0..9 are Energy slots 19..10; column 10 is 1 always-empty extension slot).
+	# Upper bar: 11 slots on main upper bar (10 Energy slots 19..10 + 1 always-empty extension slot for Action Tags),
+	# while secondary opponent upper bar has ONLY 10 slots (19..10).
 	for column in range(UPPER_SLOT_COUNT):
 		var slot := GOAL_SLOT - column
 		if column < BAR_SIZE:
@@ -197,8 +205,6 @@ func _build_board() -> void:
 				_secondary_upper_bar.add_child(_make_secondary_slot_cell(slot, true))
 		else:
 			_upper_bar.add_child(_make_empty_extension_slot_cell(slot_size))
-			if _secondary_upper_bar != null:
-				_secondary_upper_bar.add_child(_make_empty_extension_slot_cell(secondary_slot_size))
 
 	_build_six_persistent_tags()
 
@@ -254,6 +260,10 @@ func _x_for_turns(turns_to_goal: int) -> float:
 
 func get_upper_slot_count() -> int:
 	return UPPER_SLOT_COUNT
+
+
+func get_secondary_upper_slot_count() -> int:
+	return _secondary_upper_bar.get_child_count() if _secondary_upper_bar != null else BAR_SIZE
 
 
 func get_cycle_tag_node_count() -> int:
@@ -520,6 +530,8 @@ func render_state(state: Dictionary) -> void:
 	var two_p := bool(_state.get("has_player_b", false))
 	if _secondary_bar_box != null:
 		_secondary_bar_box.visible = two_p
+	if _secondary_spacer != null:
+		_secondary_spacer.visible = two_p
 	var main_e := _main_energy_of(_state)
 	var sec_e := _secondary_energy_of(_state)
 	var ch := float(_state.get("charge", 0.0))
@@ -584,6 +596,8 @@ func apply_state(state: Dictionary) -> void:
 	var two_p := bool(next.get("has_player_b", false))
 	if _secondary_bar_box != null:
 		_secondary_bar_box.visible = two_p
+	if _secondary_spacer != null:
+		_secondary_spacer.visible = two_p
 
 	var old_main_e := _main_energy_of(old)
 	var new_main_e := _main_energy_of(next)

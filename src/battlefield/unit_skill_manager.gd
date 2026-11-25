@@ -360,6 +360,24 @@ func handle_unit_pocket_fall_passives(falling_unit: UnitInformationDO) -> float:
 	return clampf(pct, 0.0, 1.0)
 
 
+## Dispatches `TRIGGER_ON_ACTION_TIME_START` for an on-table acting unit at the start
+## of its Action Time (skipped for pocketed units returning on that turn):
+## - Evaluates `SPA10004 Chanting`: increments the chanting counter `N` by `+1` and
+##   applies `+N * (7.5 + Lv * 2.5)%` POW Statistic Buff.
+func handle_unit_action_time_start_passives(acting_unit: UnitInformationDO) -> void:
+	if acting_unit == null or acting_unit.is_dead or acting_unit.is_pocketed:
+		return
+	var entries := get_skills_for_trigger(TRIGGER_ON_ACTION_TIME_START, acting_unit.unit_id)
+	for entry in entries:
+		var sk: UnitSkill = entry.get("skill", null) as UnitSkill
+		if sk == null:
+			continue
+		if sk.skill_id == "SPA10004":
+			sk.counter += 1
+			var pct_bonus := float(sk.counter) * (7.5 + float(sk.skill_lv) * 2.5) / 100.0
+			apply_stat_modifier(acting_unit, "SPA10004_chanting", "power", pct_bonus, 0)
+
+
 # ----- Factory for All Codex Skills (`res://src/codex/skills/Skill_<ID>.gd`) -----
 
 static func get_skill_script_path(skill_id: String) -> String:

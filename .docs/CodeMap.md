@@ -74,7 +74,9 @@ src/
 │   ├── damage_do.gd             # DamageDO: per-hit staged damage record (source_unit_id, owner_boss_unit_id, decimal value, damage_type, is_fixed)
 │   ├── unit_information_do.gd   # UnitInformationDO: per-unit identity, grid coordinate, Reference Mark, base & effective stats, Damage Stack & 0..N pucks
 │   ├── unit_information_manager.gd # UnitInformationManager: battle-scoped unit registry, {L|R}{1..8}{1..2} layout, Damage Stack/Frenzy/Hit Level & snapshot sync
-│   ├── unit_skill_manager.gd    # UnitSkillManager: skill factory, trigger-time-to-skills map & Statistic Buff/Debuff recalculation
+│   ├── unit_skill_manager.gd    # UnitSkillManager: skill factory (src/codex/skills/), trigger-time-to-skills map & Statistic Buff/Debuff recalculation
+│   ├── presentation_manager.gd  # PresentationManager: Action Time & Settle Time attack projectile VFX, constant-speed Move Skill glides & skill popups
+│   ├── auto_fight_manager.gd    # AutoFightManager: Action Time (ON_ACTION_TIME_START, Phase 1 Active, Phase 2 Attack, Phase 3 Move Glide Logic, Phase 4 Pocket Return) & Settle Time Boss respawn
 │   └── demo_battlefield.gd      # Demo battlefield root: 1P & 2P PvP setup, Host-authoritative sync, Play/Fast Play/Pause UI & PvP victory countdown
 │
 ├── cards/

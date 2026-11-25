@@ -4,10 +4,10 @@
 
 **Blocked by:** 01 — TimingManager core cycle.
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Dragon-player movement is frozen outside the Timings where it should act
-- [x] Enemy AI state machines run only when their Timing allows (gated to `Action Time` via `TimingManager` signals in `base_enemy.gd`)
-- [ ] Aiming-game input (drag-to-aim) is gated by Play Time
-- [ ] Remove the temporary `Space`-key transition from `Play Time` to `Puck-puck Time!` (`KEY_SPACE` in `demo_battlefield.gd`) and the 5-second `Puck-puck Time!` placeholder timer (`PUCK_PUCK_PLACEHOLDER_SECONDS`), replacing them with real Cue-Shot launch and all-pucks-at-rest detection
-- [ ] All gating happens through Timing-change signals, not by checking manager internals
+- [x] Dragon-player movement is frozen outside the Timings where it should act
+- [x] Enemy AI state machines run only when their Timing allows (gated to `Action Time` via `TimingManager` signals in `base_enemy.gd`, superseded by `AutoFightManager`)
+- [x] Aiming-game input (drag-to-aim) is gated by Play Time (`CueShotManager`)
+- [x] Remove the temporary `Space`-key transition from `Play Time` to `Puck-puck Time!` (`KEY_SPACE` in `demo_battlefield.gd`) and the 5-second `Puck-puck Time!` placeholder timer (`PUCK_PUCK_PLACEHOLDER_SECONDS`), replacing them with real Cue-Shot launch and all-pucks-at-rest detection
+- [x] All gating happens through Timing-change signals, not by checking manager internals

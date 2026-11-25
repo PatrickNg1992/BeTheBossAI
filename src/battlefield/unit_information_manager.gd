@@ -808,9 +808,9 @@ func set_unit_action_turns(unit_id: String, turns_list: Array) -> void:
 	u.action_tag_turns.clear()
 	for t in turns_list:
 		var val := int(t)
-		if val > 0:
+		if val >= 0:
 			u.action_tag_turns.append(val)
-	u.next_action_turns = u.action_tag_turns[0] if not u.action_tag_turns.is_empty() else 0
+	u.next_action_turns = u.action_tag_turns[0] if not u.action_tag_turns.is_empty() else -1
 	unit_updated.emit(u)
 
 

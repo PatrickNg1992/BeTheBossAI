@@ -21,6 +21,7 @@ const TIMING_SETTLE := "Settle Time"
 const MAX_ENERGY := 20.0
 
 @export var turn_duration: float = 1.0
+@export var energy_charging_speed: float = PhysicsConstant.ENERGY_CHARGING_SPEED
 @export var settle_duration: float = 0.6
 @export var fast_play_multiplier: float = 2.0
 @export var single_player_mode: bool = true
@@ -44,7 +45,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	advance_time(delta)
+	if _current_timing == TIMING_CHARGING:
+		advance_time(delta * maxf(0.05, energy_charging_speed))
+	else:
+		advance_time(delta)
 
 
 func get_current_timing() -> String:
