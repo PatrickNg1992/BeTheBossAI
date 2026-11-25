@@ -6,7 +6,8 @@ extends McpTestSuite
 ## - UnitSkill hierarchy (MoveSkill, AttackSkill, ActiveSkill, PassiveSkill; SMA/SAA/SPA10001..10004 loadouts at Unit Lv=5, Skill Lv=1)
 ## - UnitDetailDisplay 2-row skill icon layout (Row 1: Move | Attack | Active with empty 3rd slot; Row 2: Passives) & hover Skill Display tooltip (resolved variables, *keyword* highlights, keyword glossary at bottom, no raw Effects text)
 
-const CLASS_CODEX_PATH := "res://src/enemies/class_codex.gd"
+const CLASS_CODEX_PATH := "res://src/codex/class_codex.gd"
+const CLASS_BASE_PATH := "res://src/codex/adventurer_class_base.gd"
 const UNIT_SKILL_PATH := "res://src/skills/unit_skill.gd"
 const UNIT_SKILL_MANAGER_PATH := "res://src/battlefield/unit_skill_manager.gd"
 const UNIT_INFO_MANAGER_PATH := "res://src/battlefield/unit_information_manager.gd"
@@ -18,12 +19,14 @@ func suite_name() -> String:
 
 
 func test_class_codex_registers_28_classes_with_prerequisite_inheritance_and_linear_stat_formula() -> void:
-	assert_true(ResourceLoader.exists(CLASS_CODEX_PATH), "ClassCodex script exists")
+	assert_true(ResourceLoader.exists(CLASS_CODEX_PATH), "ClassCodex script exists at res://src/codex/class_codex.gd")
+	assert_true(ResourceLoader.exists(CLASS_BASE_PATH), "AdventurerClassBase script exists at res://src/codex/adventurer_class_base.gd")
+	assert_false(ResourceLoader.exists("res://src/enemies/class_codex.gd"), "Old res://src/enemies/class_codex.gd is removed")
 	if not ResourceLoader.exists(CLASS_CODEX_PATH):
 		return
 	var codex_script := load(CLASS_CODEX_PATH)
 
-	# 1. All 28 Rank 1-3 common classes are registered (4 Rank-1 + 8 Rank-2 + 16 Rank-3)
+	# 1. All 28 Rank 1-3 common classes are registered as explicit class files in res://src/codex/classes/Class_<ID>.gd
 	var all_ids: Array = codex_script.get_all_class_ids()
 	assert_eq(all_ids.size(), 28, "ClassCodex registers all 28 Rank 1-3 classes")
 	for expected_id in [
@@ -33,6 +36,19 @@ func test_class_codex_registers_28_classes_with_prerequisite_inheritance_and_lin
 		"ACA10001", "ACA20001", "ACA20002", "ACA30001", "ACA30002", "ACA30003", "ACA30004",
 	]:
 		assert_true(all_ids.has(expected_id), "ClassCodex contains %s" % expected_id)
+		var cls_path := "res://src/codex/classes/Class_%s.gd" % expected_id
+		assert_true(ResourceLoader.exists(cls_path), "Explicit class script exists at %s" % cls_path)
+		var cls_inst = codex_script.get_class_instance(expected_id)
+		assert_true(cls_inst is AdventurerClassBase, "%s instantiates as an AdventurerClassBase subclass" % expected_id)
+
+	# Also verify all 12 Rank-1 Base Skill scripts exist at res://src/codex/skills/Skill_<ID>.gd
+	for skill_id in [
+		"SMA10001", "SMA10002", "SMA10003", "SMA10004",
+		"SAA10001", "SAA10002", "SAA10003", "SAA10004",
+		"SPA10001", "SPA10002", "SPA10003", "SPA10004",
+	]:
+		var sk_path := "res://src/codex/skills/Skill_%s.gd" % skill_id
+		assert_true(ResourceLoader.exists(sk_path), "Explicit skill script exists at %s" % sk_path)
 
 	# 2. Verify linear stat calculation at Lv 5 (stat = base + Lv * per_lv):
 	#    - Guard (ACG10001): 2250/180/100 + 250/20/5 -> Lv 5: 3500 HP, 280 POW, 125 SPD, mass 1.75, radius 0.65, cd 4

@@ -19,7 +19,28 @@ Read ./commonSkillEffects.md if you need to know skill effects in more detail. A
 
 It defines how a Unit moves. Every unit, except a Boss Monster, has exactly one. It defines the distance, directions, and other conditions or effects. By default, all distance checks in Move Skills are measured **centre-to-centre**. Sometimes a unit that attacked or used an active skill with `Skip Movement` will skip its Move Skill. 
 
-In the Move Skill phase of Action Time, moving units execute their glide movements **unit by unit** (ordered by `SPD` descending, tie-broken by game order). A gliding puck stops its glide immediately once it collides with another puck or a Cushion (and never enters or stops on a Pocket Area), without applying physical impulse or collision damage. 
+In the Move Skill phase of Action Time, moving units evaluate their Move Skill in `SPD` descending order (tie-broken by game order) using the **Move Glide Logic** below. 
+
+### Move Glide Logic
+
+Most of the Move Skills use *Glide* to move target position. (Except some advanced Skills like Teleport)
+
+If a Skill effect shall glide, determine the *Target Position* of the skill first. Then resolve a *Adjusted Target Position* by the following logic:
+- check whether the Target Position is a *Valid Position*. If yes use it.
+- Otherwise check the surrounding position by 
+    - Select a random direction on the table plane, call it *Angle*, and set *Distance* = 0.5 
+    - Check the position that at *Angle* and *Distance* from the Target Position, if it is *Valid Position*, use it
+    - Adjust *Angle* by 45 degree clockwise. If it is a multiple of 8 times(1 circle), increase *Distance* by 0.5
+    - If already completed 3 circles and still cannot find a Valid Point, break the loop and cancel the move. 
+    - Repeat the checking if not break
+Then move the pucks towards the *Adjusted Target Position* with constant speed. During the movement, disable the puck's collider. 
+
+*Valid position* of a puck means a position that if the puck move to there:
+- Not on pocket area
+- Not overlap with another pucks and obstacles (for any puck that shall move in the current Move Skill phase and has already resolved its *Adjusted Target Position*, check overlap against its *Adjusted Target Position* instead of its original position)
+- Inside the table and does not overlap with the cushions
+
+
 
 ## Attack Skill
 

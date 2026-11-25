@@ -71,6 +71,15 @@ Don't commit any code. Leave it to developers.
 The game should be multi-language. The language setting should be put in ./scr/multiLang
 Please put all the display text into this holder.
 
+## Physics setting
+
+Put all physics constants in ./src/battlefield/physics_constant.gd for fine tune.
+
 ## Codex Maintenance
 
+Codex is a feature that allow players to collect records of different kinds of object they met in the game. (TBC) So players can review them and learn the world settings. It includes Adventurer Classes, Skills, Heroes, etc.
+
 If a task is related to collectable objects, read ./.docmanual/codexList/index.md. It explains how to manage the documents of collectable object lists.
+
+Manage the the codex items logic inside sub-folders of ./src/codex for different types. Do **NOT** put the codex items, which inside the subfolders, into ./.docs/CodeMap.md or otherwise it would be too much. Name the script according to type + reference id so can refer to the doc. (e.g. Skill_SPA10001.gd)
+

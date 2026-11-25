@@ -45,9 +45,14 @@ src/
 │   └── dragon_player.gd        # Boss Monster controller (movement + auto-attack)
 │
 ├── enemies/
-│   ├── class_codex.gd          # ClassCodex: 28 Rank 1-3 Adventurer Classes (ACG10001..ACA30004), prerequisite inheritance & base + Lv * per_lv stats
 │   ├── enemy_adventurer.gd     # Enemy Adventurer (class config + hit flash)
 │   └── health_bar_3d.gd        # (unused — replaced by UnitInformationBoard)
+│
+├── codex/
+│   ├── adventurer_class_base.gd # AdventurerClassBase: explicit base class for all Adventurer Classes
+│   ├── class_codex.gd          # ClassCodex: registry/loader for all 28 Rank 1-3 Adventurer Classes (ACG10001..ACA30004)
+│   ├── classes/                # Individual Adventurer Class scripts (Class_<ID>.gd — omitted per AGENTS.md)
+│   └── skills/                 # Individual Unit Skill scripts (Skill_<ID>.gd — omitted per AGENTS.md)
 │
 ├── skills/
 │   ├── unit_skill.gd           # UnitSkill base class: skill_id, Lv, Skill Countdown, counter, variable resolution & *keyword* BBCode formatter

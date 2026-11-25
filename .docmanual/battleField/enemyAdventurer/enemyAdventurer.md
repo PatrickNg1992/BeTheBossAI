@@ -76,7 +76,7 @@ Existing base skills take effect immediately in Action Time and are non-interrup
 For specific future/advanced interruptible skills, a unit (puck) can change to a **Focusing** state before its attack lands, giving the player time to take appropriate counter-actions. When a puck is focusing, it has lighting visual effects, and players are often recommended to hit focusing pucks in "Puck-puck time!" (except classes in the Guard tree).
 ## Adventurer move
 
-Most adventurers move at constant speed without a physical impulse engine in Action timing. Move Skills execute unit by unit (ordered by `SPD` descending, tie-broken by game order) and stop their glide immediately once they collide with another puck or a cushion (dealing no collision damage). 
+Most adventurers move at constant speed without a physical impulse engine in Action timing. Move Skills resolve an *Adjusted Target Position* via the Move Glide Logic (`.docmanual/battleField/unitInformation/unitSkills.md`) in `SPD` descending order and glide to it with their collider disabled during the movement. 
 
 ## Number size
 
